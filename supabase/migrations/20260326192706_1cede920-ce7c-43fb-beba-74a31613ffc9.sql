@@ -1,0 +1,1 @@
+ALTER TABLE public.clientes ADD COLUMN grupo_cliente uuid DEFAULT NULL;

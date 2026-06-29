@@ -1,0 +1,228 @@
+
+<!DOCTYPE html>
+<html lang="es" translate="no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+    <!-- Prevent Google Translate from modifying React DOM nodes (causes removeChild crash) -->
+    <meta name="google" content="notranslate" />
+    <meta name="theme-color" content="#0A1F44" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Transporte Royal | Expertos en Logística</title>
+    <meta name="description" content="Sistema de gestión de transporte y entregas - Control de bultos, seguimiento de envíos y gestión logística.">
+    
+    <!-- Resource hints for faster loading -->
+    <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.gpteng.co">
+    
+    <!-- Preload critical above-the-fold images - LCP optimization -->
+    <link rel="preload" as="image" href="/lovable-uploads/logo.webp" type="image/webp" fetchpriority="high">
+    <link rel="preload" as="image" href="/TransporteRoyalLogo.png" type="image/png" fetchpriority="high">
+    
+    <!-- Optimized font loading for FCP -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="/lovable-uploads/772c5a9c-cecf-48c2-b423-7c3e48426aeb.png" type="image/png">
+    
+    <style>
+      /* Critical CSS for immediate rendering - LCP optimization */
+      * { 
+        box-sizing: border-box; 
+        margin: 0; 
+        padding: 0; 
+      }
+      
+      html {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        line-height: 1.5;
+        -webkit-text-size-adjust: 100%;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      body { 
+        background-color: hsl(210 20% 98%);
+        color: hsl(222.2 84% 4.9%);
+        font-family: inherit;
+      }
+      
+      #root { 
+        min-height: 100vh; 
+        display: flex; 
+        flex-direction: column; 
+      }
+      
+      /* Critical layout styles for immediate visual content */
+      .container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
+      }
+      
+      /* Critical header styles for immediate LCP */
+      header {
+        background-color: hsl(221 70% 15%);
+        color: hsl(210 40% 98%);
+        padding: 1rem 0;
+        border-bottom: 1px solid hsl(221 65% 25%);
+        will-change: transform;
+      }
+      
+      /* Critical logo container styles */
+      .logo-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+      }
+      
+      /* Critical layout components for above-the-fold */
+      .flex { display: flex; }
+      .flex-col { flex-direction: column; }
+      .items-center { align-items: center; }
+      .justify-between { justify-content: space-between; }
+      .gap-1 { gap: 0.25rem; }
+      .gap-4 { gap: 1rem; }
+      .w-full { width: 100%; }
+      .w-auto { width: auto; }
+      .h-16 { height: 4rem; }
+      .object-contain { object-fit: contain; }
+      .px-4 { padding-left: 1rem; padding-right: 1rem; }
+      .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+      .p-6 { padding: 1.5rem; }
+      .mb-6 { margin-bottom: 1.5rem; }
+      .text-center { text-align: center; }
+      .text-white { color: white; }
+      .bg-white { background-color: white; }
+      .rounded-lg { border-radius: 0.5rem; }
+      .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+      
+      /* Critical button styles with optimized rendering */
+      button, .btn {
+        font-family: inherit;
+        border: none;
+        cursor: pointer;
+        border-radius: 0.375rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: background-color 0.15s ease;
+        background-color: hsl(221 70% 15%);
+        color: hsl(210 40% 98%);
+        will-change: background-color;
+        font-display: swap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      button:hover, .btn:hover {
+        background-color: hsl(221 76% 22%);
+      }
+      
+      /* Critical navigation styles */
+      nav {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      
+      nav a {
+        color: hsl(210 40% 98%);
+        text-decoration: none;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        transition: background-color 0.15s ease;
+      }
+      
+      nav a:hover {
+        background-color: hsl(221 76% 22%);
+      }
+      
+      /* Critical loading animation for immediate FCP */
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      
+      .loading-spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid hsl(214.3 31.8% 91.4%);
+        border-radius: 50%;
+        border-top-color: hsl(221 70% 15%);
+        animation: spin 1s linear infinite;
+        will-change: transform;
+      }
+      
+      /* Critical text styles with font optimization */
+      h1, h2, h3 {
+        color: hsl(222.2 84% 4.9%);
+        font-weight: 600;
+        line-height: 1.2;
+        font-display: swap;
+      }
+      
+      h1 { 
+        font-size: 1.875rem; 
+        font-weight: 700;
+      }
+      h2 { 
+        font-size: 1.5rem; 
+        font-weight: 600;
+      }
+      h3 { 
+        font-size: 1.25rem; 
+        font-weight: 500;
+      }
+      
+      /* Initial app shell optimized for LCP */
+      .app-shell {
+        min-height: 100vh;
+        background-color: hsl(210 20% 98%);
+        contain: layout style paint;
+      }
+      
+      /* Main content area optimization */
+      main {
+        flex: 1;
+        contain: layout style;
+      }
+      
+      /* Optimize font rendering */
+      .font-display-swap {
+        font-display: swap;
+      }
+      
+      /* Ensure text remains visible during webfont load */
+      .font-loading {
+        font-display: swap;
+        visibility: visible;
+      }
+      
+      /* Optimize largest contentful paint element */
+      .lcp-optimized {
+        font-display: swap;
+        contain: layout style paint;
+        will-change: auto;
+      }
+    </style>
+    
+    <!-- Preload critical scripts -->
+    <link rel="modulepreload" href="/src/main.tsx">
+    <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/L5xpSV6VlBhwKUMhRDLDNgzim772/social-images/social-1758551215446-Screen Shot 2025-09-22 at 10.26.35 AM.png">
+  <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/L5xpSV6VlBhwKUMhRDLDNgzim772/social-images/social-1758551215446-Screen Shot 2025-09-22 at 10.26.35 AM.png">
+</head>
+
+  <body class="notranslate">
+    <div id="root"></div>
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
