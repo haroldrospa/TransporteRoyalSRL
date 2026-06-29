@@ -4,8 +4,7 @@ import { ArrowLeft, Navigation, Package, CheckCircle2, ChevronRight, ChevronLeft
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Conduce, getEntregasStorage } from '@/services/EntregasStorage';
-import { MapChooserDialog } from './dialog/MapChooserDialog';
+import { Conduce } from '@/types/conduces';
 import { useData } from '@/contexts/DataContext';
 
 interface RoutePoint {
@@ -19,8 +18,9 @@ interface RoutePoint {
 
 interface DeliveryNavigationModeProps {
   route: RoutePoint[];
-  onClose: () => void;
+  onClose: (finished?: boolean) => void;
   onDelivery: (conduce: Conduce) => void;
+  onReturn?: (conduce: Conduce) => void;
   initialLocation?: { lat: number; lon: number } | null;
 }
 
@@ -28,6 +28,7 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
   route,
   onClose,
   onDelivery,
+  onReturn,
   initialLocation
 }) => {
   const { getClienteByNumero } = useData();
@@ -41,12 +42,19 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
   // Guard to prevent async callbacks from running after component unmounts
   const mountedRef = useRef(true);
 
-  const [currentStopIndex, setCurrentStopIndex] = useState(0);
+  const [currentStopIndex, setCurrentStopIndex] = useState(() => {
+    const saved = localStorage.getItem('nav_current_stop');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('nav_current_stop', currentStopIndex.toString());
+  }, [currentStopIndex]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number; speed?: number; heading?: number } | null>(initialLocation || null);
   const [distanceText, setDistanceText] = useState<string>('Calculando...');
   const [etaText, setEtaText] = useState<string>('');
   const [durationText, setDurationText] = useState<string>('');
-  const [isMapChooserOpen, setIsMapChooserOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'map' | 'list'>('map');
   const [showConduces, setShowConduces] = useState(false);
   const [isRouting, setIsRouting] = useState(false);
   const [isFollowing, setIsFollowing] = useState(true);
@@ -391,6 +399,12 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
     }
   };
 
+  const handleReturn = () => {
+    if (currentStop && currentStop.conduces.length > 0 && onReturn) {
+      onReturn(currentStop.conduces[0]);
+    }
+  };
+
   if (isFinished) {
     return (
       <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center p-6 text-center">
@@ -399,8 +413,8 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
         </div>
         <h2 className="text-3xl font-bold text-royal-blue mb-2">¡Ruta Completada!</h2>
         <p className="text-muted-foreground mb-8 text-lg">Has visitado todas las paradas de la ruta optimizada.</p>
-        <Button onClick={onClose} size="lg" className="bg-royal-blue hover:bg-royal-blue/90 text-white font-bold w-full max-w-sm rounded-xl h-14">
-          Volver a Entregas
+        <Button onClick={() => onClose(true)} size="lg" className="bg-royal-blue hover:bg-royal-blue/90 text-white font-bold w-full max-w-sm rounded-xl h-14">
+          Cerrar Ruta Oficialmente
         </Button>
       </div>
     );
@@ -411,7 +425,7 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
       {/* Header flotante */}
       <div className="absolute top-0 left-0 w-full z-[1000] p-4 bg-gradient-to-b from-black/60 via-black/30 to-transparent flex items-center justify-between pointer-events-none">
         <button 
-          onClick={onClose}
+          onClick={() => onClose(false)}
           className="w-12 h-12 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg text-slate-700 hover:bg-white transition-colors pointer-events-auto"
         >
           <ArrowLeft className="h-6 w-6" />
@@ -532,14 +546,22 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
           )}
 
           {/* Acciones */}
-          <div className="p-3 pt-2 grid grid-cols-2 gap-2 mt-auto bg-background rounded-b-3xl">
+          <div className="p-3 pt-2 grid grid-cols-3 gap-2 mt-auto bg-background rounded-b-3xl">
               <Button 
                 variant="outline" 
                 size="sm"
                 className="h-10 rounded-lg font-bold border-2 text-xs hover:bg-muted"
                 onClick={handleNextStop}
               >
-                Siguiente <ChevronRight className="ml-0.5 h-4 w-4" />
+                Siguiente <ChevronRight className="ml-0.5 h-3 w-3" />
+              </Button>
+              <Button 
+                variant="outline"
+                size="sm"
+                className="h-10 rounded-lg font-bold border-2 border-red-200 text-red-600 hover:bg-red-50 text-xs shadow-sm transition-all"
+                onClick={handleReturn}
+              >
+                Devolución
               </Button>
               <Button 
                 size="sm"
@@ -564,28 +586,13 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
               {distanceText} <span className="w-1 h-1 rounded-full bg-border"></span> Llegada: {etaText || '--:--'}
             </div>
           </div>
-          {isRouting ? (
+          {isRouting && (
             <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
               <Navigation className="h-6 w-6 animate-spin text-royal-blue opacity-50" />
             </div>
-          ) : (
-            <button 
-              onClick={() => setIsMapChooserOpen(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 transition-all text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-emerald-500/30 flex items-center gap-2 pointer-events-auto"
-            >
-              <Navigation className="h-5 w-5 fill-white" />
-              <span>Iniciar</span>
-            </button>
           )}
         </div>
       </div>
-
-      <MapChooserDialog
-        open={isMapChooserOpen}
-        onOpenChange={setIsMapChooserOpen}
-        ubicacion={currentStop?.ubicacion}
-        clienteNombre={currentStop?.razonSocial}
-      />
     </div>
   );
 };

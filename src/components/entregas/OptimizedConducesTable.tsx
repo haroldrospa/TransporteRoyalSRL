@@ -182,7 +182,7 @@ const ConduceRow = memo(({
         />
       </TableCell>
 
-      <TableCell className="py-2.5 w-[120px] px-2">
+      <TableCell className="py-2.5 w-[140px] min-w-[140px] px-2 text-center">
         <div className="space-y-1.5 w-full">
           {isAdmin && conduce.encomendado && (
             <div className="flex items-center gap-1">
@@ -360,9 +360,9 @@ export const OptimizedConducesTable = memo(({
               Tiempo Tránsito
             </div>
           </TableHead>
-          <TableHead className="font-bold text-white bg-royal-blue w-[120px] py-2.5">
+          <TableHead className="font-bold text-white bg-royal-blue w-[140px] min-w-[140px] py-2.5 text-center">
             {isAdmin && (
-              <div className="flex items-center gap-1.5 mb-1">
+              <div className="flex items-center gap-1.5 mb-1 justify-center">
                 <Truck className="h-3.5 w-3.5 text-royal-yellow" />
                 Encomendado
               </div>

@@ -21,6 +21,8 @@ import Clientes from "./pages/Clientes";
 import Usuarios from "./pages/Usuarios";
 import Entregas from "./pages/Entregas";
 import CrearConduces from "./pages/CrearConduces";
+import ChoferesDashboard from "./pages/ChoferesDashboard";
+import AdminConfiguracion from "./pages/AdminConfiguracion";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +46,8 @@ const App = () => (
             <Route path="/control-conduces" element={<ControlConduces />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/usuarios" element={<Usuarios />} />
+            <Route path="/choferes-dashboard" element={<ChoferesDashboard />} />
+            <Route path="/admin-config" element={<AdminConfiguracion />} />
             <Route path="/crear-conduces" element={<CrearConduces />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

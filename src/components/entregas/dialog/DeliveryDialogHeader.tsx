@@ -1,6 +1,6 @@
 
-import { DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { PackageCheck } from 'lucide-react';
+import { DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { PackageCheck, X } from 'lucide-react';
 
 export const DeliveryDialogHeader = () => {
   return (
@@ -10,7 +10,7 @@ export const DeliveryDialogHeader = () => {
         <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-royal-blue to-[#112d5e] shadow-md shadow-royal-blue/20">
           <PackageCheck className="h-6 w-6 text-royal-yellow" />
         </div>
-        <div className="flex flex-col text-left">
+        <div className="flex flex-col text-left pr-6">
           <DialogTitle className="text-xl font-bold text-royal-blue tracking-tight">
             Confirmar Entrega
           </DialogTitle>
@@ -19,6 +19,10 @@ export const DeliveryDialogHeader = () => {
           </DialogDescription>
         </div>
       </div>
+      <DialogClose className="absolute right-4 top-4 rounded-full p-1.5 opacity-70 transition-opacity hover:opacity-100 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-royal-blue focus:ring-offset-2 z-10">
+        <X className="h-5 w-5 text-slate-500" />
+        <span className="sr-only">Cerrar</span>
+      </DialogClose>
     </DialogHeader>
   );
 };

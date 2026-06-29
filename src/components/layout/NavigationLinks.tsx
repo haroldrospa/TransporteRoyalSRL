@@ -31,6 +31,8 @@ export const getNavLinks = (user: User | null) => {
     { to: '/control-conduces', label: 'Control Conduces', icon: CheckSquare },
     { to: '/clientes', label: 'Clientes', icon: Building },
     { to: '/usuarios', label: 'Usuarios', icon: Users },
+    { to: '/choferes-dashboard', label: 'Dashboard Choferes', icon: Activity },
+    { to: '/admin-config', label: 'Configuración', icon: Settings },
   ];
 
   if (user?.puesto === 'Chofer') {
@@ -126,7 +128,7 @@ const NavigationLinks = ({ links, mobile = false }: NavigationLinksProps) => {
   const opLinks = linksToRender.filter(link => opPaths.includes(link.to));
   const isOpActive = opPaths.includes(location.pathname);
   
-  const adminPaths = ['/clientes', '/usuarios'];
+  const adminPaths = ['/clientes', '/usuarios', '/choferes-dashboard', '/admin-config'];
   const adminLinks = linksToRender.filter(link => adminPaths.includes(link.to));
   const isAdminActive = adminPaths.includes(location.pathname);
 

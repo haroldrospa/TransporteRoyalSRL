@@ -101,7 +101,6 @@ const ConducesTableHeader = ({ selectedConduces, totalConduces, onSelectAll }: C
             Tiempo en Tránsito
           </div>
         </TableHead>
-        <TableHead className="hidden md:table-cell">Acciones</TableHead>
       </TableRow>
     </TableHeader>
   );

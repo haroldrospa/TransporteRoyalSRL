@@ -36,12 +36,15 @@ export const printConducesA4 = (conduces: Conduce[]) => {
       line-height: 1.5;
     }
     .conduce-container {
-      padding: 10px;
-      min-height: 250mm;
+      padding: 10px 10px 20px 10px;
+      min-height: 130mm; /* Half page height */
+      max-height: 135mm;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       box-sizing: border-box;
+      border-bottom: 1px dashed #cbd5e1;
+      margin-bottom: 5mm;
     }
     .header {
       display: flex;
@@ -217,12 +220,15 @@ export const printConducesA4 = (conduces: Conduce[]) => {
 
   conduces.forEach((conduce, index) => {
     const isLast = index === conduces.length - 1;
+    // Break page after every 2 conduces, unless it's the last one
+    const needsPageBreak = !isLast && (index % 2 === 1);
+    
     const formattedDate = conduce.fechaCarga 
       ? new Date(conduce.fechaCarga).toLocaleDateString('es-DO', { timeZone: 'UTC' }) 
       : new Date().toLocaleDateString('es-DO');
 
     htmlContent += `
-      <div class="conduce-container ${!isLast ? 'page-break' : ''}">
+      <div class="conduce-container ${needsPageBreak ? 'page-break' : ''}">
         <div>
           <!-- Header -->
           <div class="header">

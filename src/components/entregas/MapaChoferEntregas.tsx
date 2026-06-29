@@ -5,12 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Conduce } from '@/types/conduces';
 import { encontrarProvinciaPorCiudad } from '@/constants/provinciasCiudades';
-import { MapPin, AlertCircle, Info, Navigation, Package, Map as MapIcon, ExternalLink, Maximize2, Minimize2, ChevronDown, ChevronUp } from 'lucide-react';
+import { MapPin, MapPinOff, AlertCircle, Info, Navigation, Package, Map as MapIcon, ExternalLink, Maximize2, Minimize2, ChevronDown, ChevronUp, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
 import L from 'leaflet';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { fetchAppConfig } from '@/services/configService';
+import { insertChoferBudget } from '@/services/budgetService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface MapaChoferEntregasProps {
   conduces: Conduce[];
@@ -45,23 +49,57 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
   onReturn 
 }) => {
   const { getClienteByNumero } = useData();
+  const { user } = useAuth();
   const { toast } = useToast();
   
   const [geojson, setGeojson] = useState<GeoJsonData | null>(null);
   const [loadingMap, setLoadingMap] = useState(true);
+  const [isStartingRoute, setIsStartingRoute] = useState(false);
   const [hoveredProvincia, setHoveredProvincia] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [selectedProvDetail, setSelectedProvDetail] = useState<string | null>(null);
   const [selectedClientDetail, setSelectedClientDetail] = useState<any | null>(null);
   const [hoveredClient, setHoveredClient] = useState<any | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Estados para Zoom y Paneo
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDraggingMap, setIsDraggingMap] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   // Estados de optimización de ruta
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [optimizedRoute, setOptimizedRoute] = useState<any[]>([]);
+  const [optimizedRoute, setOptimizedRoute] = useState<any[]>(() => {
+    const saved = localStorage.getItem('active_optimized_route');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [routeViewMode, setRouteViewMode] = useState<'provinces' | 'optimized'>('provinces');
-  const [isNavigating, setIsNavigating] = useState(false);
+  // Estado para la vista de la ruta optimizada vs clientes
+  const [routeViewMode, setRouteViewMode] = useState<'clients' | 'optimized'>('clients');
+  const [isNavigating, setIsNavigating] = useState(() => {
+    return localStorage.getItem('is_navigating') === 'true';
+  });
+  const [isActiveRouteSuspended, setIsActiveRouteSuspended] = useState(() => {
+    return localStorage.getItem('active_optimized_route') !== null;
+  });
+  const [showNavChoiceDialog, setShowNavChoiceDialog] = useState(false);
+  const [selectedRoutes, setSelectedRoutes] = useState<string[]>(['0', 'Sin Ruta']);
+  
+  const availableRoutes = useMemo(() => {
+    const routes = new Set<string>();
+    conduces.forEach(c => {
+      const clientCache = getClienteByNumero(c.numeroCliente);
+      const ruta = clientCache?.ruta || c.ruta;
+      const rutaStr = ruta ? String(ruta).trim() : '';
+      if (rutaStr !== '') {
+        routes.add(rutaStr);
+      } else {
+        routes.add('Sin Ruta');
+      }
+    });
+    return Array.from(routes).sort();
+  }, [conduces, getClienteByNumero]);
 
   const polylineRef = useRef<L.Polyline | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
@@ -295,6 +333,14 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
     }> = {};
 
     conduces.forEach(conduce => {
+      const clientCache = getClienteByNumero(conduce.numeroCliente);
+      const ruta = clientCache?.ruta || conduce.ruta;
+      const rutaStr = ruta ? String(ruta).trim() : 'Sin Ruta';
+      
+      if (!selectedRoutes.includes(rutaStr)) {
+        return;
+      }
+
       const prov = encontrarProvinciaPorCiudad(conduce.ciudad || '') || 'Sin Provincia Específica';
       if (prov) {
         if (!stats[prov]) {
@@ -333,7 +379,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
     });
 
     return stats;
-  }, [conduces, getClienteByNumero]);
+  }, [conduces, getClienteByNumero, selectedRoutes]);
 
   // Lista ordenada de provincias activas
   const rankingProvincias = useMemo(() => {
@@ -344,6 +390,17 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
       })
       .filter(p => p.totalConduces > 0)
       .sort((a, b) => b.totalBultos - a.totalBultos);
+  }, [statsPorProvincia]);
+
+  // Lista ordenada de clientes activos
+  const rankingClientes = useMemo(() => {
+    const clientsList: any[] = [];
+    Object.values(statsPorProvincia).forEach(prov => {
+      Object.values(prov.clientes).forEach(client => {
+        clientsList.push(client);
+      });
+    });
+    return clientsList.sort((a, b) => b.totalBultos - a.totalBultos);
   }, [statsPorProvincia]);
 
   // Proyección SVG dinámica con Zoom Dinámico basado en las provincias con pedidos
@@ -466,21 +523,46 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
       conduces: Conduce[];
     }>();
 
+    // Para separar clientes diferentes que tienen las mismas coordenadas exactas
+    const usedCoords = new Map<string, number>();
+    const offsetDegrees = 0.0003; // Aprox 30 metros de separación
+
     conduces.forEach(conduce => {
       const clientCache = getClienteByNumero(conduce.numeroCliente);
+      const ruta = clientCache?.ruta || conduce.ruta;
+      const rutaStr = ruta ? String(ruta).trim() : 'Sin Ruta';
+      
+      if (!selectedRoutes.includes(rutaStr)) {
+        return;
+      }
+
       const ubicacionStr = clientCache?.ubicacion || conduce.ubicacion;
 
       if (ubicacionStr) {
         const parts = ubicacionStr.split(',');
         if (parts.length === 2) {
-          const lat = parseFloat(parts[0].trim());
-          const lon = parseFloat(parts[1].trim());
+          let lat = parseFloat(parts[0].trim());
+          let lon = parseFloat(parts[1].trim());
 
           if (!isNaN(lat) && !isNaN(lon)) {
             const key = conduce.numeroCliente || conduce.razonSocial || 'desconocido';
             const bultosVal = conduce.cantidadBultos || 0;
 
             if (!clientsMap.has(key)) {
+              // Calcular un ligero offset si múltiples clientes están en las mismas coordenadas
+              const coordKey = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+              const occurrences = usedCoords.get(coordKey) || 0;
+              
+              if (occurrences > 0) {
+                // Distribuirlos en círculo
+                const angle = occurrences * (Math.PI / 4); // 45 grados de paso
+                const currentOffset = offsetDegrees * Math.ceil(occurrences / 8); 
+                lat += currentOffset * Math.cos(angle);
+                lon += currentOffset * Math.sin(angle);
+              }
+              
+              usedCoords.set(coordKey, occurrences + 1);
+
               clientsMap.set(key, {
                 numeroCliente: conduce.numeroCliente || '',
                 razonSocial: conduce.razonSocial || 'Cliente no identificado',
@@ -502,7 +584,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
     });
 
     return Array.from(clientsMap.values());
-  }, [conduces, getClienteByNumero]);
+  }, [conduces, getClienteByNumero, selectedRoutes]);
 
   // Clientes proyectados con coordenadas X e Y en el SVG
   const projectedClients = useMemo(() => {
@@ -515,24 +597,33 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
         y: coords.y
       };
     }).filter(Boolean) as Array<typeof clientsWithCoordinates[number] & { x: number; y: number }>;
-  }, [clientsWithCoordinates, projectCoords]);
+  }, [clientsWithCoordinates, projectCoords, selectedRoutes]);
 
   // Resumen del viaje optimizado (Distancia, tiempo, combustible, costos)
   const tripSummary = useMemo(() => {
     if (optimizedRoute.length === 0) {
-      return { totalDistance: 0, totalTimeMin: 0, totalTimeStr: '0 min', fuelGals: 0, fuelCost: 0 };
+      return { totalDistance: 0, outboundDistance: 0, returnDistance: 0, totalTimeMin: 0, totalTimeStr: '0 min', fuelGals: 0, fuelCost: 0 };
     }
     
-    // Sumar distancias de todos los tramos
-    const totalDistance = optimizedRoute.reduce((sum, client) => sum + (client.distanceFromPrevious || 0), 0);
+    // Sumar distancias de todos los tramos (ida)
+    let outboundDistance = optimizedRoute.reduce((sum, client) => sum + (client.distanceFromPrevious || 0), 0);
+    let returnDistance = 0;
+    
+    // Sumar distancia de retorno (vuelta al punto de partida)
+    if (userLocation && optimizedRoute.length > 0) {
+      const lastClient = optimizedRoute[optimizedRoute.length - 1];
+      returnDistance = getDistance(lastClient.lat, lastClient.lon, userLocation.lat, userLocation.lon);
+    }
+    
+    let totalDistance = outboundDistance + returnDistance;
     
     // Velocidad promedio urbana/interurbana estimada en Rep. Dom.: 45 km/h
     const avgSpeedKmh = 45;
     const travelTimeHours = totalDistance / avgSpeedKmh;
     const travelTimeMin = travelTimeHours * 60;
     
-    // Tiempo de parada promedio por cliente para entrega física: 10 minutos
-    const timePerStopMin = 10;
+    // Tiempo de parada promedio por cliente para entrega física: 5 minutos
+    const timePerStopMin = 5;
     const totalStopTimeMin = optimizedRoute.length * timePerStopMin;
     
     const totalTimeMin = travelTimeMin + totalStopTimeMin;
@@ -556,12 +647,165 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
     
     return {
       totalDistance,
+      outboundDistance,
+      returnDistance,
       totalTimeMin,
       totalTimeStr,
       fuelGals,
       fuelCost
     };
-  }, [optimizedRoute]);
+  }, [optimizedRoute, userLocation]);
+
+  const handleStartRoute = async (navApp: 'app' | 'google' | 'waze' = 'app') => {
+    if (optimizedRoute.length === 0) return;
+    
+    setIsStartingRoute(true);
+    setShowNavChoiceDialog(false);
+    
+    try {
+      const config = await fetchAppConfig();
+      const gasoilPrice = config?.gasoil_price || 195.50;
+      const emails = config?.admin_emails || ['Haroldrospa@gmail.com'];
+      
+      const fuelCost = tripSummary.fuelGals * gasoilPrice;
+      const totalBultos = projectedClients.reduce((sum, client) => sum + client.totalBultos, 0);
+      const totalConduces = projectedClients.reduce((sum, client) => sum + client.totalConduces, 0);
+
+      const budgetSaved = await insertChoferBudget({
+        chofer_id: user?.id || 'unknown',
+        chofer_nombre: user ? `${user.nombre} ${user.apellido}` : 'Chofer Desconocido',
+        total_distancia_km: tripSummary.totalDistance,
+        total_bultos: totalBultos,
+        total_conduces: totalConduces,
+        tiempo_estimado_min: tripSummary.totalTimeMin,
+        combustible_galones: tripSummary.fuelGals,
+        combustible_costo: fuelCost,
+      });
+
+      if (!budgetSaved) {
+        throw new Error('Error al guardar el presupuesto en la base de datos');
+      }
+
+      const emailHtml = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 20px; border-radius: 8px;">
+          <div style="background-color: #0A1F44; padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
+            <img src="https://transporteroyal.com/TransporteRoyalLogo.png" alt="Transporte Royal" style="height: 60px; width: auto; margin: 0 auto; display: block;" />
+            <p style="color: #bfdbfe; margin: 10px 0 0 0; font-size: 14px; font-weight: 500;">Reporte de Inicio de Ruta</p>
+          </div>
+          
+          <div style="background-color: #ffffff; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e2e8f0; border-top: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 0;">
+              El chofer <strong style="color: #0f172a;">${user?.nombre} ${user?.apellido}</strong> ha iniciado una nueva ruta de entregas. A continuación, el resumen presupuestado para este viaje:
+            </p>
+
+            <div style="margin-top: 24px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                  <th style="padding: 14px 16px; color: #64748b; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Indicador</th>
+                  <th style="padding: 14px 16px; color: #64748b; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Valor</th>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 14px 16px; color: #475569; font-size: 15px;">Total Clientes</td>
+                  <td style="padding: 14px 16px; color: #0f172a; font-size: 15px; font-weight: 600; text-align: right;">${projectedClients.length}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 14px 16px; color: #475569; font-size: 15px;">Total Bultos</td>
+                  <td style="padding: 14px 16px; color: #0f172a; font-size: 15px; font-weight: 600; text-align: right;">${totalBultos}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 14px 16px; color: #475569; font-size: 15px;">Total Conduces</td>
+                  <td style="padding: 14px 16px; color: #0f172a; font-size: 15px; font-weight: 600; text-align: right;">${totalConduces}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 14px 16px; color: #475569; font-size: 15px;">Distancia (Ida y Vuelta)</td>
+                  <td style="padding: 14px 16px; color: #0f172a; font-size: 15px; font-weight: 600; text-align: right;">${tripSummary.totalDistance.toFixed(1)} km</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 14px 16px; color: #475569; font-size: 15px;">Tiempo Estimado</td>
+                  <td style="padding: 14px 16px; color: #0f172a; font-size: 15px; font-weight: 600; text-align: right;">${tripSummary.totalTimeStr}</td>
+                </tr>
+                <tr style="background-color: #ecfdf5;">
+                  <td style="padding: 18px 16px; color: #065f46; font-size: 15px; font-weight: 600;">Costo Estimado Gasoil</td>
+                  <td style="padding: 18px 16px; color: #059669; font-size: 18px; font-weight: 700; text-align: right;">RD$ ${fuelCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+              </table>
+            </div>
+            
+            <div style="margin-top: 32px; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+              <p style="margin: 0; font-size: 12px; color: #94a3b8; line-height: 1.5;">
+                Este es un correo automático generado por el sistema interno de <strong>Transporte Royal</strong>.<br>
+                Por favor, no responda a este mensaje.
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      if (emails.length > 0) {
+        const { error } = await supabase.functions.invoke('send-route-email', {
+          body: {
+            to: emails,
+            subject: `Ruta Iniciada - ${user?.nombre} ${user?.apellido}`,
+            html: emailHtml
+          }
+        });
+        
+        if (error) {
+          console.error('Error invoking email function:', error);
+          toast({
+            title: "Ruta iniciada con advertencia",
+            description: "La ruta se guardó, pero hubo un error enviando el correo a los administradores.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      toast({
+        title: "Ruta Iniciada",
+        description: "Se ha registrado la ruta en el presupuesto y notificado a los administradores.",
+      });
+
+      localStorage.setItem('is_navigating', 'true');
+      localStorage.setItem('active_optimized_route', JSON.stringify(optimizedRoute));
+      setIsActiveRouteSuspended(true);
+      setIsNavigating(true);
+
+      if (navApp === 'google') {
+        // Build Google Maps directions URL without 'origin' so it defaults to live GPS and shows the "Start" button
+        const destinationPoint = optimizedRoute[optimizedRoute.length - 1];
+        const destination = `${destinationPoint.lat},${destinationPoint.lon}`;
+        
+        // Waypoints exclude the destination. Take up to 9 waypoints (Google Maps URL limit)
+        const waypointsList = optimizedRoute.slice(0, -1).slice(0, 9);
+        const waypointsParam = waypointsList.length > 0 
+          ? `&waypoints=${waypointsList.map(c => `${c.lat},${c.lon}`).join('|')}` 
+          : '';
+          
+        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}${waypointsParam}`;
+        window.open(googleMapsUrl, '_blank');
+      } else if (navApp === 'waze') {
+        // Waze deep link for the first stop
+        const wazeUrl = `https://waze.com/ul?ll=${optimizedRoute[0].lat},${optimizedRoute[0].lon}&navigate=yes`;
+        window.open(wazeUrl, '_blank');
+      }
+
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error",
+        description: "Hubo un problema al intentar iniciar la ruta.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsStartingRoute(false);
+    }
+  };
+
+  const handleResumeRoute = () => {
+    localStorage.setItem('is_navigating', 'true');
+    setIsNavigating(true);
+  };
 
   const getPathData = (geometry: any, width: number, height: number) => {
     if (!projection) return "";
@@ -612,6 +856,14 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDraggingMap) {
+      setPan(prev => ({
+        x: prev.x + (e.clientX - dragStart.x),
+        y: prev.y + (e.clientY - dragStart.y)
+      }));
+      setDragStart({ x: e.clientX, y: e.clientY });
+    }
+
     if (mapContainerRef.current) {
       const bounds = mapContainerRef.current.getBoundingClientRect();
       setTooltipPos({
@@ -619,6 +871,26 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
         y: e.clientY - bounds.top + 15,
       });
     }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return; 
+    setIsDraggingMap(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseUp = () => setIsDraggingMap(false);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    const delta = e.deltaY * -0.001;
+    setZoom(prev => Math.min(Math.max(0.5, prev + delta), 10));
+  };
+  
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.5, 10));
+  const handleZoomOut = () => setZoom(prev => Math.max(0.5, prev - 0.5));
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
   };
 
   const hoveredData = useMemo(() => {
@@ -793,7 +1065,9 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
           height: 36px;
           display: flex;
           align-items: center;
-          jus          <!-- Aura pulsante azul detrás de la casita -->
+          justify-content: center;
+        ">
+          <!-- Aura pulsante azul detrás de la casita -->
           <div class="animate-ping" style="
             background-color: rgba(245, 166, 35, 0.4);
             width: 24px;
@@ -818,6 +1092,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
             <!-- Edificio Derecho -->
             <rect x="12" y="7" width="3" height="8" fill="#ffffff" />
           </svg>
+          ${badgeHtml}
         </div>`,
         iconSize: [36, 36],
         iconAnchor: [18, 34]
@@ -992,7 +1267,8 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
   }, [projectedClients, mapType, routeViewMode, userLocation, optimizedRoute]);
 
   return (
-    <Card className="w-full border-border/40 shadow-sm mb-6 transition-all duration-300">
+    <>
+      <Card className="w-full border-border/40 shadow-sm mb-6 transition-all duration-300">
       <CardHeader className="pb-2 border-b border-border/30">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center justify-between w-full sm:w-auto">
@@ -1055,7 +1331,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
               ) : (
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-full bg-[#0a2240] border border-white block animate-pulse"></span>
-                  Clientes con entregas ({projectedClients.length})
+                  Clientes con GPS ({projectedClients.length})
                 </span>
               )}
             </div>
@@ -1094,8 +1370,12 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
               {/* Contenedor del Mapa */}
               <div 
                 ref={mapContainerRef}
-                className="lg:col-span-3 relative h-[320px] sm:h-[380px] bg-royal-light dark:bg-muted/10 rounded-xl border border-border/50 overflow-hidden flex items-center justify-center cursor-default select-none touch-none"
+                className={`lg:col-span-3 relative h-[320px] sm:h-[380px] bg-royal-light dark:bg-muted/10 rounded-xl border border-border/50 overflow-hidden flex items-center justify-center select-none touch-none ${isDraggingMap ? 'cursor-grabbing' : 'cursor-grab'}`}
                 onMouseMove={handleMouseMove}
+                onMouseDown={handleMouseDown}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onWheel={handleWheel}
               >
                 {mapType === 'svg' ? (
                   <>
@@ -1104,6 +1384,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
                       viewBox="0 0 600 400"
                       preserveAspectRatio="xMidYMid meet"
                     >
+                      <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`} style={{ transformOrigin: 'center' }}>
                       {geojson?.features.map((feature, idx) => {
                         const nombreProvin = normalizarProvinciaMapa(feature.properties.shapeName);
                         const data = statsPorProvincia[nombreProvin];
@@ -1265,7 +1546,21 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
                           </g>
                         );
                       })}
+                      </g>
                     </svg>
+                    
+                    {/* Controles de Zoom */}
+                    <div className="absolute right-4 bottom-4 flex flex-col gap-2 bg-white dark:bg-slate-800 p-1.5 rounded-lg shadow-md border border-border/50">
+                      <Button variant="ghost" size="icon" onClick={handleZoomIn} className="h-8 w-8 text-slate-600 hover:text-royal-blue" title="Acercar">
+                        <ZoomIn className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={handleZoomOut} className="h-8 w-8 text-slate-600 hover:text-royal-blue" title="Alejar">
+                        <ZoomOut className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={handleResetZoom} className="h-8 w-8 text-slate-600 hover:text-royal-blue" title="Restablecer vista">
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
 
                     {/* Tooltip flotante */}
                     {hoveredProvincia && hoveredData && (
@@ -1349,21 +1644,51 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
                       </span>
                     </div>
                     <Badge variant="secondary" className="bg-royal-blue text-white text-[10px] font-bold px-2 py-0.5 border border-royal-blue">
-                      {routeViewMode === 'provinces' ? `${rankingProvincias.length} Prov.` : `${optimizedRoute.length} Paradas`}
+                      {routeViewMode === 'clients' ? `${rankingClientes.length} Clientes` : `${optimizedRoute.length} Paradas`}
                     </Badge>
                   </div>
                   
+                  {/* Filtro de Rutas */}
+                  {availableRoutes.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-0.5 mb-1">
+                      {availableRoutes.map(ruta => (
+                        <button
+                          key={ruta}
+                          onClick={() => {
+                            setSelectedRoutes(prev => 
+                              prev.includes(ruta) 
+                                ? prev.filter(r => r !== ruta) 
+                                : [...prev, ruta]
+                            );
+                            // Limpiar ruta optimizada si cambian los filtros
+                            if (optimizedRoute.length > 0) {
+                              setOptimizedRoute([]);
+                              setRouteViewMode('clients');
+                            }
+                          }}
+                          className={`px-2 py-0.5 text-[10px] font-bold rounded-full border transition-colors ${
+                            selectedRoutes.includes(ruta)
+                              ? 'bg-royal-blue text-white border-royal-blue shadow-sm'
+                              : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-royal-blue hover:text-royal-blue'
+                          }`}
+                        >
+                          {ruta === 'Sin Ruta' ? ruta : `Ruta ${ruta}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Selector de pestañas */}
                   <div className="flex bg-slate-100/80 rounded-lg p-1 border border-slate-200">
                     <button
                       className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${
-                        routeViewMode === 'provinces' 
+                        routeViewMode === 'clients' 
                           ? 'bg-white text-royal-blue shadow-sm border border-slate-200/60' 
                           : 'text-slate-500 hover:text-royal-blue'
                       }`}
-                      onClick={() => setRouteViewMode('provinces')}
+                      onClick={() => setRouteViewMode('clients')}
                     >
-                      Provincias
+                      Clientes
                     </button>
                     <button
                       className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 ${
@@ -1387,37 +1712,48 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
                   </div>
                 </div>
 
-                {routeViewMode === 'provinces' ? (
+                {routeViewMode === 'clients' ? (
                   <div className="flex-1 flex flex-col overflow-hidden">
+                    {rankingClientes.filter(c => !c.ubicacion).length > 0 && (
+                      <div className="bg-red-50 border-b border-red-100 p-2 flex items-start gap-2 shadow-inner shrink-0">
+                        <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-red-700 leading-tight">
+                          <strong>Advertencia:</strong> Hay {rankingClientes.filter(c => !c.ubicacion).length} cliente{rankingClientes.filter(c => !c.ubicacion).length !== 1 ? 's' : ''} sin coordenadas GPS. Aparecen en la lista pero <strong>no se verán en el mapa</strong>.
+                        </p>
+                      </div>
+                    )}
                     <div className="flex-1 overflow-y-auto divide-y divide-border/40 scrollbar-hide">
-                      {rankingProvincias.length === 0 ? (
+                      {rankingClientes.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center p-4 text-center text-muted-foreground text-xs gap-2">
                           <Info className="h-5 w-5 text-muted-foreground/60" />
                           <span>No tienes pedidos pendientes de entrega asignados</span>
                         </div>
                       ) : (
-                        rankingProvincias.map((prov, index) => (
+                        rankingClientes.map((client, index) => (
                           <div 
-                            key={prov.name} 
-                            className={`p-3 transition-colors hover:bg-muted/40 cursor-pointer flex items-center justify-between text-xs ${selectedProvDetail === prov.name ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
-                            onClick={() => setSelectedProvDetail(prov.name)}
-                            onMouseEnter={() => setHoveredProvincia(prov.name)}
-                            onMouseLeave={() => setHoveredProvincia(null)}
+                            key={client.numeroCliente || client.razonSocial} 
+                            className={`p-3 transition-colors hover:bg-muted/40 cursor-pointer flex items-center justify-between text-xs ${selectedClientDetail?.numeroCliente === client.numeroCliente ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
+                            onClick={() => setSelectedClientDetail(client as any)}
                           >
                             <div className="min-w-0">
-                              <p className="font-bold text-foreground truncate">{index + 1}. {prov.name}</p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {prov.uniqueClientsCount} cliente{prov.uniqueClientsCount !== 1 ? 's' : ''} • {prov.totalConduces} cond.
-                              </p>
+                              <p className="font-bold text-foreground truncate">{index + 1}. {client.razonSocial}</p>
+                              <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                <span>{client.conduces.length} conduce{client.conduces.length !== 1 ? 's' : ''}</span>
+                                {!client.ubicacion && (
+                                  <span className="text-red-500 font-semibold flex items-center gap-0.5 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded">
+                                    <MapPinOff className="w-2.5 h-2.5" /> Sin GPS
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-100 font-bold shrink-0">
-                              {prov.totalBultos} bultos
+                              {client.totalBultos} bultos
                             </Badge>
                           </div>
                         ))
                       )}
                     </div>
-                    {rankingProvincias.length > 0 && (
+                    {rankingClientes.length > 0 && (
                       <div className="p-2.5 bg-slate-50 dark:bg-slate-900 border-t border-border/50">
                         <Button 
                           onClick={handleCreateRoute}
@@ -1436,13 +1772,43 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
                     {optimizedRoute.length > 0 && (
                       <div className="bg-slate-50 dark:bg-slate-900/50 p-2 border-b border-border/40 grid grid-cols-2 gap-1.5 shrink-0">
                         <div className="bg-card border border-border/20 rounded p-1.5 flex flex-col gap-0.5 shadow-sm">
-                          <span className="text-[9px] text-muted-foreground font-semibold leading-none">Distancia Total</span>
+                          <span className="text-[9px] text-muted-foreground font-semibold leading-none">Distancia (Ida y Vuelta)</span>
                           <span className="font-bold text-foreground text-xs font-mono">{tripSummary.totalDistance.toFixed(1)} km</span>
+                          <span className="text-[9px] text-muted-foreground mt-0.5">
+                            Ida: <span className="font-mono">{tripSummary.outboundDistance.toFixed(1)} km</span> | Vuelta: <span className="font-mono">{tripSummary.returnDistance.toFixed(1)} km</span>
+                          </span>
                         </div>
                         <div className="bg-card border border-border/20 rounded p-1.5 flex flex-col gap-0.5 shadow-sm">
                           <span className="text-[9px] text-muted-foreground font-semibold leading-none">Tiempo Estimado</span>
                           <span className="font-bold text-foreground text-xs font-mono">{tripSummary.totalTimeStr}</span>
                         </div>
+                      </div>
+                    )}
+                    
+                    {optimizedRoute.length > 0 && (
+                      <div className="p-2 border-b border-border/40">
+                        {isActiveRouteSuspended ? (
+                          <Button 
+                            onClick={handleResumeRoute} 
+                            className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold"
+                            size="sm"
+                          >
+                            <Navigation className="mr-2 h-4 w-4" /> Reanudar Ruta en Curso
+                          </Button>
+                        ) : (
+                          <Button 
+                            onClick={() => setShowNavChoiceDialog(true)} 
+                            disabled={isStartingRoute}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                            size="sm"
+                          >
+                            {isStartingRoute ? (
+                              <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Procesando...</>
+                            ) : (
+                              <><Navigation className="mr-2 h-4 w-4" /> Iniciar Ruta</>
+                            )}
+                          </Button>
+                        )}
                       </div>
                     )}
                     
@@ -1486,25 +1852,9 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
                     {optimizedRoute.length > 0 && (
                       <div className="p-2 bg-slate-50 dark:bg-slate-900 border-t border-border/50 flex flex-col gap-1.5">
                         <Button 
-                          onClick={() => setIsNavigating(true)}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] h-8.5 flex items-center justify-center gap-1.5 shadow-sm"
-                        >
-                          <Navigation className="h-3.5 w-3.5" />
-                          Iniciar Navegación
-                        </Button>
-                        <Button 
-                          asChild
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] h-8.5 flex items-center justify-center gap-1.5 shadow-sm"
-                        >
-                          <a href={getMultiStopMapsUrl() || '#'} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            Abrir Ruta en Google Maps
-                          </a>
-                        </Button>
-                        <Button 
                           variant="ghost"
                           onClick={() => {
-                            setRouteViewMode('provinces');
+                            setRouteViewMode('clients');
                             setOptimizedRoute([]);
                             setUserLocation(null);
                             if (polylineRef.current) {
@@ -1762,12 +2112,71 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
         <DeliveryNavigationMode
           route={optimizedRoute}
           initialLocation={userLocation}
-          onClose={() => setIsNavigating(false)}
+          conduces={conduces}
+          onClose={(finished?: boolean) => {
+            setIsNavigating(false);
+            localStorage.removeItem('is_navigating');
+            
+            if (finished) {
+              setOptimizedRoute([]);
+              setIsActiveRouteSuspended(false);
+              localStorage.removeItem('active_optimized_route');
+              localStorage.removeItem('nav_current_stop');
+              toast({
+                title: "Ruta Finalizada",
+                description: "La ruta ha sido completada y cerrada.",
+              });
+            }
+          }}
           onDelivery={onDelivery}
+          onReturn={onReturn}
         />,
         document.body
       )}
     </Card>
+
+      {/* Dialog for Navigation Choice */}
+      <Dialog open={showNavChoiceDialog} onOpenChange={setShowNavChoiceDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Elige tu método de navegación</DialogTitle>
+            <DialogDescription>
+              ¿Cómo prefieres navegar hacia tus clientes?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-4">
+            <Button 
+              onClick={() => handleStartRoute('app')}
+              className="w-full bg-royal-blue hover:bg-royal-blue/90 h-12 text-md flex items-center justify-start gap-3"
+            >
+              <Navigation className="h-5 w-5" />
+              <span>Usar navegación de la app (Recomendado)</span>
+            </Button>
+            <Button 
+              onClick={() => handleStartRoute('google')}
+              variant="outline"
+              className="w-full h-12 text-md flex items-center justify-start gap-3 border-slate-300 hover:bg-slate-50"
+            >
+              <MapPin className="h-5 w-5 text-emerald-600" />
+              <span>Abrir en Google Maps</span>
+            </Button>
+            <Button 
+              onClick={() => handleStartRoute('waze')}
+              variant="outline"
+              className="w-full h-12 text-md flex items-center justify-start gap-3 border-slate-300 hover:bg-slate-50"
+            >
+              <Navigation className="h-5 w-5 text-blue-500" />
+              <span>Abrir en Waze</span>
+            </Button>
+          </div>
+          <DialogFooter className="sm:justify-start">
+            <Button type="button" variant="ghost" onClick={() => setShowNavChoiceDialog(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

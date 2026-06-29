@@ -89,8 +89,8 @@ export const ConducesTable = ({
 
   return (
     <>
-      <TableHeader>
-        <TableRow className="bg-slate-100 hover:bg-slate-100">
+      <TableHeader className="bg-slate-50 min-w-full">
+        <TableRow>
           <TableHead className="font-semibold text-slate-700 w-24 text-center">
             <div className="flex items-center gap-2 justify-center">
               <Package className="h-4 w-4" />
@@ -130,9 +130,9 @@ export const ConducesTable = ({
               Tiempo Tránsito
             </div>
           </TableHead>
-          <TableHead className="font-semibold text-slate-700 min-w-48">
+          <TableHead className="font-semibold text-slate-700 min-w-[220px] w-[220px] text-center">
             {isAdmin && (
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center justify-center gap-2 mb-1">
                 <Truck className="h-4 w-4" />
                 Encomendado
               </div>

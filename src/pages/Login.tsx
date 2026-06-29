@@ -72,30 +72,36 @@ const Login = () => {
   return <div className="min-h-screen relative flex items-center justify-center bg-[url('/login-bg.png')] bg-cover bg-center bg-no-repeat bg-royal-blue overflow-hidden">
       
       {/* Mensajes flotantes alrededor (Solo en Desktop) */}
-      <div className="hidden lg:flex absolute top-[25%] left-[5%] xl:left-[15%] max-w-[280px] bg-royal-blue/70 backdrop-blur-md p-5 rounded-2xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.3)] animate-fade-in transition-transform hover:scale-105 duration-300 z-0">
-        <div className="flex items-center gap-4">
-          <div className="bg-royal-yellow/20 p-3 rounded-full flex-shrink-0 shadow-[0_0_15px_rgba(245,185,66,0.3)]">
-            <ShieldCheck size={26} className="text-royal-yellow" />
+      <div className="hidden lg:flex absolute top-[25%] left-8 2xl:left-24 z-0 animate-float">
+        <div className="max-w-[280px] bg-royal-blue/70 backdrop-blur-md p-5 rounded-2xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.3)] animate-fade-in transition-transform hover:scale-105 duration-300">
+          <div className="flex items-center gap-4">
+            <div className="bg-royal-yellow/20 p-3 rounded-full flex-shrink-0 shadow-[0_0_15px_rgba(245,185,66,0.3)]">
+              <ShieldCheck size={26} className="text-royal-yellow" />
+            </div>
+            <span className="text-white font-medium text-sm leading-snug">Transporte seguro</span>
           </div>
-          <span className="text-white font-medium text-sm leading-snug">Transporte seguro</span>
         </div>
       </div>
 
-      <div className="hidden lg:flex absolute bottom-[20%] left-[10%] xl:left-[20%] max-w-[300px] bg-royal-blue/70 backdrop-blur-md p-5 rounded-2xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.3)] animate-fade-in transition-transform hover:scale-105 duration-300 z-0" style={{ animationDelay: '150ms' }}>
-        <div className="flex items-center gap-4">
-          <div className="bg-royal-yellow/20 p-3 rounded-full flex-shrink-0 shadow-[0_0_15px_rgba(245,185,66,0.3)]">
-            <MapPin size={26} className="text-royal-yellow" />
+      <div className="hidden lg:flex absolute bottom-[20%] left-12 2xl:left-32 z-0 animate-float" style={{ animationDelay: '1s' }}>
+        <div className="max-w-[300px] bg-royal-blue/70 backdrop-blur-md p-5 rounded-2xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.3)] animate-fade-in transition-transform hover:scale-105 duration-300" style={{ animationDelay: '150ms' }}>
+          <div className="flex items-center gap-4">
+            <div className="bg-royal-yellow/20 p-3 rounded-full flex-shrink-0 shadow-[0_0_15px_rgba(245,185,66,0.3)]">
+              <MapPin size={26} className="text-royal-yellow" />
+            </div>
+            <span className="text-white font-medium text-sm leading-snug">Contamos con un moderno sistema de rastreo para su paquetería y carga</span>
           </div>
-          <span className="text-white font-medium text-sm leading-snug">Contamos con un moderno sistema de rastreo para su paquetería y carga</span>
         </div>
       </div>
 
-      <div className="hidden lg:flex absolute top-[35%] right-[5%] xl:right-[15%] max-w-[280px] bg-royal-blue/70 backdrop-blur-md p-5 rounded-2xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.3)] animate-fade-in transition-transform hover:scale-105 duration-300 z-0" style={{ animationDelay: '300ms' }}>
-        <div className="flex items-center gap-4">
-          <div className="bg-royal-yellow/20 p-3 rounded-full flex-shrink-0 shadow-[0_0_15px_rgba(245,185,66,0.3)]">
-            <Truck size={26} className="text-royal-yellow" />
+      <div className="hidden lg:flex absolute top-[35%] right-8 2xl:right-24 z-0 animate-float" style={{ animationDelay: '2s' }}>
+        <div className="max-w-[280px] bg-royal-blue/70 backdrop-blur-md p-5 rounded-2xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.3)] animate-fade-in transition-transform hover:scale-105 duration-300" style={{ animationDelay: '300ms' }}>
+          <div className="flex items-center gap-4">
+            <div className="bg-royal-yellow/20 p-3 rounded-full flex-shrink-0 shadow-[0_0_15px_rgba(245,185,66,0.3)]">
+              <Truck size={26} className="text-royal-yellow" />
+            </div>
+            <span className="text-white font-medium text-sm leading-snug">Unidades más modernas y confortables</span>
           </div>
-          <span className="text-white font-medium text-sm leading-snug">Unidades más modernas y confortables</span>
         </div>
       </div>
 
@@ -167,33 +173,11 @@ const Login = () => {
           </form>
         </div>
 
-        <div className="mt-8 pt-4 lg:hidden">
-          <ul className="space-y-4 text-sm text-white/90 font-medium">
-            <li className="flex items-center gap-3 bg-royal-blue/60 backdrop-blur-sm p-3 rounded-xl border border-white/20 shadow-lg">
-              <div className="bg-royal-yellow/20 p-2 rounded-full flex-shrink-0">
-                <ShieldCheck size={18} className="text-royal-yellow" />
-              </div>
-              <span>Transporte seguro</span>
-            </li>
-            <li className="flex items-center gap-3 bg-royal-blue/60 backdrop-blur-sm p-3 rounded-xl border border-white/20 shadow-lg">
-              <div className="bg-royal-yellow/20 p-2 rounded-full flex-shrink-0">
-                <Truck size={18} className="text-royal-yellow" />
-              </div>
-              <span>Unidades más modernas y confortables</span>
-            </li>
-            <li className="flex items-center gap-3 bg-royal-blue/60 backdrop-blur-sm p-3 rounded-xl border border-white/20 shadow-lg">
-              <div className="bg-royal-yellow/20 p-2 rounded-full flex-shrink-0">
-                <MapPin size={18} className="text-royal-yellow" />
-              </div>
-              <span>Contamos con un moderno sistema de rastreo para su paquetería y carga</span>
-            </li>
-          </ul>
-        </div>
       </div>
       
       {/* Footer inferior */}
       <div className="absolute bottom-6 left-0 w-full text-center z-0">
-        <p className="text-white/40 text-xs font-medium tracking-wide">© 2026 Transporte Royal • Expertos en logística</p>
+        <p className="text-white/40 text-xs font-medium tracking-wide">© 2026 Transporte Royal • Experto en transporte y Logistica</p>
       </div>
     </div>;
 };
