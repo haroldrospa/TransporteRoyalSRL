@@ -388,18 +388,12 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
     if (currentStop && currentStop.conduces.length > 0) {
       // Pasamos el primer conduce para que abra el modal.
       onDelivery(currentStop.conduces[0]);
-      // Normalmente aquí avanzaríamos al siguiente, pero dejamos que el usuario
-      // decida si quiere omitir luego de entregar, o podríamos avanzar automáticamente
-      // si la entrega fue exitosa. Para simplificar, avanzamos.
-      setTimeout(() => {
-        handleNextStop();
-      }, 500);
     }
   };
 
   if (isFinished) {
     return (
-      <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-6 text-center">
+      <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
           <CheckCircle2 className="h-10 w-10 text-green-600" />
         </div>
@@ -413,7 +407,7 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 overflow-hidden" translate="no">
+    <div className="fixed inset-0 z-50 bg-background flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 overflow-hidden" translate="no">
       {/* Header flotante */}
       <div className="absolute top-0 left-0 w-full z-[1000] p-4 bg-gradient-to-b from-black/60 via-black/30 to-transparent flex items-center justify-between pointer-events-none">
         <button 
@@ -545,7 +539,7 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
                 className="h-10 rounded-lg font-bold border-2 text-xs hover:bg-muted"
                 onClick={handleNextStop}
               >
-                Omitir <ChevronRight className="ml-0.5 h-4 w-4" />
+                Siguiente <ChevronRight className="ml-0.5 h-4 w-4" />
               </Button>
               <Button 
                 size="sm"
