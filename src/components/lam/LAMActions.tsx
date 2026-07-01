@@ -251,7 +251,7 @@ const LAMActions = ({ onRefresh, loading, userLevel, conduces = [], stats, chart
             size={isMobile ? "sm" : "default"}
           >
             <Plus className="h-4 w-4" />
-            <span>Crear Conduces</span>
+            <span>Cargar conduces</span>
           </Button>
         </Link>
       )}

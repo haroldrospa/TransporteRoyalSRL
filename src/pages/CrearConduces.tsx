@@ -20,7 +20,7 @@ import { mapConduceToDbConduce } from '@/utils/mappers/conduceMappers';
 import { toast } from '@/hooks/use-toast';
 import { FileText, Printer, Plus, Trash2, CheckCircle2, ShieldAlert, ArrowLeft, Loader2 } from 'lucide-react';
 
-const LABORATORIOS = ['Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica'];
+const LABORATORIOS = ['Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'LAM'];
 
 export const CrearConduces: React.FC = () => {
   const { user } = useAuth();
@@ -460,6 +460,7 @@ export const CrearConduces: React.FC = () => {
     if (destLab === 'Fersuaz') navigate('/fersuaz');
     else if (destLab === 'Taapharmaceutica') navigate('/taapharmaceutica');
     else if (destLab === 'Innovacion Quimica') navigate('/innovacion-quimica');
+    else if (destLab === 'LAM') navigate('/lam');
     else navigate('/control-bultos');
   };
 
