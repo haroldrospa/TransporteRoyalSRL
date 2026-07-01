@@ -84,7 +84,8 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
     return localStorage.getItem('active_optimized_route') !== null;
   });
   const [showNavChoiceDialog, setShowNavChoiceDialog] = useState(false);
-  const [selectedRoutes, setSelectedRoutes] = useState<string[]>(['0', 'Sin Ruta']);
+  const [selectedRoutes, setSelectedRoutes] = useState<string[]>([]);
+  const [hasInitializedRoutes, setHasInitializedRoutes] = useState(false);
   
   const availableRoutes = useMemo(() => {
     const routes = new Set<string>();
@@ -98,8 +99,19 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
         routes.add('Sin Ruta');
       }
     });
-    return Array.from(routes).sort();
+    return Array.from(routes).sort((a, b) => {
+      if (a === 'Sin Ruta') return 1;
+      if (b === 'Sin Ruta') return -1;
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
   }, [conduces, getClienteByNumero]);
+
+  useEffect(() => {
+    if (!hasInitializedRoutes && availableRoutes.length > 0) {
+      setSelectedRoutes([...availableRoutes]);
+      setHasInitializedRoutes(true);
+    }
+  }, [availableRoutes, hasInitializedRoutes]);
 
   const polylineRef = useRef<L.Polyline | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
