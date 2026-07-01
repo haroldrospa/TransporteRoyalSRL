@@ -47,17 +47,28 @@ export const useLAMDates = (conduces: Conduce[]) => {
       maxAllowed.setHours(23, 59, 59, 999);
       
       let initialDate = uniqueDates[0];
+      let parsedInitialDate: Date | null = null;
       
       for (let i = uniqueDates.length - 1; i >= 0; i--) {
         const parsed = safelyParseDate(uniqueDates[i]);
         if (parsed && parsed <= maxAllowed) {
           initialDate = uniqueDates[i];
+          parsedInitialDate = parsed;
           break;
         }
       }
       
       console.log('📅 Setting initial selectedDate to latest load date:', initialDate);
       setSelectedDate(initialDate);
+
+      // Sync dateRange to the month of the latest load to prevent mismatch
+      // where selectedDate is in June but dateRange is July (resulting in 0 stats)
+      if (parsedInitialDate) {
+        setDateRange({
+          from: startOfMonth(parsedInitialDate),
+          to: endOfMonth(parsedInitialDate)
+        });
+      }
     }
   }, [uniqueDates, selectedDate]);
   
