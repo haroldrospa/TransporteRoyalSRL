@@ -78,7 +78,7 @@ const Login = () => {
             <div className="bg-royal-yellow/20 p-3 rounded-full flex-shrink-0 shadow-[0_0_15px_rgba(245,185,66,0.3)]">
               <ShieldCheck size={26} className="text-royal-yellow" />
             </div>
-            <span className="text-white font-medium text-sm leading-snug">Transporte seguro</span>
+            <span className="text-white font-medium text-sm leading-snug">Transporte especializado en sector farmacéutico</span>
           </div>
         </div>
       </div>
