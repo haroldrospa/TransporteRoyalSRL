@@ -46,14 +46,18 @@ const ClienteGroupRow = ({
   const classes = getTransitTimeClasses(worstTime.status);
 
   return (
-    <TableRow className={`font-medium flex flex-wrap md:table-row items-center border border-gray-200 shadow-sm rounded-xl mb-3 bg-white md:bg-transparent md:p-0 md:mb-0 md:rounded-none md:border-0 md:border-b md:shadow-none hover:bg-gray-50 relative ${getGroupRowColorClass(group)}`}>
+    <TableRow 
+      className={`font-medium flex flex-wrap md:table-row items-center border border-gray-200 shadow-sm rounded-xl mb-3 bg-white md:bg-transparent md:p-0 md:mb-0 md:rounded-none md:border-0 md:border-b md:shadow-none hover:bg-gray-50 relative cursor-pointer ${getGroupRowColorClass(group)}`}
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'BUTTON' && target.tagName !== 'INPUT' && target.closest('button') === null) {
+          onToggleGroupSelection(group);
+        }
+      }}
+    >
       <TableCell className="order-1 block md:table-cell w-full md:w-auto p-1.5 px-2 md:p-4 border-b border-gray-100 md:border-0 md:border-b shrink-0 bg-gray-50/80 md:bg-transparent rounded-t-xl md:rounded-none">
         <div className="flex items-center justify-between md:justify-start gap-2 w-full">
-          <div className="flex items-center gap-2 cursor-pointer py-0.5 px-1" onClick={(e) => {
-            if ((e.target as HTMLElement).tagName !== 'BUTTON' && (e.target as HTMLElement).tagName !== 'SVG' && (e.target as HTMLElement).tagName !== 'INPUT') {
-              onToggleGroupSelection(group);
-            }
-          }}>
+          <div className="flex items-center gap-2 py-0.5 px-1">
             <GroupCheckbox
               group={group}
               isGroupSelected={isGroupSelected}
@@ -163,6 +167,16 @@ const ClienteGroupRow = ({
           <Badge variant="outline" className="text-orange-600 border-orange-400">
             Sin asignar
           </Badge>
+        )}
+      </TableCell>
+      
+      <TableCell className="hidden md:table-cell">
+        {group.encomendadoPredeterminado ? (
+          <span className="text-sm text-slate-600 font-medium">
+            {group.encomendadoPredeterminado}
+          </span>
+        ) : (
+          <span className="text-sm text-slate-400 italic">No definido</span>
         )}
       </TableCell>
       

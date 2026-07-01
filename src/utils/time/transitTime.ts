@@ -137,10 +137,8 @@ const getNextBusinessStart = (date: Date): Date => {
     return nextBusinessDay;
   }
   
-  // Para días laborables no festivos, mantener la fecha actual pero asegurar que sea después de 8:00 AM
-  if (currentHour < 8) {
-    result.setHours(8, 0, 0, 0);
-  }
+  // Para días laborables no festivos, SIEMPRE iniciar a las 8:00 AM del día de entrega
+  result.setHours(8, 0, 0, 0);
   
   return result;
 };

@@ -97,6 +97,12 @@ const ConducesTableHeader = ({ selectedConduces, totalConduces, onSelectAll }: C
         </TableHead>
         <TableHead className="hidden md:table-cell">
           <div className="flex items-center gap-2">
+            <Truck className="h-4 w-4 text-slate-400" />
+            Enc. Predeterminado
+          </div>
+        </TableHead>
+        <TableHead className="hidden md:table-cell">
+          <div className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Tiempo en Tránsito
           </div>

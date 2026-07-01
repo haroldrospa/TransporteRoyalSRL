@@ -18,7 +18,15 @@ const ConduceRow = ({ conduce, isSelected, onToggleSelection, getRowColorClass }
   const classes = getTransitTimeClasses(transitInfo.status);
 
   return (
-    <TableRow className={`flex flex-wrap md:table-row items-center border border-gray-100 shadow-sm rounded-lg mb-1 mx-2 md:mx-0 p-1 bg-white md:bg-transparent md:p-0 md:mb-0 md:rounded-none md:border-0 md:border-b md:shadow-none hover:bg-gray-50 relative ${getRowColorClass(conduce)} transition-colors`}>
+    <TableRow 
+      className={`flex flex-wrap md:table-row items-center border border-gray-100 shadow-sm rounded-lg mb-1 mx-2 md:mx-0 p-1 bg-white md:bg-transparent md:p-0 md:mb-0 md:rounded-none md:border-0 md:border-b md:shadow-none hover:bg-gray-50 relative cursor-pointer ${getRowColorClass(conduce)} transition-colors`}
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'BUTTON' && target.closest('button') === null) {
+          onToggleSelection();
+        }
+      }}
+    >
       <TableCell className="order-1 block md:table-cell w-auto p-1.5 md:p-4 border-0 md:border-b shrink-0 pl-2 md:pl-8">
         <Checkbox
           checked={isSelected}
@@ -61,6 +69,8 @@ const ConduceRow = ({ conduce, isSelected, onToggleSelection, getRowColorClass }
           </Badge>
         )}
       </TableCell>
+      
+      <TableCell className="hidden md:table-cell"></TableCell>
       
       <TableCell className="order-3 block md:table-cell w-auto p-1.5 md:p-4 border-0 md:border-b ml-auto">
         <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] md:text-xs font-bold md:font-medium ${classes}`}>

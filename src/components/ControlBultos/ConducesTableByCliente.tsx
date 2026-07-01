@@ -42,10 +42,21 @@ const ConducesTable = ({ conduces, selectedConduces, toggleSelection, setSelecte
     return map;
   }, [clientes]);
 
+  // Create a map of numeroCliente -> encomendado para el predeterminado
+  const clienteEncomendadoMap = useMemo(() => {
+    const map = new Map<string, string>();
+    clientes?.forEach(cliente => {
+      if (cliente.encomendado) {
+        map.set(cliente.numeroCliente, cliente.encomendado);
+      }
+    });
+    return map;
+  }, [clientes]);
+
   // Group conduces by client and sort by worst transit time
   const clienteGroups = useMemo(() => {
-    return groupConducesByClient(conduces, clientesRncMap, clienteGrupoMap);
-  }, [conduces, clientesRncMap, clienteGrupoMap]);
+    return groupConducesByClient(conduces, clientesRncMap, clienteGrupoMap, clienteEncomendadoMap);
+  }, [conduces, clientesRncMap, clienteGrupoMap, clienteEncomendadoMap]);
 
   const toggleGroup = (numeroCliente: string) => {
     const newExpanded = new Set(expandedGroups);

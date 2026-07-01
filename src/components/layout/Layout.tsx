@@ -45,7 +45,7 @@ const Layout = ({ children }: LayoutProps) => {
       
       {/* Mobile navigation is handled entirely by the Sidebar (MobileMenu) inside Header */}
       
-      <main className={`flex-1 container mx-auto py-3 ${isMobile ? 'px-2' : 'px-4'} overflow-x-hidden`}>
+      <main className={`flex-1 w-full max-w-[1800px] mx-auto py-3 ${isMobile ? 'px-2' : 'px-4 md:px-6 lg:px-8'} overflow-x-hidden`}>
         <div className="animate-fade-in">
           {children}
         </div>

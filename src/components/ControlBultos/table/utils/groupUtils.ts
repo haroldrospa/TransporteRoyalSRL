@@ -14,12 +14,14 @@ export interface ClienteGroup {
   conduces: Conduce[];
   ruta?: string;
   laboratorio: string;
+  encomendadoPredeterminado?: string;
 }
 
 export const groupConducesByClient = (
   conduces: Conduce[], 
   clientesRncMap?: Map<string, string>,
-  clienteGrupoMap?: Map<string, string>
+  clienteGrupoMap?: Map<string, string>,
+  clienteEncomendadoMap?: Map<string, string>
 ): ClienteGroup[] => {
   return conduces.reduce((groups: ClienteGroup[], conduce) => {
     const hasCliente = conduce.numeroCliente && String(conduce.numeroCliente).trim() !== '';
@@ -38,7 +40,8 @@ export const groupConducesByClient = (
         totalBultos: conduce.cantidadBultos,
         conduces: [conduce],
         ruta: conduce.ruta,
-        laboratorio: conduce.laboratorio
+        laboratorio: conduce.laboratorio,
+        encomendadoPredeterminado: ''
       });
       return groups;
     }
@@ -74,7 +77,8 @@ export const groupConducesByClient = (
         totalBultos: conduce.cantidadBultos,
         conduces: [conduce],
         ruta: conduce.ruta,
-        laboratorio: conduce.laboratorio
+        laboratorio: conduce.laboratorio,
+        encomendadoPredeterminado: clienteEncomendadoMap?.get(conduce.numeroCliente) || ''
       });
     }
 

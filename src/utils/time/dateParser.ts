@@ -13,7 +13,11 @@ export const safelyParseDate = (dateStr: string): Date | null => {
     
     // Handle ISO format dates (YYYY-MM-DD)
     if (trimmedDateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const date = new Date(trimmedDateStr);
+      const parts = trimmedDateStr.split('-');
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const date = new Date(year, month, day, 0, 0, 0);
       return isValid(date) ? date : null;
     }
     

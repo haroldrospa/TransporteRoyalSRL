@@ -437,7 +437,7 @@ export async function approvePendingBatch(
     // Obtener primero los ids de los conduces a aprobar
     const { data: pendingItems, error: fetchError } = await supabase
       .from('conduces')
-      .select('id')
+      .select('id, numero_cliente')
       .eq('laboratorio', laboratorio)
       .eq('fecha_carga', fechaCarga)
       .eq('estado', 'Pendiente');
@@ -447,24 +447,66 @@ export async function approvePendingBatch(
       return { success: false, message: 'No se encontraron conduces pendientes para este lote' };
     }
     
-    const ids = pendingItems.map(item => item.id);
+    // Obtener los clientes correspondientes para ver su encomendado por defecto
+    const clientNumbers = [...new Set(pendingItems.map(item => item.numero_cliente).filter(Boolean))];
+    const clientAssignments: Record<string, string | null> = {};
     
-    // Actualizar sus estados
-    const { error: updateError } = await supabase
-      .from('conduces')
-      .update({
+    if (clientNumbers.length > 0) {
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('clientes')
+        .select('numero_cliente, encomendado')
+        .in('numero_cliente', clientNumbers);
+        
+      if (!clientsError && clientsData) {
+        clientsData.forEach(client => {
+          clientAssignments[client.numero_cliente] = client.encomendado;
+        });
+      }
+    }
+    
+    // Agrupar los conduces por el encomendado que les toca
+    const groups: Record<string, string[]> = { unassigned: [] };
+    
+    pendingItems.forEach(item => {
+      const encomendado = item.numero_cliente ? clientAssignments[item.numero_cliente] : null;
+      if (encomendado) {
+        if (!groups[encomendado]) groups[encomendado] = [];
+        groups[encomendado].push(item.id);
+      } else {
+        groups['unassigned'].push(item.id);
+      }
+    });
+    
+    // Actualizar por grupos para asignar el encomendado correcto a cada uno
+    const updatePromises = Object.entries(groups).map(async ([encomendado, ids]) => {
+      if (ids.length === 0) return null;
+      
+      const updateData: any = {
         estado: 'En tránsito',
         fecha_entrega: fechaEntrega,
         updated_at: new Date().toISOString()
-      })
-      .in('id', ids);
+      };
       
-    if (updateError) throw updateError;
+      // Solo asignar si hay un encomendado válido
+      if (encomendado !== 'unassigned') {
+        updateData.encomendado = encomendado;
+      }
+      
+      const { error: updateError } = await supabase
+        .from('conduces')
+        .update(updateData)
+        .in('id', ids);
+        
+      if (updateError) throw updateError;
+      return true;
+    });
+    
+    await Promise.all(updatePromises);
     
     // Limpiar cache para que se carguen los datos frescos
     clearProgressiveCache();
     
-    return { success: true, message: `Lote de ${ids.length} conduces aprobado con éxito` };
+    return { success: true, message: `Lote de ${pendingItems.length} conduces aprobado con éxito` };
   } catch (error) {
     console.error('❌ Error approving pending batch:', error);
     return { success: false, message: (error as Error).message || 'Error al aprobar el lote' };
