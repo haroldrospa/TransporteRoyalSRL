@@ -106,12 +106,17 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
     });
   }, [conduces, getClienteByNumero]);
 
+  const [seenRoutes, setSeenRoutes] = useState<Set<string>>(new Set());
+
   useEffect(() => {
-    if (!hasInitializedRoutes && availableRoutes.length > 0) {
-      setSelectedRoutes([...availableRoutes]);
-      setHasInitializedRoutes(true);
+    if (availableRoutes.length > 0) {
+      const newRoutes = availableRoutes.filter(r => !seenRoutes.has(r));
+      if (newRoutes.length > 0) {
+        setSelectedRoutes(prev => [...new Set([...prev, ...newRoutes])]);
+        setSeenRoutes(prev => new Set([...prev, ...newRoutes]));
+      }
     }
-  }, [availableRoutes, hasInitializedRoutes]);
+  }, [availableRoutes, seenRoutes]);
 
   const polylineRef = useRef<L.Polyline | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);

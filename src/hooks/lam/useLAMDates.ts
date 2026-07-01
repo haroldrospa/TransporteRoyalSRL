@@ -41,15 +41,42 @@ export const useLAMDates = (conduces: Conduce[]) => {
   // Set selectedDate to latest load date when data loads
   useEffect(() => {
     if (uniqueDates.length > 0 && !selectedDate) {
-      const latestDate = uniqueDates[uniqueDates.length - 1];
-      console.log('📅 Setting initial selectedDate to latest load date:', latestDate);
-      setSelectedDate(latestDate);
+      // Avoid picking a future typo date (e.g. 2034). Allow up to tomorrow.
+      const maxAllowed = new Date();
+      maxAllowed.setDate(maxAllowed.getDate() + 1);
+      maxAllowed.setHours(23, 59, 59, 999);
+      
+      let initialDate = uniqueDates[0];
+      
+      for (let i = uniqueDates.length - 1; i >= 0; i--) {
+        const parsed = safelyParseDate(uniqueDates[i]);
+        if (parsed && parsed <= maxAllowed) {
+          initialDate = uniqueDates[i];
+          break;
+        }
+      }
+      
+      console.log('📅 Setting initial selectedDate to latest load date:', initialDate);
+      setSelectedDate(initialDate);
     }
   }, [uniqueDates, selectedDate]);
   
-  const latestLoadDate = useMemo(() => 
-    uniqueDates.length > 0 ? uniqueDates[uniqueDates.length - 1] : ''
-  , [uniqueDates]);
+  const latestLoadDate = useMemo(() => {
+    if (uniqueDates.length === 0) return '';
+    
+    const maxAllowed = new Date();
+    maxAllowed.setDate(maxAllowed.getDate() + 1);
+    maxAllowed.setHours(23, 59, 59, 999);
+    
+    for (let i = uniqueDates.length - 1; i >= 0; i--) {
+      const parsed = safelyParseDate(uniqueDates[i]);
+      if (parsed && parsed <= maxAllowed) {
+        return uniqueDates[i];
+      }
+    }
+    
+    return uniqueDates[0];
+  }, [uniqueDates]);
 
   // Function to handle date navigation - navigate through all available dates
   const navigateDate = (direction: 'prev' | 'next') => {
@@ -108,9 +135,9 @@ export const useLAMDates = (conduces: Conduce[]) => {
       
       const filtered = regionConduces.filter(conduce => {
         try {
-          if (!conduce || !conduce.fechaEntrega) return false;
+          if (!conduce || !conduce.fechaCarga) return false;
           
-          const conduceDate = safelyParseDate(conduce.fechaEntrega);
+          const conduceDate = safelyParseDate(conduce.fechaCarga);
           if (!conduceDate || !isValid(conduceDate)) return false;
           
           // If both from and to dates are set, check if within interval

@@ -63,25 +63,24 @@ export const CrearConduces: React.FC = () => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Determine if laboratory is locked (either by user profile or query param)
+  // Determine if laboratory is locked (either by user profile)
   const lockedLab = useMemo(() => {
     if (user?.laboratorio && LABORATORIOS.includes(user.laboratorio)) {
       return user.laboratorio;
     }
-    if (labParam && LABORATORIOS.includes(labParam)) {
-      return labParam;
-    }
     return null;
-  }, [user, labParam]);
+  }, [user]);
 
   // Set initial laboratory
   useEffect(() => {
     if (lockedLab) {
       setSelectedLab(lockedLab);
+    } else if (labParam && LABORATORIOS.includes(labParam)) {
+      setSelectedLab(labParam);
     } else {
       setSelectedLab('Fersuaz');
     }
-  }, [lockedLab]);
+  }, [lockedLab, labParam]);
 
   // Check if string is a GPS coordinate format (e.g. "19.227348, -70.531705")
   const isCoordinate = (str: string): boolean => {
@@ -495,7 +494,7 @@ export const CrearConduces: React.FC = () => {
             <Card className="border-border/40 shadow-md">
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-sm font-semibold text-royal-blue dark:text-white uppercase tracking-wider">
-                  Nuevo Conduce
+                  Cargar conduces
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Completa los datos del conduce de entrega.

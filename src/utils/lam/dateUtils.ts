@@ -11,15 +11,15 @@ export const getUniqueDates = (conduces: Conduce[]) => {
   // Extract only the date part (DD/MM/YY) without the hour
   const fechasSinHora = conduces
     .map(c => {
-      if (!c || !c.fechaEntrega) return null;
+      if (!c || !c.fechaCarga) return null;
       
       try {
-        const conduceDate = safelyParseDate(c.fechaEntrega);
+        const conduceDate = safelyParseDate(c.fechaCarga);
         if (!conduceDate || !isValid(conduceDate)) return null;
         
         return format(conduceDate, 'dd/MM/yy');
       } catch (error) {
-        console.error('Error getting unique dates:', error, c.fechaEntrega);
+        console.error('Error getting unique dates:', error, c.fechaCarga);
         return null;
       }
     })

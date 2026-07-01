@@ -17,7 +17,13 @@ export const formatReadableDate = (dateString: string | null | undefined): strin
       date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     } else if (dateString.includes('-')) {
       // YYYY-MM-DD format
-      date = new Date(dateString);
+      const parts = dateString.split('-');
+      // If it's just YYYY-MM-DD without time
+      if (parts.length === 3 && !dateString.includes('T')) {
+        date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2].substring(0, 2)));
+      } else {
+        date = new Date(dateString);
+      }
     } else {
       return dateString; // Return as is if format is unknown
     }
@@ -46,7 +52,12 @@ export const formatReadableDateWithTime = (dateString: string | null | undefined
       const [day, month, year] = dateString.split('/');
       date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     } else if (dateString.includes('-')) {
-      date = new Date(dateString);
+      const parts = dateString.split('-');
+      if (parts.length === 3 && !dateString.includes('T')) {
+        date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2].substring(0, 2)));
+      } else {
+        date = new Date(dateString);
+      }
     } else {
       return dateString;
     }

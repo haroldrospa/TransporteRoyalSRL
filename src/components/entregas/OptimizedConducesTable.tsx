@@ -131,7 +131,7 @@ const ConduceRow = memo(({
       </TableCell>
 
       <TableCell className="py-2.5">
-        <div className="font-semibold text-slate-800 dark:text-slate-200 text-sm max-w-[120px] lg:max-w-[180px] truncate" title={conduce.razonSocial}>
+        <div className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
           {conduce.razonSocial || '-'}
         </div>
       </TableCell>

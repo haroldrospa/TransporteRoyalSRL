@@ -141,7 +141,7 @@ export const filterAndSortConduces = (
       const skipDateFilters = !!lowerSearchTerm;
       
       // Date filtering logic - check individual date first, then month filter
-      const conduceDate = safelyParseDate(conduce.fechaEntrega);
+      const conduceDate = safelyParseDate(conduce.fechaCarga);
       if (!conduceDate || !isValid(conduceDate)) {
         return false;
       }
@@ -158,7 +158,7 @@ export const filterAndSortConduces = (
           const matchesDay = formattedConduce4digit === selectedDate || formattedConduce2digit === selectedDate;
           if (!matchesDay) return false;
         } catch (error) {
-          console.error('Error filtering by date:', error, conduce.fechaEntrega);
+          console.error('Error filtering by date:', error, conduce.fechaCarga);
           return false;
         }
       }
@@ -183,7 +183,7 @@ export const filterAndSortConduces = (
           
           return matchesMonth;
         } catch (error) {
-          console.error('Error filtering by month:', error, conduce.fechaEntrega);
+          console.error('Error filtering by month:', error, conduce.fechaCarga);
           return false;
         }
       }

@@ -45,8 +45,8 @@ export const useOptimizedEntregasDataFast = () => {
     
     // Single pass filtering for maximum performance
     for (const conduce of optimizedConduces) {
-      // Skip Almacen conduces
-      if (conduce.encomendado === 'Almacen') continue;
+      // Skip Almacen conduces for regular drivers, but keep them for admins
+      if (conduce.encomendado === 'Almacen' && !isAdmin) continue;
       
       // Check if conduce belongs to user
       let belongsToUser = false;
