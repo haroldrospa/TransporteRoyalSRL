@@ -794,14 +794,35 @@ export const CrearConduces: React.FC = () => {
                             <TableCell className="font-semibold text-royal-blue dark:text-royal-yellow">{item.ciudad}</TableCell>
                             <TableCell className="font-bold text-right text-green-600">{item.cantidadBultos}</TableCell>
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRemoveConduce(item.id)}
-                                className="text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 h-8 w-8"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex gap-1 justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => printConducesA4([item])}
+                                  className="text-slate-600 hover:text-royal-blue hover:bg-royal-blue/10 h-8 w-8"
+                                  title="Imprimir A4"
+                                >
+                                  <Printer className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => printConduceLabels([item])}
+                                  className="text-slate-600 hover:text-royal-blue hover:bg-royal-blue/10 h-8 w-8"
+                                  title="Imprimir Etiquetas"
+                                >
+                                  <FileText className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemoveConduce(item.id)}
+                                  className="text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 h-8 w-8"
+                                  title="Eliminar conduce"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))

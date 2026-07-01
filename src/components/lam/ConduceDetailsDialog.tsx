@@ -107,7 +107,7 @@ const ConduceDetailsDialog = ({
                 <ConduceDetailsDialogFooter
                   editMode={editMode}
                   isSubmitting={isSubmitting}
-                  userCanEdit={userNivel !== undefined && userNivel >= 4}
+                  userCanEdit={userNivel !== undefined && (userNivel >= 4 || (userNivel === 2 && selectedConduce.estado === 'Pendiente'))}
                   onEditClick={() => setEditMode(true)}
                   onCancelEdit={() => setEditMode(false)}
                   onSaveChanges={handleSaveChanges}
