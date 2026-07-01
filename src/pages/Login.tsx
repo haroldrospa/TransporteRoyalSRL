@@ -89,7 +89,7 @@ const Login = () => {
             <div className="bg-royal-yellow/20 p-3 rounded-full flex-shrink-0 shadow-[0_0_15px_rgba(245,185,66,0.3)]">
               <MapPin size={26} className="text-royal-yellow" />
             </div>
-            <span className="text-white font-medium text-sm leading-snug">Contamos con un moderno sistema de rastreo para su paquetería y carga</span>
+            <span className="text-white font-medium text-sm leading-snug">Sistema de trazabilidad para rastreo y cargas</span>
           </div>
         </div>
       </div>

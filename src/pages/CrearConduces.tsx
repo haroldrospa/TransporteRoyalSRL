@@ -58,7 +58,7 @@ export const CrearConduces: React.FC = () => {
   const [newClientSocial, setNewClientSocial] = useState('');
   const [newClientCity, setNewClientCity] = useState('');
   const [newClientAddress, setNewClientAddress] = useState('');
-  const [newClientZone, setNewClientZone] = useState<'Norte' | 'Sur'>('Norte');
+  const [newClientZone, setNewClientZone] = useState<'Norte' | 'Sur' | 'Este'>('Norte');
   const [isCreatingClient, setIsCreatingClient] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -861,7 +861,7 @@ export const CrearConduces: React.FC = () => {
                   <Label htmlFor="new-client-zone" className="text-xs font-semibold">Zona</Label>
                   <Select 
                     value={newClientZone} 
-                    onValueChange={(value) => setNewClientZone(value as 'Norte' | 'Sur')}
+                    onValueChange={(value) => setNewClientZone(value as 'Norte' | 'Sur' | 'Este')}
                   >
                     <SelectTrigger id="new-client-zone">
                       <SelectValue placeholder="Seleccione zona" />
@@ -869,6 +869,7 @@ export const CrearConduces: React.FC = () => {
                     <SelectContent>
                       <SelectItem value="Norte">Norte</SelectItem>
                       <SelectItem value="Sur">Sur</SelectItem>
+                      <SelectItem value="Este">Este</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

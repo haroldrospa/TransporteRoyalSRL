@@ -296,6 +296,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                   <SelectContent>
                     <SelectItem value="Norte">Norte</SelectItem>
                     <SelectItem value="Sur">Sur</SelectItem>
+                    <SelectItem value="Este">Este</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />

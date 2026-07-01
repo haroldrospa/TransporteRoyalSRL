@@ -9,7 +9,7 @@ export interface Cliente {
   ruta?: string;
   contacto?: string;
   ubicacion?: string;
-  zona: 'Norte' | 'Sur';
+  zona: 'Norte' | 'Sur' | 'Este';
   created_at?: string;
   updated_at?: string;
   grupo_cliente?: string;

@@ -105,6 +105,7 @@ export const LazyFilters = ({
                     <SelectItem value="">Todas</SelectItem>
                     <SelectItem value="Norte">Norte</SelectItem>
                     <SelectItem value="Sur">Sur</SelectItem>
+                    <SelectItem value="Este">Este</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
