@@ -318,7 +318,7 @@ export const OptimizedConducesTable = memo(({
 
   // Vista desktop con tabla
   return (
-    <Table className="w-full text-xs md:text-sm">
+    <Table className="w-full text-xs md:text-sm min-w-[1000px]">
       <TableHeader className="bg-royal-blue">
         <TableRow className="bg-royal-blue hover:bg-royal-blue border-b-2 border-royal-yellow/50">
           <TableHead className="font-bold text-white bg-royal-blue w-14 text-center py-2.5">
