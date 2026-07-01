@@ -753,8 +753,8 @@ export const CrearConduces: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
+                <div className="overflow-x-auto pb-2">
+                  <Table className="min-w-[700px]">
                     <TableHeader className="bg-muted/50">
                       <TableRow>
                         <TableHead className="w-4 hover:bg-transparent"></TableHead>

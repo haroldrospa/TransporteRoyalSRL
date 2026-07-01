@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/providers/DataContextProvider";
-
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import LAM from "./pages/LAM";
@@ -33,7 +33,8 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <Routes>
+          <ErrorBoundary>
+            <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Index />} />
             <Route path="/lam" element={<LAM />} />
@@ -51,7 +52,8 @@ const App = () => (
             <Route path="/crear-conduces" element={<CrearConduces />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
-          </Routes>
+            </Routes>
+          </ErrorBoundary>
         </TooltipProvider>
       </DataProvider>
     </AuthProvider>
