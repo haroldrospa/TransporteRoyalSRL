@@ -21,9 +21,9 @@ export const TruckDeliveryGrid = ({ truckStats }: TruckDeliveryGridProps) => {
     ? validTrucks.filter(truck => truck !== 'Almacen')
     : validTrucks;
 
-  // Filtrar solo camiones con conduces asignados
+  // Filtrar solo camiones con conduces asignados (incluyendo "Sin asignar")
   const trucksWithConduces = Object.entries(truckStats)
-    .filter(([truck]) => filteredTrucks.includes(truck))
+    .filter(([truck]) => filteredTrucks.includes(truck) || truck === 'Sin asignar')
     .filter(([_, stats]) => stats.conduces > 0);
 
   // Ordenar por nombre de camión

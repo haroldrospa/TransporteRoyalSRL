@@ -34,7 +34,7 @@ export async function fetchBasicEntregasStats(region: string, userCamion?: strin
       .select('estado, cantidad_bultos, numero_cliente, encomendado')
       .eq('region', region)
       .eq('estado', 'En tránsito')
-      .neq('encomendado', 'Almacen');
+      .or('encomendado.neq.Almacen,encomendado.is.null');
 
     // Si no es admin, filtrar por camión
     if (userCamion) {
@@ -124,7 +124,7 @@ export async function fetchPendingConducesOnly(region: string, userCamion?: stri
       `)
       .eq('region', region)
       .eq('estado', 'En tránsito')
-      .neq('encomendado', 'Almacen')
+      .or('encomendado.neq.Almacen,encomendado.is.null')
       .order('prioridad', { ascending: false })
       .order('fecha_entrega', { ascending: true });
 
@@ -225,7 +225,7 @@ export async function preloadMoreConduces(region: string, userCamion?: string, o
       .select('*')
       .eq('region', region)
       .eq('estado', 'En tránsito')
-      .neq('encomendado', 'Almacen')
+      .or('encomendado.neq.Almacen,encomendado.is.null')
       .order('prioridad', { ascending: false })
       .order('fecha_entrega', { ascending: true })
       .range(offset, offset + limit - 1);
