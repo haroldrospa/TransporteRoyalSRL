@@ -92,6 +92,7 @@ export const DeliveryDialog = ({
                   coordinates={coordinates}
                   hasStoredLocation={hasStoredLocation}
                   storedLocation={cliente?.ubicacion}
+                  clienteDireccion={cliente?.direccion}
                   deliveryNote={deliveryNote}
                   onNoteChange={setDeliveryNote}
                   onSignatureCapture={setSignatureData}

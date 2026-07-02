@@ -14,7 +14,8 @@ const ClienteTableHeader = () => {
         <TableHead>Encomendado</TableHead>
         <TableHead>Ruta</TableHead>
         <TableHead>Contacto</TableHead>
-        <TableHead>Ubicación</TableHead>
+        <TableHead>Dirección</TableHead>
+        <TableHead>GPS (Mapa)</TableHead>
         <TableHead className="text-right">Acciones</TableHead>
       </TableRow>
     </TableHeader>

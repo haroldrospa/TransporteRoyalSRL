@@ -1,11 +1,11 @@
-
 import { Button } from '@/components/ui/button';
-import { MapPin, Navigation, CheckCircle2 } from 'lucide-react';
+import { MapPin, Navigation, CheckCircle2, Home } from 'lucide-react';
 
 interface LocationSectionProps {
   coordinates: { latitude: number; longitude: number } | null;
   hasStoredLocation: boolean;
   storedLocation?: string;
+  clienteDireccion?: string;
   onSaveLocation: () => Promise<void>;
 }
 
@@ -13,6 +13,7 @@ export const LocationSection = ({
   coordinates,
   hasStoredLocation,
   storedLocation,
+  clienteDireccion,
   onSaveLocation
 }: LocationSectionProps) => {
   const formatCoordinates = (coords: {latitude: number, longitude: number}) => {
@@ -25,7 +26,19 @@ export const LocationSection = ({
         <MapPin className="h-4 w-4 text-royal-gold" />
         Ubicación del Cliente
       </h4>
-      
+
+      {clienteDireccion && (
+        <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-50 border border-blue-200 shadow-sm">
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 shrink-0">
+            <Home className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-xs text-blue-500 font-medium">Dirección</p>
+            <p className="text-sm font-bold text-blue-800">{clienteDireccion}</p>
+          </div>
+        </div>
+      )}
+
       {coordinates ? (
         <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200 shadow-sm transition-all">
           <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-500 text-white shrink-0 shadow-sm">
@@ -44,7 +57,7 @@ export const LocationSection = ({
             </div>
             <div>
               <p className="text-sm font-bold text-royal-blue break-all">{storedLocation}</p>
-              <p className="text-xs text-muted-foreground font-medium">Ubicación registrada</p>
+              <p className="text-xs text-muted-foreground font-medium">Coordenadas GPS registradas</p>
             </div>
           </div>
           <Button

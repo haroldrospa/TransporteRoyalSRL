@@ -61,6 +61,7 @@ const ClienteTableRow = ({
       <TableCell>{cliente.encomendado || "—"}</TableCell>
       <TableCell>{cliente.ruta || "—"}</TableCell>
       <TableCell>{cliente.contacto || "—"}</TableCell>
+      <TableCell className="text-sm text-slate-600">{cliente.direccion || "—"}</TableCell>
       <TableCell>
         <ClienteUbicacionButton ubicacion={cliente.ubicacion} openMaps={openMaps} />
       </TableCell>

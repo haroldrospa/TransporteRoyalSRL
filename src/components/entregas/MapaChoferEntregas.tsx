@@ -343,6 +343,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
       clientes: Record<string, {
         razonSocial: string;
         numeroCliente: string;
+        direccion?: string;
         ubicacion?: string;
         conduces: Conduce[];
         totalBultos: number;
@@ -380,6 +381,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
           stats[prov].clientes[cliKey] = {
             razonSocial: conduce.razonSocial || 'Cliente no identificado',
             numeroCliente: conduce.numeroCliente || '',
+            direccion: clientCache?.direccion,
             ubicacion: resolvedUbicacion,
             conduces: [],
             totalBultos: 0
@@ -1121,6 +1123,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
         <div style="font-family: sans-serif; font-size: 11px; padding: 2px; line-height: 1.4;">
           <strong style="color: #0a2240; display: block; font-size: 12px; margin-bottom: 2px;">${client.razonSocial}</strong>
           ${isRouteActive ? `<span style="color: #2563eb; font-weight: bold;">Parada nº ${routeIndex + 1} de la ruta</span><br/>` : ''}
+          ${client.direccion ? `<span style="color: #1d4ed8;">📍 ${client.direccion}</span><br/>` : ''}
           <strong>Conduces:</strong> ${client.totalConduces}<br/>
           <strong style="color: #0a2240;">Bultos:</strong> ${client.totalBultos} bulto(s)
         </div>
@@ -2080,6 +2083,16 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
                 <p className="text-lg font-bold text-royal-blue dark:text-blue-400">{selectedClientDetail?.totalBultos}</p>
               </div>
             </div>
+
+            {selectedClientDetail?.direccion && (
+              <div className="flex items-start gap-2 p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-900">
+                <MapPin className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs text-blue-500 font-medium">Dirección</p>
+                  <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">{selectedClientDetail.direccion}</p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground">Conduces Asignados:</p>

@@ -21,8 +21,9 @@ const clienteSchema = z.object({
   encomendado: z.string().optional(),
   ruta: z.string().optional(),
   contacto: z.string().optional(),
+  direccion: z.string().optional(),
   ubicacion: z.string().optional(),
-  zona: z.enum(['Norte', 'Sur'], {
+  zona: z.enum(['Norte', 'Sur', 'Este'], {
     required_error: 'Debe seleccionar una zona',
   }),
 });
@@ -52,6 +53,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
       encomendado: cliente?.encomendado || '',
       ruta: cliente?.ruta || '',
       contacto: cliente?.contacto || '',
+      direccion: cliente?.direccion || '',
       ubicacion: cliente?.ubicacion || '',
       zona: cliente?.zona || 'Norte',
     },
@@ -270,12 +272,25 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
           />
           <FormField
             control={form.control}
+            name="direccion"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Dirección</FormLabel>
+                <FormControl>
+                  <Input placeholder="Ej: Calle Roberto Colón #12" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
             name="ubicacion"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Ubicación</FormLabel>
+                <FormLabel>Coordenadas GPS (para mapa)</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ubicación" {...field} />
+                  <Input placeholder="Ej: 18.4861,-69.9312" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

@@ -16,6 +16,7 @@
    if (cliente.encomendado !== undefined) dbCliente.encomendado = cliente.encomendado || null;
    if (cliente.ruta !== undefined) dbCliente.ruta = cliente.ruta || null;
    if (cliente.contacto !== undefined) dbCliente.contacto = cliente.contacto || null;
+   if (cliente.direccion !== undefined) dbCliente.direccion = cliente.direccion || null;
    if (cliente.ubicacion !== undefined) dbCliente.ubicacion = cliente.ubicacion || null;
    
    return dbCliente;

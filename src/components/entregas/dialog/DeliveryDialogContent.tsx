@@ -12,6 +12,7 @@ interface DeliveryDialogContentProps {
   coordinates: {latitude: number, longitude: number} | null;
   hasStoredLocation: boolean;
   storedLocation?: string;
+  clienteDireccion?: string;
   deliveryNote: string;
   onNoteChange: (note: string) => void;
   onSignatureCapture: (signature: string) => void;
@@ -28,6 +29,7 @@ export const DeliveryDialogContent = ({
   coordinates,
   hasStoredLocation,
   storedLocation,
+  clienteDireccion,
   deliveryNote,
   onNoteChange,
   onSignatureCapture,
@@ -51,6 +53,7 @@ export const DeliveryDialogContent = ({
         coordinates={coordinates}
         hasStoredLocation={hasStoredLocation}
         storedLocation={storedLocation}
+        clienteDireccion={clienteDireccion}
         onSaveLocation={onSaveLocation}
       />
       

@@ -13,6 +13,7 @@ export const mapDbClienteToCliente = (dbCliente: any): Cliente => ({
   encomendado: dbCliente.encomendado,
   ruta: dbCliente.ruta,
   contacto: dbCliente.contacto,
+  direccion: dbCliente.direccion,
   ubicacion: dbCliente.ubicacion,
   zona: dbCliente.zona,
   created_at: dbCliente.created_at,
@@ -31,6 +32,7 @@ export const mapClienteToDbCliente = (cliente: Omit<Cliente, 'id'>) => ({
   encomendado: cliente.encomendado,
   ruta: cliente.ruta,
   contacto: cliente.contacto,
+  direccion: cliente.direccion,
   ubicacion: cliente.ubicacion,
   zona: cliente.zona,
 });
