@@ -78,8 +78,8 @@ export function useFastDashboardData() {
 
   // Función ultra-rápida usando RPCs
   const fetchStats = useCallback(async (forceRefresh = false) => {
-    const cacheKey = 'dashboard-fast-stats';
-    
+    const userLab = user?.laboratorio || (user?.puesto === 'LAM' ? 'LAM' : null);
+    const cacheKey = userLab ? `dashboard-fast-stats-${userLab}` : 'dashboard-fast-stats';
     // Check cache first
     if (!forceRefresh) {
       const cached = statsCache.get(cacheKey);
@@ -103,40 +103,79 @@ export function useFastDashboardData() {
       const yearStr = String(now.getFullYear());
       const monthPattern = `%/${monthStr}/${yearStr}%`;
 
-      // Hacer llamadas paralelas
-      const [norteResult, surResult, esteResult, truckStatsResult, delayedResult, enTransitoResult, recentResult] = await Promise.all([
-        supabase.rpc('get_region_bultos_stats', { region_name: 'Norte' }),
-        supabase.rpc('get_region_bultos_stats', { region_name: 'Sur' }),
-        supabase.rpc('get_region_bultos_stats', { region_name: 'Este' }),
-        supabase
-          .from('conduces')
-          .select('encomendado, cantidad_bultos')
-          .eq('estado', 'En tránsito')
-          .not('encomendado', 'is', null),
-        supabase
-          .from('conduces')
-          .select('numero_conduce, razon_social, cantidad_bultos, fecha_carga, encomendado, tiempo_entrega, numero_cliente, estado')
-          .eq('estado', 'Entregado')
-          .like('fecha_carga', monthPattern)
-          .not('tiempo_entrega', 'is', null)
-          .or('excepcion.is.null,excepcion.eq.false'),
-        supabase
-          .from('conduces')
-          .select('numero_conduce, razon_social, cantidad_bultos, fecha_carga, fecha_entrega, encomendado, numero_cliente, estado')
-          .eq('estado', 'En tránsito'),
-        // Fetch last 4 recent deliveries
-        supabase
-          .from('conduces')
-          .select('id, numero_conduce, razon_social, cantidad_bultos, hora_entrega_exacta, fecha_entrega')
-          .eq('estado', 'Entregado')
-          .order('updated_at', { ascending: false })
-          .limit(4)
-      ]);
+      // Preparar consultas base
+      let truckStatsQuery = supabase
+        .from('conduces')
+        .select('encomendado, cantidad_bultos')
+        .eq('estado', 'En tránsito')
+        .not('encomendado', 'is', null);
 
-      // Procesar resultados
-      const norteStats = (norteResult.data?.[0] || {}) as RegionStats;
-      const surStats = (surResult.data?.[0] || {}) as RegionStats;
-      const esteStats = (esteResult.data?.[0] || {}) as RegionStats;
+      let delayedQuery = supabase
+        .from('conduces')
+        .select('numero_conduce, razon_social, cantidad_bultos, fecha_carga, encomendado, tiempo_entrega, numero_cliente, estado')
+        .eq('estado', 'Entregado')
+        .like('fecha_carga', monthPattern)
+        .not('tiempo_entrega', 'is', null)
+        .or('excepcion.is.null,excepcion.eq.false');
+
+      let enTransitoQuery = supabase
+        .from('conduces')
+        .select('numero_conduce, razon_social, cantidad_bultos, fecha_carga, fecha_entrega, encomendado, numero_cliente, estado, region, laboratorio')
+        .eq('estado', 'En tránsito');
+
+      let recentQuery = supabase
+        .from('conduces')
+        .select('id, numero_conduce, razon_social, cantidad_bultos, hora_entrega_exacta, fecha_entrega')
+        .eq('estado', 'Entregado')
+        .order('updated_at', { ascending: false })
+        .limit(4);
+
+      // Aplicar filtro de laboratorio si el usuario pertenece a uno
+      if (userLab) {
+        truckStatsQuery = truckStatsQuery.eq('laboratorio', userLab);
+        delayedQuery = delayedQuery.eq('laboratorio', userLab);
+        enTransitoQuery = enTransitoQuery.eq('laboratorio', userLab);
+        recentQuery = recentQuery.eq('laboratorio', userLab);
+      }
+
+      // Hacer llamadas paralelas
+      const promises = [
+        userLab ? Promise.resolve(null) : supabase.rpc('get_region_bultos_stats', { region_name: 'Norte' }),
+        userLab ? Promise.resolve(null) : supabase.rpc('get_region_bultos_stats', { region_name: 'Sur' }),
+        userLab ? Promise.resolve(null) : supabase.rpc('get_region_bultos_stats', { region_name: 'Este' }),
+        truckStatsQuery,
+        delayedQuery,
+        enTransitoQuery,
+        recentQuery
+      ];
+
+      const [norteResult, surResult, esteResult, truckStatsResult, delayedResult, enTransitoResult, recentResult] = await Promise.all(promises);
+
+      // Procesar resultados de regiones
+      let norteBultos = 0;
+      let surBultos = 0;
+      let esteBultos = 0;
+
+      if (userLab) {
+        // Calcular en base a la data de tránsito ya filtrada
+        if (enTransitoResult && enTransitoResult.data) {
+          for (const c of enTransitoResult.data) {
+            const reg = c.region;
+            const bultos = c.cantidad_bultos || 0;
+            if (reg === 'Norte') norteBultos += bultos;
+            else if (reg === 'Sur') surBultos += bultos;
+            else if (reg === 'Este') esteBultos += bultos;
+          }
+        }
+      } else {
+        // Usar los RPC para globales
+        const norteStats = (norteResult?.data?.[0] || {}) as RegionStats;
+        const surStats = (surResult?.data?.[0] || {}) as RegionStats;
+        const esteStats = (esteResult?.data?.[0] || {}) as RegionStats;
+        norteBultos = norteStats.region_bultos_en_transito || 0;
+        surBultos = surStats.region_bultos_en_transito || 0;
+        esteBultos = esteStats.region_bultos_en_transito || 0;
+      }
       
       // Calcular estadísticas de camiones
       const truckMap = new Map<string, { clientCount: number; bultos: number }>();
@@ -228,9 +267,9 @@ export function useFastDashboardData() {
       }));
 
       const newStats: DashboardStats = {
-        norteBultos: norteStats.region_bultos_en_transito || 0,
-        surBultos: surStats.region_bultos_en_transito || 0,
-        esteBultos: esteStats.region_bultos_en_transito || 0,
+        norteBultos,
+        surBultos,
+        esteBultos,
         delayedCount: delayedConduces.length,
         delayedConduces,
         recentDeliveries,

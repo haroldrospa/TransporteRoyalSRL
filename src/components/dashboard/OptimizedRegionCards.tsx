@@ -1,9 +1,10 @@
 import React, { memo } from 'react';
 import { Button } from '@/components/ui/button';
-import { MapPin, ArrowRight, TrendingUp } from 'lucide-react';
+import { MapPin, ArrowRight, TrendingUp, PackageX } from 'lucide-react';
 import { Region } from '@/types/conduces';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface OptimizedRegionCardsProps {
   norteBultos: number;
@@ -19,15 +20,52 @@ export const OptimizedRegionCards = memo(({
   setRegionActual 
 }: OptimizedRegionCardsProps) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const userLab = user?.laboratorio || (user?.puesto === 'LAM' ? 'LAM' : null);
 
   const selectRegion = (region: Region) => {
     setRegionActual(region);
     navigate('/lam');
   };
 
+  const showNorte = !userLab || norteBultos > 0;
+  const showSur = !userLab || surBultos > 0;
+  const showEste = !userLab || esteBultos > 0;
+  
+  const visibleCardsCount = [showNorte, showSur, showEste].filter(Boolean).length;
+
+  if (visibleCardsCount === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full rounded-2xl bg-gradient-to-br from-muted/50 to-muted/20 border border-border/50 p-8 flex flex-col items-center justify-center text-center gap-3"
+      >
+        <div className="p-3 rounded-full bg-muted">
+          <PackageX className="h-8 w-8 text-muted-foreground/60" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-foreground">Sin bultos en tránsito</h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+            Actualmente no hay bultos en tránsito registrados para tu laboratorio en ninguna de las regiones.
+          </p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  const gridClass = visibleCardsCount === 1 
+    ? "grid gap-4 grid-cols-1 md:grid-cols-1 max-w-md mx-auto" 
+    : visibleCardsCount === 2 
+      ? "grid gap-4 grid-cols-1 md:grid-cols-2 max-w-3xl mx-auto" 
+      : "grid gap-4 grid-cols-1 md:grid-cols-3";
+
   return (
-    <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-      {/* Norte Card */}
+    <div className={gridClass}>
+      <AnimatePresence mode="popLayout">
+        {/* Norte Card */}
+        {showNorte && (
       <motion.div
         whileHover={{ y: -4, boxShadow: '0 20px 40px -12px hsl(var(--primary) / 0.15)' }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
@@ -65,8 +103,10 @@ export const OptimizedRegionCards = memo(({
           </motion.div>
         </div>
       </motion.div>
+        )}
 
       {/* Sur Card */}
+      {showSur && (
       <motion.div
         whileHover={{ y: -4, boxShadow: '0 20px 40px -12px hsl(var(--secondary) / 0.2)' }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
@@ -104,8 +144,10 @@ export const OptimizedRegionCards = memo(({
           </motion.div>
         </div>
       </motion.div>
+        )}
 
       {/* Este Card */}
+      {showEste && (
       <motion.div
         whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(168, 85, 247, 0.15)' }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
@@ -143,6 +185,8 @@ export const OptimizedRegionCards = memo(({
           </motion.div>
         </div>
       </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 });
