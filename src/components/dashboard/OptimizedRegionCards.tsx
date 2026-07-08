@@ -8,23 +8,25 @@ import { motion } from 'framer-motion';
 interface OptimizedRegionCardsProps {
   norteBultos: number;
   surBultos: number;
+  esteBultos: number;
   setRegionActual: (region: Region) => void;
 }
 
 export const OptimizedRegionCards = memo(({ 
   norteBultos, 
   surBultos, 
+  esteBultos,
   setRegionActual 
 }: OptimizedRegionCardsProps) => {
   const navigate = useNavigate();
 
-  const selectRegion = (region: 'Norte' | 'Sur') => {
+  const selectRegion = (region: Region) => {
     setRegionActual(region);
     navigate('/lam');
   };
 
   return (
-    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+    <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
       {/* Norte Card */}
       <motion.div
         whileHover={{ y: -4, boxShadow: '0 20px 40px -12px hsl(var(--primary) / 0.15)' }}
@@ -95,6 +97,45 @@ export const OptimizedRegionCards = memo(({
               className="rounded-xl bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-lg shadow-secondary/20 gap-2"
               size="sm"
               onClick={(e) => { e.stopPropagation(); selectRegion('Sur'); }}
+            >
+              Ver detalles
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Este Card */}
+      <motion.div
+        whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(168, 85, 247, 0.15)' }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/5 via-card to-card border border-border/50 p-5 sm:p-6 cursor-pointer group"
+        onClick={() => selectRegion('Este')}
+      >
+        <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-purple-500 to-purple-500/60 rounded-l-2xl" />
+        <div className="absolute -right-8 -top-8 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors duration-500" />
+        
+        <div className="relative flex items-start justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-purple-500/10">
+                <MapPin className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              </div>
+              <span className="text-sm font-semibold text-foreground/80">Región Este</span>
+            </div>
+            <div>
+              <p className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight">{esteBultos}</p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <TrendingUp className="h-3.5 w-3.5 text-purple-500/60" />
+                <p className="text-sm text-muted-foreground">Bultos en tránsito</p>
+              </div>
+            </div>
+          </div>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button 
+              className="rounded-xl bg-purple-600 hover:bg-purple-600/90 text-white shadow-lg shadow-purple-500/20 gap-2"
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); selectRegion('Este'); }}
             >
               Ver detalles
               <ArrowRight className="h-3.5 w-3.5" />

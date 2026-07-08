@@ -2,7 +2,7 @@
 // Main conduceService file that re-exports all functionality
 import { fetchConduces } from './conduces/fetchConduces';
 import { addConduce, updateConduce, deleteConduce } from './conduces/crudOperations';
-import { asignarEncomendado, entregarConduce, devolverConduce } from './conduces/stateOperations';
+import { asignarEncomendado, entregarConduce, devolverConduce, cambiarRegionConduces } from './conduces/stateOperations';
 
 export {
   fetchConduces,
@@ -11,5 +11,6 @@ export {
   deleteConduce,
   asignarEncomendado,
   entregarConduce,
-  devolverConduce
+  devolverConduce,
+  cambiarRegionConduces
 };

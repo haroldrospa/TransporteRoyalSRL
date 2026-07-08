@@ -14,6 +14,7 @@ export function useDashboardDataOptimized() {
     conduces: [] as Conduce[],
     norteBultos: 0,
     surBultos: 0,
+    esteBultos: 0,
     delayedCount: 0,
     camionesStats: [] as any[]
   });
@@ -53,6 +54,8 @@ export function useDashboardDataOptimized() {
             acc.norteBultos += conduce.cantidadBultos;
           } else if (conduce.region === 'Sur') {
             acc.surBultos += conduce.cantidadBultos;
+          } else if (conduce.region === 'Este') {
+            acc.esteBultos += conduce.cantidadBultos;
           }
         }
 
@@ -75,6 +78,7 @@ export function useDashboardDataOptimized() {
       }, {
         norteBultos: 0,
         surBultos: 0,
+        esteBultos: 0,
         delayedCount: 0,
         truckStats: {} as Record<string, { clientCount: number; bultos: number }>
       });
@@ -82,7 +86,8 @@ export function useDashboardDataOptimized() {
       console.log('Dashboard: Final metrics:', {
         norteBultos: metrics.norteBultos,
         surBultos: metrics.surBultos,
-        totalBultosEnTransito: metrics.norteBultos + metrics.surBultos,
+        esteBultos: metrics.esteBultos,
+        totalBultosEnTransito: metrics.norteBultos + metrics.surBultos + metrics.esteBultos,
         delayedCount: metrics.delayedCount
       });
 
@@ -98,6 +103,7 @@ export function useDashboardDataOptimized() {
         conduces,
         norteBultos: metrics.norteBultos,
         surBultos: metrics.surBultos,
+        esteBultos: metrics.esteBultos,
         delayedCount: metrics.delayedCount,
         camionesStats
       };
@@ -140,6 +146,7 @@ export function useDashboardDataOptimized() {
     conduces: filteredConduces,
     norteBultos: dashboardData.norteBultos,
     surBultos: dashboardData.surBultos,
+    esteBultos: dashboardData.esteBultos,
     delayedCount: dashboardData.delayedCount,
     camionesStats: dashboardData.camionesStats,
     regionActual,

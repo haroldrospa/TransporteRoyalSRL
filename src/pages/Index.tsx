@@ -26,6 +26,7 @@ const Index = () => {
   const { 
     norteBultos,
     surBultos,
+    esteBultos,
     delayedCount,
     delayedConduces,
     recentDeliveries,
@@ -93,6 +94,7 @@ const Index = () => {
             <OptimizedRegionCards 
               norteBultos={norteBultos}
               surBultos={surBultos}
+              esteBultos={esteBultos}
               setRegionActual={setRegionActual}
             />
           </motion.div>

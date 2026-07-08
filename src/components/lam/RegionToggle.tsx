@@ -22,6 +22,12 @@ const RegionToggle = ({ regionActual, onRegionChange }: RegionToggleProps) => {
       >
         Zona Sur
       </Button>
+      <Button 
+        variant={regionActual === 'Este' ? "default" : "outline"}
+        onClick={() => onRegionChange('Este')}
+      >
+        Zona Este
+      </Button>
     </div>
   );
 };

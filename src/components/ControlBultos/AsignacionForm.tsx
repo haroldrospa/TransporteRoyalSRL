@@ -5,7 +5,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Loader2, Save } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { Conduce } from '@/types/conduces';
+import { Conduce, Region } from '@/types/conduces';
+import { cambiarRegionConduces } from '@/services/conduceService';
 
 interface AsignacionFormProps {
   encomendadosList: string[];
@@ -23,6 +24,7 @@ const AsignacionForm = ({
   onAssignComplete
 }: AsignacionFormProps) => {
   const [currentEncomendado, setCurrentEncomendado] = useState('');
+  const [newRegion, setNewRegion] = useState<Region | ''>('');
   const [isPriority, setIsPriority] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -115,6 +117,50 @@ const AsignacionForm = ({
     }
   };
 
+  // Change region/zone of selected conduces
+  const handleUpdateRegion = async () => {
+    if (!newRegion) {
+      toast({
+        title: "Error",
+        description: "Debe seleccionar una zona/región",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (selectedConduces.length === 0) {
+      toast({
+        title: "Error",
+        description: "Debe seleccionar al menos un conduce",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await cambiarRegionConduces(selectedConduces, newRegion);
+      
+      toast({
+        title: "Operación exitosa",
+        description: `Región cambiada a ${newRegion} para ${selectedConduces.length} conduces`,
+        variant: "default"
+      });
+      
+      setNewRegion('');
+      onAssignComplete();
+    } catch (error) {
+      console.error('Error changing region:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo cambiar la región de los conduces",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <Card className="col-span-1">
       <CardHeader className="pb-2">
@@ -172,6 +218,31 @@ const AsignacionForm = ({
             disabled={selectedConduces.length === 0 || isSubmitting}
           >
             Eliminar Asignación
+          </Button>
+        </div>
+
+        <div className="space-y-2 pt-4 border-t">
+          <label className="text-sm font-medium">Cambiar Región / Zona</label>
+          <select 
+            className="w-full p-2 border rounded-md text-sm"
+            value={newRegion}
+            onChange={(e) => setNewRegion(e.target.value as Region)}
+          >
+            <option value="">Seleccionar zona/región</option>
+            <option value="Norte">Zona Norte</option>
+            <option value="Sur">Zona Sur</option>
+            <option value="Este">Zona Este</option>
+          </select>
+          
+          <Button 
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold" 
+            onClick={handleUpdateRegion}
+            disabled={selectedConduces.length === 0 || !newRegion || isSubmitting}
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : null}
+            Cambiar Zona de Conduces
           </Button>
         </div>
       </CardContent>

@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { Region } from '@/types/conduces';
 
 export async function asignarEncomendado(conduceIds: string[], encomendado: string, prioridad: boolean = false): Promise<void> {
   try {
@@ -84,6 +84,27 @@ export async function devolverConduce(id: string, nota: string): Promise<void> {
     toast({
       title: "Error",
       description: "No se pudo devolver el conduce",
+      variant: "destructive"
+    });
+    throw error;
+  }
+}
+
+export async function cambiarRegionConduces(conduceIds: string[], region: Region): Promise<void> {
+  try {
+    for (const id of conduceIds) {
+      const { error } = await supabase
+        .from('conduces')
+        .update({ region })
+        .eq('id', id);
+      
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error('Error cambiando region de conduces:', error);
+    toast({
+      title: "Error",
+      description: "No se pudo cambiar la región de los conduces",
       variant: "destructive"
     });
     throw error;

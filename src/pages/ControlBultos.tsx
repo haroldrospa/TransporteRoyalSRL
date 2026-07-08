@@ -208,6 +208,7 @@ const ControlBultos = () => {
   // Reset selections after assignment completes
   const handleAssignComplete = () => {
     setSelectedConduces([]);
+    refreshData(false); // Silently refresh data to reflect changes
   };
   
   // Enrich conduces with route information from clientes

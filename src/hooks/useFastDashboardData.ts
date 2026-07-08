@@ -27,6 +27,7 @@ interface RecentDelivery {
 interface DashboardStats {
   norteBultos: number;
   surBultos: number;
+  esteBultos: number;
   delayedCount: number;
   delayedConduces: DelayedConduce[];
   recentDeliveries: RecentDelivery[];
@@ -58,6 +59,7 @@ export function useFastDashboardData() {
   const [stats, setStats] = useState<DashboardStats>({
     norteBultos: 0,
     surBultos: 0,
+    esteBultos: 0,
     delayedCount: 0,
     delayedConduces: [],
     recentDeliveries: [],
@@ -102,9 +104,10 @@ export function useFastDashboardData() {
       const monthPattern = `%/${monthStr}/${yearStr}%`;
 
       // Hacer llamadas paralelas
-      const [norteResult, surResult, truckStatsResult, delayedResult, enTransitoResult, recentResult] = await Promise.all([
+      const [norteResult, surResult, esteResult, truckStatsResult, delayedResult, enTransitoResult, recentResult] = await Promise.all([
         supabase.rpc('get_region_bultos_stats', { region_name: 'Norte' }),
         supabase.rpc('get_region_bultos_stats', { region_name: 'Sur' }),
+        supabase.rpc('get_region_bultos_stats', { region_name: 'Este' }),
         supabase
           .from('conduces')
           .select('encomendado, cantidad_bultos')
@@ -133,6 +136,7 @@ export function useFastDashboardData() {
       // Procesar resultados
       const norteStats = (norteResult.data?.[0] || {}) as RegionStats;
       const surStats = (surResult.data?.[0] || {}) as RegionStats;
+      const esteStats = (esteResult.data?.[0] || {}) as RegionStats;
       
       // Calcular estadísticas de camiones
       const truckMap = new Map<string, { clientCount: number; bultos: number }>();
@@ -226,6 +230,7 @@ export function useFastDashboardData() {
       const newStats: DashboardStats = {
         norteBultos: norteStats.region_bultos_en_transito || 0,
         surBultos: surStats.region_bultos_en_transito || 0,
+        esteBultos: esteStats.region_bultos_en_transito || 0,
         delayedCount: delayedConduces.length,
         delayedConduces,
         recentDeliveries,
