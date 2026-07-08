@@ -18,7 +18,7 @@ import { printConducesA4, printConduceLabels } from '@/utils/printConducesTempla
 import { supabase } from '@/integrations/supabase/client';
 import { mapConduceToDbConduce } from '@/utils/mappers/conduceMappers';
 import { toast } from '@/hooks/use-toast';
-import { FileText, Printer, Plus, Trash2, CheckCircle2, ShieldAlert, ArrowLeft, Loader2 } from 'lucide-react';
+import { FileText, Printer, Plus, Trash2, CheckCircle2, ShieldAlert, ArrowLeft, Loader2, Pencil } from 'lucide-react';
 
 const LABORATORIOS = ['Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'LAM'];
 
@@ -51,6 +51,18 @@ export const CrearConduces: React.FC = () => {
   
   const [direccionEscrita, setDireccionEscrita] = useState('');
   const [isSavingAddress, setIsSavingAddress] = useState(false);
+
+  // Edit Conduce Dialog States
+  const [editingConduce, setEditingConduce] = useState<Conduce | null>(null);
+  const [isEditConduceOpen, setIsEditConduceOpen] = useState(false);
+  const [editNumeroConduce, setEditNumeroConduce] = useState('');
+  const [editNumeroFactura, setEditNumeroFactura] = useState('');
+  const [editCantidadBultos, setEditCantidadBultos] = useState('');
+  const [editSelectedClient, setEditSelectedClient] = useState<Cliente | null>(null);
+  const [editSearchQuery, setEditSearchQuery] = useState('');
+  const [editShowDropdown, setEditShowDropdown] = useState(false);
+  const [editDireccionEscrita, setEditDireccionEscrita] = useState('');
+  const [isSavingEditAddress, setIsSavingEditAddress] = useState(false);
   
   // Create Client Dialog States
   const [isCreateClientOpen, setIsCreateClientOpen] = useState(false);
@@ -284,6 +296,18 @@ export const CrearConduces: React.FC = () => {
     ).slice(0, 10); // Limit to top 10 results for performance
   }, [clientes, searchQuery]);
 
+  // Filter clients for edit modal based on editSearchQuery
+  const filteredEditClientes = useMemo(() => {
+    if (!editSearchQuery.trim()) return [];
+    
+    const query = editSearchQuery.toLowerCase().trim();
+    return clientes.filter(c => 
+      c.razonSocial.toLowerCase().includes(query) || 
+      c.numeroCliente.toLowerCase().includes(query) ||
+      (c.rnc && c.rnc.toLowerCase().includes(query))
+    ).slice(0, 10);
+  }, [clientes, editSearchQuery]);
+
   // Totals calculations
   const totalBultosCount = useMemo(() => {
     return conducesCreados.reduce((sum, item) => sum + item.cantidadBultos, 0);
@@ -395,6 +419,171 @@ export const CrearConduces: React.FC = () => {
   // Handle removing a conduce from the list
   const handleRemoveConduce = (id: string) => {
     setConducesCreados(prev => prev.filter(c => c.id !== id));
+  };
+
+  // Handle saving the written address to the database during edit
+  const handleSaveEditAddress = async () => {
+    if (!editSelectedClient) return;
+    
+    setIsSavingEditAddress(true);
+    try {
+      console.log(`Saving address for client ${editSelectedClient.numeroCliente}:`, editDireccionEscrita);
+      const newAddress = editDireccionEscrita.trim();
+      
+      const { error } = await supabase
+        .from('clientes')
+        .update({ 
+          ubicacion: newAddress,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', editSelectedClient.id);
+        
+      if (error) throw error;
+      
+      // Update local client states
+      setEditSelectedClient(prev => prev ? { ...prev, ubicacion: newAddress } : null);
+      setClientes(prev => prev.map(c => c.id === editSelectedClient.id ? { ...c, ubicacion: newAddress } : c));
+      
+      toast({
+        title: "Dirección guardada",
+        description: "La dirección del cliente ha sido actualizada en la base de datos.",
+      });
+    } catch (e) {
+      console.error('Error updating client address:', e);
+      toast({
+        title: "Error al guardar dirección",
+        description: (e as Error).message || "No se pudo actualizar la dirección.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingEditAddress(false);
+    }
+  };
+
+  // Handle start editing a staged conduce
+  const handleEditClick = (conduce: Conduce) => {
+    setEditingConduce(conduce);
+    setEditNumeroConduce(conduce.numeroConduce);
+    setEditNumeroFactura(conduce.numeroFactura);
+    setEditCantidadBultos(String(conduce.cantidadBultos));
+    
+    // Find the client object from the database list of clients
+    const client = clientes.find(c => c.numeroCliente === conduce.numeroCliente);
+    if (client) {
+      setEditSelectedClient(client);
+      setEditSearchQuery(client.razonSocial);
+      setEditDireccionEscrita(conduce.ubicacion || client.ubicacion || '');
+    } else {
+      // Fallback
+      const tempClient: Cliente = {
+        id: '',
+        numeroCliente: conduce.numeroCliente,
+        razonSocial: conduce.razonSocial || '',
+        ciudad: conduce.ciudad || '',
+        ubicacion: conduce.ubicacion || '',
+        zona: conduce.region === 'Sur' ? 'Sur' : 'Norte'
+      };
+      setEditSelectedClient(tempClient);
+      setEditSearchQuery(conduce.razonSocial || '');
+      setEditDireccionEscrita(conduce.ubicacion || '');
+    }
+    
+    setIsEditConduceOpen(true);
+  };
+
+  // Handle saving the edits made to a conduce
+  const handleSaveEdits = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingConduce) return;
+
+    if (!editSelectedClient) {
+      toast({
+        title: "Cliente no seleccionado",
+        description: "Debe buscar y seleccionar un cliente.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const cleanedAddress = editDireccionEscrita.trim();
+    if (!cleanedAddress) {
+      toast({
+        title: "Dirección requerida",
+        description: "Por favor escriba la dirección física del cliente.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!editNumeroConduce.trim()) {
+      toast({
+        title: "Número de Conduce vacío",
+        description: "El número de conduce es requerido.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const bultosNum = Number(editCantidadBultos);
+    if (isNaN(bultosNum) || bultosNum < 1) {
+      toast({
+        title: "Cantidad de bultos inválida",
+        description: "La cantidad debe ser mayor o igual a 1.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check duplicate Conduce Numbers in current session (excluding the current one)
+    if (conducesCreados.some(c => c.id !== editingConduce.id && c.numeroConduce === editNumeroConduce.trim())) {
+      toast({
+        title: "Conduce duplicado",
+        description: "Ya existe otro conduce con este número en el lote actual.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Auto-save the written address to the database if it changed
+    const currentAddress = editSelectedClient.ubicacion || '';
+    if (cleanedAddress !== currentAddress && editSelectedClient.id) {
+      const clientId = editSelectedClient.id;
+      supabase
+        .from('clientes')
+        .update({ 
+          ubicacion: cleanedAddress,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', clientId)
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error auto-updating client address during edit:', error);
+          } else {
+            setClientes(prev => prev.map(c => c.id === clientId ? { ...c, ubicacion: cleanedAddress } : c));
+          }
+        });
+    }
+
+    // Update the conduce in the list
+    setConducesCreados(prev => prev.map(c => c.id === editingConduce.id ? {
+      ...c,
+      numeroConduce: editNumeroConduce.trim(),
+      numeroFactura: (editNumeroFactura.trim() || editNumeroConduce.trim()),
+      numeroCliente: editSelectedClient.numeroCliente,
+      razonSocial: editSelectedClient.razonSocial,
+      ciudad: editSelectedClient.ciudad,
+      ubicacion: cleanedAddress,
+      cantidadBultos: bultosNum,
+      region: editSelectedClient.zona === 'Sur' ? 'Sur' : 'Norte',
+    } : c));
+
+    setIsEditConduceOpen(false);
+    setEditingConduce(null);
+
+    toast({
+      title: "Conduce actualizado",
+      description: "El conduce ha sido actualizado con éxito.",
+    });
   };
 
   // Action: Close Load batch and upload to Database as 'Pendiente'
@@ -816,6 +1005,15 @@ export const CrearConduces: React.FC = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  onClick={() => handleEditClick(item)}
+                                  className="text-slate-600 hover:text-royal-blue hover:bg-royal-blue/10 h-8 w-8"
+                                  title="Editar conduce"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   onClick={() => handleRemoveConduce(item.id)}
                                   className="text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 h-8 w-8"
                                   title="Eliminar conduce"
@@ -925,6 +1123,154 @@ export const CrearConduces: React.FC = () => {
                   disabled={isCreatingClient}
                 >
                   {isCreatingClient ? 'Guardando...' : 'Guardar Cliente'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Conduce Dialog */}
+        <Dialog open={isEditConduceOpen} onOpenChange={setIsEditConduceOpen}>
+          <DialogContent className="max-w-md rounded-xl p-5 border border-border/40 shadow-lg bg-card">
+            <DialogHeader className="pb-3 border-b">
+              <DialogTitle className="text-base font-bold text-royal-blue dark:text-white">
+                Editar Conduce
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Modifica los datos del conduce seleccionado.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSaveEdits} className="space-y-4 pt-4">
+              
+              {/* Client Search */}
+              <div className="space-y-1.5 relative">
+                <Label className="text-xs font-semibold">Buscar Cliente (Nombre o Código)</Label>
+                <Input 
+                  placeholder="Escriba nombre del cliente..."
+                  value={editSearchQuery}
+                  onChange={(e) => {
+                    setEditSearchQuery(e.target.value);
+                    setEditShowDropdown(true);
+                    if (editSelectedClient) {
+                      setEditSelectedClient(null);
+                    }
+                  }}
+                  autoComplete="off"
+                />
+                
+                {editShowDropdown && filteredEditClientes.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-lg max-h-[180px] overflow-y-auto divide-y">
+                    {filteredEditClientes.map(client => (
+                      <div
+                        key={client.id}
+                        className="p-2.5 text-xs hover:bg-muted cursor-pointer transition-colors"
+                        onClick={() => {
+                          setEditSelectedClient(client);
+                          setEditSearchQuery(client.razonSocial);
+                          setEditShowDropdown(false);
+                          setEditDireccionEscrita(client.ubicacion || '');
+                        }}
+                      >
+                        <p className="font-bold">{client.razonSocial}</p>
+                        <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                          <span>RNC: {client.rnc || client.numeroCliente || 'No registrado'}</span>
+                          <span>Ciudad: {client.ciudad}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Client Metadata Displays */}
+              {editSelectedClient && (
+                <div className="p-3 bg-muted/50 rounded-lg border border-border/80 text-xs space-y-1.5 animate-scale-in">
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-muted-foreground">RNC/Código:</span>
+                    <span className="font-bold">{editSelectedClient.rnc || editSelectedClient.numeroCliente || 'No registrado'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-muted-foreground">Ciudad:</span>
+                    <span className="font-bold text-royal-blue dark:text-royal-yellow">{editSelectedClient.ciudad}</span>
+                  </div>
+                  <div className="flex flex-col pt-0.5">
+                    <span className="font-semibold text-muted-foreground mb-1">Dirección:</span>
+                    <div className="flex gap-1.5 items-center">
+                      <Input 
+                        className="text-xs h-8 bg-background border-border/80 grow"
+                        placeholder="Escriba la dirección escrita del cliente..."
+                        value={editDireccionEscrita}
+                        onChange={(e) => setEditDireccionEscrita(e.target.value)}
+                      />
+                      {editDireccionEscrita !== (editSelectedClient.ubicacion || '') && editSelectedClient.id && (
+                        <Button 
+                          type="button" 
+                          size="sm" 
+                          onClick={handleSaveEditAddress}
+                          disabled={isSavingEditAddress}
+                          className="h-8 text-[10px] px-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold transition-colors shrink-0"
+                        >
+                          {isSavingEditAddress ? '...' : 'Guardar'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Conduce Details */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-num-conduce" className="text-xs font-semibold">No. Conduce</Label>
+                  <Input 
+                    id="edit-num-conduce" 
+                    placeholder="Ej: 80894700" 
+                    value={editNumeroConduce}
+                    onChange={(e) => setEditNumeroConduce(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-num-factura" className="text-xs font-semibold">No. Factura</Label>
+                  <Input 
+                    id="edit-num-factura" 
+                    placeholder="Ej: 1002345" 
+                    value={editNumeroFactura}
+                    onChange={(e) => setEditNumeroFactura(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-cant-bultos" className="text-xs font-semibold">Cantidad de Bultos</Label>
+                <Input 
+                  id="edit-cant-bultos" 
+                  type="number" 
+                  min="1" 
+                  value={editCantidadBultos}
+                  onChange={(e) => setEditCantidadBultos(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-3 border-t">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setIsEditConduceOpen(false);
+                    setEditingConduce(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  type="submit" 
+                  size="sm"
+                  className="bg-royal-blue hover:bg-royal-blue/90 font-bold"
+                >
+                  Guardar Cambios
                 </Button>
               </div>
             </form>
