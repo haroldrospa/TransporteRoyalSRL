@@ -116,23 +116,23 @@ export const EntregasHeader = ({
         </div>
       </div>
 
-      {/* Action Buttons (Desktop Only) */}
+      {/* Action Buttons */}
       {!isCollapsed && (
-        <div className="hidden md:flex flex-wrap items-center gap-3 pt-2 border-t border-border/50">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3 pt-2 border-t border-border/50">
           <Button
             onClick={onAutoDelivery}
-            className="bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-5 rounded-xl"
+            className="bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-9 md:h-10 px-3 md:px-5 rounded-xl text-xs md:text-sm flex-1 md:flex-none"
           >
-            <Camera className="h-4 w-4 mr-2" />
+            <Camera className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2" />
             Por Imagen
           </Button>
 
           <Button
             onClick={onEntregaLAM}
             variant="secondary"
-            className="shadow-sm h-10 px-5 rounded-xl bg-secondary/60 hover:bg-secondary/80"
+            className="shadow-sm h-9 md:h-10 px-3 md:px-5 rounded-xl bg-secondary/60 hover:bg-secondary/80 text-xs md:text-sm flex-1 md:flex-none"
           >
-            <Package className="h-4 w-4 mr-2" />
+            <Package className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2" />
             Entrega LAM
           </Button>
           
@@ -140,10 +140,10 @@ export const EntregasHeader = ({
             onClick={onRefresh}
             disabled={loading}
             variant="outline"
-            className="shadow-sm h-10 px-5 rounded-xl bg-background"
+            className="shadow-sm h-9 md:h-10 px-3 md:px-5 rounded-xl bg-background text-xs md:text-sm flex-none"
           >
-            <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
+            <RefreshCcw className={`h-3.5 w-3.5 md:h-4 md:w-4 sm:mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Actualizar</span>
           </Button>
         </div>
       )}
