@@ -274,10 +274,15 @@ export async function fetchConducesByLab(
       let query = supabase
         .from('conduces')
         .select(CONDUCE_COLUMNS)
-        .eq('laboratorio', laboratorio)
         .neq('estado', 'Pendiente')
         .order('created_at', { ascending: false })
         .limit(options.limit);
+        
+      if (laboratorio === 'LAM') {
+        query = query.or('laboratorio.eq.LAM,laboratorio.is.null,laboratorio.eq.');
+      } else {
+        query = query.eq('laboratorio', laboratorio);
+      }
         
       const { data, error } = await query;
       if (error) {
@@ -287,11 +292,18 @@ export async function fetchConducesByLab(
       allData = data || [];
     } else {
       // Fetch all using parallel pagination to bypass the 1000 default limit
-      const { count: totalCount } = await supabase
+      let countQuery = supabase
         .from('conduces')
         .select('id', { count: 'exact', head: true })
-        .eq('laboratorio', laboratorio)
         .neq('estado', 'Pendiente');
+        
+      if (laboratorio === 'LAM') {
+        countQuery = countQuery.or('laboratorio.eq.LAM,laboratorio.is.null,laboratorio.eq.');
+      } else {
+        countQuery = countQuery.eq('laboratorio', laboratorio);
+      }
+      
+      const { count: totalCount } = await countQuery;
       
       const total = totalCount || 0;
       const pageSize = 1000;
@@ -307,14 +319,21 @@ export async function fetchConducesByLab(
           const from = page * pageSize;
           const to = from + pageSize - 1;
           
+          let batchQuery = supabase
+            .from('conduces')
+            .select(CONDUCE_COLUMNS)
+            .neq('estado', 'Pendiente')
+            .order('created_at', { ascending: false })
+            .range(from, to);
+            
+          if (laboratorio === 'LAM') {
+            batchQuery = batchQuery.or('laboratorio.eq.LAM,laboratorio.is.null,laboratorio.eq.');
+          } else {
+            batchQuery = batchQuery.eq('laboratorio', laboratorio);
+          }
+          
           promises.push(
-            supabase
-              .from('conduces')
-              .select(CONDUCE_COLUMNS)
-              .eq('laboratorio', laboratorio)
-              .neq('estado', 'Pendiente')
-              .order('created_at', { ascending: false })
-              .range(from, to)
+            batchQuery
               .then(({ data, error }) => {
                 if (error) {
                   console.error(`❌ Error fetching ${laboratorio} conduces page ${page}:`, error);
