@@ -1,13 +1,18 @@
 
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Conduce } from '@/types/conduces';
 import { isConduceDelayed } from '@/utils/time';
 import { formatDeliveryTime } from '@/utils/lamUtils';
-import { Package, Edit, Clock, FileText, User, Building2, MapPin, Truck, AlertTriangle, Star } from 'lucide-react';
+import { Package, Edit, Clock, FileText, User, Building2, MapPin, Truck, AlertTriangle, Star, FlaskConical } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import TransitTimeDisplay from '@/components/shared/TransitTimeDisplay';
 import { formatReadableDate } from '@/utils/dateFormatters';
+import { useAuth } from '@/contexts/AuthContext';
+import { isAdministrator } from '@/utils/userPermissions';
+import { useData } from '@/contexts/DataContext';
+import { toast } from '@/hooks/use-toast';
 
 interface ConducesTableRowProps {
   conduce: Conduce;
@@ -17,6 +22,10 @@ interface ConducesTableRowProps {
 }
 
 const ConducesTableRow = ({ conduce, index, isLamUser, onConduceClick }: ConducesTableRowProps) => {
+  const { user } = useAuth();
+  const isAdmin = isAdministrator(user);
+  const { updateConduce } = useData();
+
   const getRowClassName = (conduce: Conduce) => {
     const baseClasses = "group hover:shadow-lg transition-all duration-300 border-b border-gray-100";
     switch (conduce.estado) {
@@ -48,6 +57,45 @@ const ConducesTableRow = ({ conduce, index, isLamUser, onConduceClick }: Conduce
       </TableCell>
       <TableCell className="font-medium text-slate-700 py-2 px-2 border-r border-gray-100 text-xs">
         <span className="truncate">{conduce.numeroConduce}</span>
+      </TableCell>
+      <TableCell 
+        className="text-slate-700 py-2 px-2 border-r border-gray-100 text-xs"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {isAdmin ? (
+          <Select
+            value={conduce.laboratorio || 'LAM'}
+            onValueChange={async (newLab) => {
+              try {
+                await updateConduce(conduce.id, { laboratorio: newLab });
+                toast({
+                  title: 'Laboratorio actualizado',
+                  description: `Conduce ${conduce.numeroConduce} cambiado a ${newLab}`,
+                });
+              } catch (error) {
+                toast({
+                  title: 'Error',
+                  description: 'No se pudo actualizar el laboratorio',
+                  variant: 'destructive',
+                });
+              }
+            }}
+          >
+            <SelectTrigger className="h-7 text-[11px] font-semibold bg-white border-slate-200 shadow-none px-2 py-0">
+              <SelectValue placeholder="Laboratorio" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="LAM">LAM</SelectItem>
+              <SelectItem value="Fersuaz">Fersuaz</SelectItem>
+              <SelectItem value="Taapharmaceutica">Taapharmaceutica</SelectItem>
+              <SelectItem value="Innovacion Quimica">Innovacion Quimica</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <Badge variant="outline" className="text-[10px] font-semibold">
+            {conduce.laboratorio || '-'}
+          </Badge>
+        )}
       </TableCell>
       <TableCell className="text-slate-700 py-2 px-2 border-r border-gray-100 text-xs">
         <div className="flex items-center gap-1">

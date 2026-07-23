@@ -1,6 +1,6 @@
 
 import { TableHeader, TableRow, TableHead } from '@/components/ui/table';
-import { Package, FileText, User, Building2, MapPin, Calendar, Clock, AlertTriangle } from 'lucide-react';
+import { Package, FileText, User, Building2, MapPin, Calendar, Clock, AlertTriangle, FlaskConical } from 'lucide-react';
 
 interface ConducesTableHeaderProps {
   isLamUser: boolean;
@@ -20,6 +20,12 @@ const ConducesTableHeader = ({ isLamUser }: ConducesTableHeaderProps) => {
           <div className="flex items-center gap-1">
             <Package className="h-3 w-3" />
             No. bulto
+          </div>
+        </TableHead>
+        <TableHead className="text-white font-semibold text-xs py-3 px-2 border-r border-slate-700 bg-royal-blue w-28">
+          <div className="flex items-center gap-1">
+            <FlaskConical className="h-3 w-3" />
+            Laboratorio
           </div>
         </TableHead>
         <TableHead className="text-white font-semibold text-xs py-3 px-2 border-r border-slate-700 bg-royal-blue w-16">

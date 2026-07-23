@@ -3,12 +3,14 @@ import { Conduce } from '@/types/conduces';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, CheckCircle, AlertCircle, Clock, Package, Truck, FileText, FlaskConical } from 'lucide-react';
 import { LazyTransitTimeDisplay } from './LazyTransitTimeDisplay';
 import { calculateTransitTime } from '@/utils/time/transitTime';
 import { MobileConduceCard } from './MobileConduceCard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useData } from '@/contexts/DataContext';
+import { toast } from '@/hooks/use-toast';
 
 interface OptimizedConducesTableProps {
   conduces: Conduce[];
@@ -49,13 +51,13 @@ const ConduceRow = memo(({
   renderStatusBadge: (estado: string) => JSX.Element;
   getRowColorClass: (conduce: Conduce) => string;
 }) => {
-  const { getClienteByNumero } = useData();
+  const { getClienteByNumero, updateConduce } = useData();
   const clientCache = getClienteByNumero(conduce.numeroCliente);
   const resolvedUbicacion = clientCache?.ubicacion || conduce.ubicacion;
 
   const handleRowClick = useCallback((event: React.MouseEvent) => {
     const target = event.target as HTMLElement;
-    if (target.closest('button') || target.closest('[role="button"]')) {
+    if (target.closest('button') || target.closest('[role="button"]') || target.closest('[data-radix-popper-content-wrapper]')) {
       return;
     }
 
@@ -103,8 +105,37 @@ const ConduceRow = memo(({
         </div>
       </TableCell>
 
-      <TableCell className="py-2.5">
-        {conduce.laboratorio ? (
+      <TableCell className="py-2.5" onClick={(e) => e.stopPropagation()}>
+        {isAdmin ? (
+          <Select
+            value={conduce.laboratorio || 'LAM'}
+            onValueChange={async (newLab) => {
+              try {
+                await updateConduce(conduce.id, { laboratorio: newLab });
+                toast({
+                  title: 'Laboratorio actualizado',
+                  description: `Conduce ${conduce.numeroConduce} cambiado a ${newLab}`,
+                });
+              } catch (error) {
+                toast({
+                  title: 'Error',
+                  description: 'No se pudo actualizar el laboratorio',
+                  variant: 'destructive',
+                });
+              }
+            }}
+          >
+            <SelectTrigger className="h-7 text-xs font-bold bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm px-2 py-0 min-w-[110px]">
+              <SelectValue placeholder="Laboratorio" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="LAM">LAM</SelectItem>
+              <SelectItem value="Fersuaz">Fersuaz</SelectItem>
+              <SelectItem value="Taapharmaceutica">Taapharmaceutica</SelectItem>
+              <SelectItem value="Innovacion Quimica">Innovacion Quimica</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : conduce.laboratorio ? (
           <Badge
             className={`whitespace-nowrap font-bold text-xs shadow-sm ${
               conduce.laboratorio === 'LAM' 
