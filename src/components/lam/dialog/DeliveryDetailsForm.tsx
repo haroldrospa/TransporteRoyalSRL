@@ -13,6 +13,7 @@ export interface EditDataType {
   motivoExcepcion: string;
   cantidadEntregados?: number;
   bultoModificacionNota?: string;
+  laboratorio?: string;
 }
 
 interface DeliveryDetailsFormProps {

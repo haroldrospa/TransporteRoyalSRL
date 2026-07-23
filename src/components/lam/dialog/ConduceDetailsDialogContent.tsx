@@ -58,6 +58,8 @@ export const ConduceDetailsDialogContent = ({
         onBultosChange={onBultosChange}
         editTiempoEntrega={editData.tiempoEntrega}
         onTimeChange={(val) => onSetEditData({...editData, tiempoEntrega: val})}
+        editLaboratorio={editData.laboratorio}
+        onLaboratorioChange={(val) => onSetEditData({...editData, laboratorio: val})}
       />
 
       {conduce.estado === 'Devuelto' && (

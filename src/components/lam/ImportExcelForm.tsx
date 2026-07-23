@@ -1,4 +1,5 @@
 
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2 } from 'lucide-react';
 import { ImportFormValues } from '@/types/importTypes';
 import { format } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
+import { isAdministrator } from '@/utils/userPermissions';
 
 const importFormSchema = z.object({
   fechaSalida: z.string().min(1, 'Debe ingresar una fecha de salida'),
@@ -25,15 +28,28 @@ interface ImportExcelFormProps {
 }
 
 const ImportExcelForm = ({ isUploading, onFileUpload }: ImportExcelFormProps) => {
+  const { user } = useAuth();
+  const isAdmin = isAdministrator(user);
+
+  const defaultLab = (user?.laboratorio && ['LAM', 'Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica'].includes(user.laboratorio))
+    ? (user.laboratorio as any)
+    : undefined;
+
   const form = useForm<ImportFormValues>({
     resolver: zodResolver(importFormSchema),
     defaultValues: {
       fechaSalida: format(new Date(), 'dd/MM/yyyy'),
       region: 'Norte',
-      laboratorio: undefined,
+      laboratorio: defaultLab,
       formatType: 'asignados'
     },
   });
+
+  useEffect(() => {
+    if (defaultLab && !form.getValues('laboratorio')) {
+      form.setValue('laboratorio', defaultLab);
+    }
+  }, [defaultLab, form]);
 
   const onSubmit = (_values: ImportFormValues) => {
     document.getElementById('excelFileInput')?.click();
@@ -82,9 +98,9 @@ const ImportExcelForm = ({ isUploading, onFileUpload }: ImportExcelFormProps) =>
           render={({ field }) => (
             <FormItem>
               <FormLabel>Laboratorio *</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select onValueChange={field.onChange} value={field.value} disabled={!isAdmin}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className={!isAdmin ? "opacity-80 cursor-not-allowed bg-muted" : ""}>
                     <SelectValue placeholder="Seleccionar laboratorio" />
                   </SelectTrigger>
                 </FormControl>
@@ -96,6 +112,11 @@ const ImportExcelForm = ({ isUploading, onFileUpload }: ImportExcelFormProps) =>
                 </SelectContent>
               </Select>
               <FormMessage />
+              {!isAdmin && (
+                <p className="text-[10px] text-muted-foreground italic mt-1">
+                  * Solo el usuario administrador puede cambiar el laboratorio.
+                </p>
+              )}
             </FormItem>
           )}
         />

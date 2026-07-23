@@ -16,6 +16,7 @@ interface UseConduceDetailsDialogProps {
       cantidadEntregados?: number;
       bultoModificacionNota?: string;
       bultoModificado?: boolean;
+      laboratorio?: string;
     }
   ) => Promise<void>;
   loadConduceImage?: (conduceId: string) => Promise<string | null>;
@@ -35,6 +36,7 @@ export const useConduceDetailsDialog = ({
     motivoExcepcion: '',
     cantidadEntregados: 0,
     bultoModificacionNota: '',
+    laboratorio: '',
   });
   const [signatureData, setSignatureData] = useState<string>('');
   const [imageData, setImageData] = useState<string>('');
@@ -50,6 +52,7 @@ export const useConduceDetailsDialog = ({
           ? selectedConduce.cantidadEntregados 
           : selectedConduce.cantidadBultos,
         bultoModificacionNota: selectedConduce.bultoModificacionNota || '',
+        laboratorio: selectedConduce.laboratorio || '',
       });
       setSignatureData(selectedConduce.firma || '');
       
@@ -79,6 +82,7 @@ export const useConduceDetailsDialog = ({
         motivoExcepcion: '',
         cantidadEntregados: 0,
         bultoModificacionNota: '',
+        laboratorio: '',
       });
       setSignatureData('');
       setImageData('');
@@ -127,7 +131,7 @@ export const useConduceDetailsDialog = ({
     try {
       const bultoModificado = editData.cantidadEntregados !== selectedConduce.cantidadBultos;
       
-      const updates = {
+      const updates: any = {
         tiempoEntrega: editData.tiempoEntrega,
         nota: editData.nota,
         excepcion: editData.excepcion,
@@ -138,6 +142,10 @@ export const useConduceDetailsDialog = ({
         bultoModificacionNota: bultoModificado ? editData.bultoModificacionNota : undefined,
         bultoModificado
       };
+
+      if (editData.laboratorio) {
+        updates.laboratorio = editData.laboratorio;
+      }
       
       await onSaveChanges(updates);
       setEditMode(false);

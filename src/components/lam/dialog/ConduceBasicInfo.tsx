@@ -1,10 +1,15 @@
 import { Label } from '@/components/ui/label';
-import { MapPin, User, Calendar, Building, Hash, Package2, Clock } from 'lucide-react';
+import { MapPin, User, Calendar, Building, Hash, Package2, Clock, FlaskConical } from 'lucide-react';
 import { formatReadableDate } from '@/utils/dateFormatters';
 import { formatDeliveryTime } from '@/utils/lamUtils';
 import { motion } from 'framer-motion';
 import BultoModificationSection from './BultoModificationSection';
 import { DeliveryTimeField } from './form/DeliveryTimeField';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { isAdministrator } from '@/utils/userPermissions';
+
+const LABORATORIOS = ['Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'LAM'];
 
 interface ConduceBasicInfoProps {
   numeroFactura: string;
@@ -24,6 +29,8 @@ interface ConduceBasicInfoProps {
   onBultosChange?: (value: number, note: string) => void;
   editTiempoEntrega?: string;
   onTimeChange?: (val: string) => void;
+  editLaboratorio?: string;
+  onLaboratorioChange?: (val: string) => void;
 }
 
 export const ConduceBasicInfo = ({
@@ -43,8 +50,13 @@ export const ConduceBasicInfo = ({
   bultoModificacionNota,
   onBultosChange,
   editTiempoEntrega,
-  onTimeChange
+  onTimeChange,
+  editLaboratorio,
+  onLaboratorioChange
 }: ConduceBasicInfoProps) => {
+  const { user } = useAuth();
+  const isAdmin = isAdministrator(user);
+
   const fechaMostrar = estado === 'Entregado' && horaEntregaExacta 
     ? formatReadableDate(horaEntregaExacta.split(' ')[0])
     : formatReadableDate(fechaEntrega);
@@ -84,6 +96,52 @@ export const ConduceBasicInfo = ({
             </div>
           </motion.div>
         ))}
+
+        {!editMode ? (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 * infoItems.length, duration: 0.25, ease: 'easeOut' }}
+            className="group flex items-center gap-2.5 p-2.5 rounded-lg bg-royal-blue/[0.03] border border-royal-blue/10 hover:border-royal-blue/20 transition-all duration-200"
+          >
+            <div className="p-1.5 rounded-lg bg-royal-blue/10 border border-royal-blue/20">
+              <FlaskConical className="h-3.5 w-3.5 text-royal-blue" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Laboratorio</Label>
+              <div className="text-sm font-semibold text-foreground truncate">{laboratorio || '-'}</div>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.05 * infoItems.length, duration: 0.25, ease: 'easeOut' }}
+            className="group flex flex-col p-3 rounded-lg bg-royal-blue/[0.03] border border-royal-blue/10 hover:border-royal-blue/20 transition-all duration-200"
+          >
+             <div className="flex items-center gap-2 mb-2">
+               <div className="p-1.5 rounded-lg bg-royal-blue/10 border border-royal-blue/20">
+                 <FlaskConical className="h-3.5 w-3.5 text-royal-blue" />
+               </div>
+               <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Editar Laboratorio</Label>
+             </div>
+             <Select value={editLaboratorio || laboratorio} onValueChange={onLaboratorioChange} disabled={!isAdmin}>
+                <SelectTrigger className={`h-8 text-xs ${!isAdmin ? "opacity-80 cursor-not-allowed bg-muted" : ""}`}>
+                  <SelectValue placeholder="Seleccionar laboratorio" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LABORATORIOS.map(lab => (
+                    <SelectItem key={lab} value={lab}>{lab}</SelectItem>
+                  ))}
+                </SelectContent>
+             </Select>
+             {!isAdmin && (
+               <p className="text-[9px] text-muted-foreground italic mt-1">
+                 * Solo el administrador puede cambiar el laboratorio.
+               </p>
+             )}
+          </motion.div>
+        )}
 
         {!editMode ? (
           <motion.div

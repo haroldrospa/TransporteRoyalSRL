@@ -7,7 +7,7 @@ import { User } from '@/contexts/AuthContext';
  */
 export const isAdministrator = (user: User | null): boolean => {
   if (!user) return false;
-  return user.nivel === 5 && user.puesto === 'Administrador';
+  return user.puesto === 'Administrador' || user.nivel >= 5;
 };
 
 /**

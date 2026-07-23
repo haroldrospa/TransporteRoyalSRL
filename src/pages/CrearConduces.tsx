@@ -18,6 +18,7 @@ import { printConducesA4, printConduceLabels } from '@/utils/printConducesTempla
 import { supabase } from '@/integrations/supabase/client';
 import { mapConduceToDbConduce } from '@/utils/mappers/conduceMappers';
 import { toast } from '@/hooks/use-toast';
+import { isAdministrator } from '@/utils/userPermissions';
 import { FileText, Printer, Plus, Trash2, CheckCircle2, ShieldAlert, ArrowLeft, Loader2, Pencil } from 'lucide-react';
 
 const LABORATORIOS = ['Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'LAM'];
@@ -27,6 +28,7 @@ export const CrearConduces: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const labParam = searchParams.get('lab');
+  const isAdmin = useMemo(() => isAdministrator(user), [user]);
   
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loadingClientes, setLoadingClientes] = useState(true);
@@ -58,6 +60,7 @@ export const CrearConduces: React.FC = () => {
   const [editNumeroConduce, setEditNumeroConduce] = useState('');
   const [editNumeroFactura, setEditNumeroFactura] = useState('');
   const [editCantidadBultos, setEditCantidadBultos] = useState('');
+  const [editSelectedLab, setEditSelectedLab] = useState('');
   const [editSelectedClient, setEditSelectedClient] = useState<Cliente | null>(null);
   const [editSearchQuery, setEditSearchQuery] = useState('');
   const [editShowDropdown, setEditShowDropdown] = useState(false);
@@ -75,13 +78,17 @@ export const CrearConduces: React.FC = () => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Determine if laboratory is locked (either by user profile)
+  // Determine if laboratory is locked for non-admins
   const lockedLab = useMemo(() => {
+    if (isAdmin) return null; // Admins can change laboratory freely
     if (user?.laboratorio && LABORATORIOS.includes(user.laboratorio)) {
       return user.laboratorio;
     }
-    return null;
-  }, [user]);
+    if (labParam && LABORATORIOS.includes(labParam)) {
+      return labParam;
+    }
+    return 'Fersuaz';
+  }, [user, isAdmin, labParam]);
 
   // Set initial laboratory
   useEffect(() => {
@@ -89,7 +96,7 @@ export const CrearConduces: React.FC = () => {
       setSelectedLab(lockedLab);
     } else if (labParam && LABORATORIOS.includes(labParam)) {
       setSelectedLab(labParam);
-    } else {
+    } else if (!selectedLab) {
       setSelectedLab('Fersuaz');
     }
   }, [lockedLab, labParam]);
@@ -466,6 +473,7 @@ export const CrearConduces: React.FC = () => {
     setEditNumeroConduce(conduce.numeroConduce);
     setEditNumeroFactura(conduce.numeroFactura);
     setEditCantidadBultos(String(conduce.cantidadBultos));
+    setEditSelectedLab(conduce.laboratorio || selectedLab || 'Fersuaz');
     
     // Find the client object from the database list of clients
     const client = clientes.find(c => c.numeroCliente === conduce.numeroCliente);
@@ -574,6 +582,7 @@ export const CrearConduces: React.FC = () => {
       ciudad: editSelectedClient.ciudad,
       ubicacion: cleanedAddress,
       cantidadBultos: bultosNum,
+      laboratorio: editSelectedLab || c.laboratorio,
       region: editSelectedClient.zona === 'Sur' ? 'Sur' : 'Norte',
     } : c));
 
@@ -692,22 +701,25 @@ export const CrearConduces: React.FC = () => {
               <CardContent className="pt-5">
                 <form onSubmit={handleAddConduce} className="space-y-4">
                   
-                  {/* Lab Selector (visible only for admin/users without lab lock) */}
-                  {!lockedLab && (
-                    <div className="space-y-1.5">
-                      <Label htmlFor="lab-select" className="text-xs font-semibold">Laboratorio Destinatario</Label>
-                      <Select value={selectedLab} onValueChange={setSelectedLab}>
-                        <SelectTrigger id="lab-select">
-                          <SelectValue placeholder="Seleccione laboratorio" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LABORATORIOS.map(lab => (
-                            <SelectItem key={lab} value={lab}>{lab}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  {/* Lab Selector */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="lab-select" className="text-xs font-semibold">Laboratorio Destinatario</Label>
+                    <Select value={selectedLab} onValueChange={setSelectedLab} disabled={!isAdmin}>
+                      <SelectTrigger id="lab-select" className={!isAdmin ? "opacity-80 cursor-not-allowed bg-muted" : ""}>
+                        <SelectValue placeholder="Seleccione laboratorio" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LABORATORIOS.map(lab => (
+                          <SelectItem key={lab} value={lab}>{lab}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!isAdmin && (
+                      <p className="text-[10px] text-muted-foreground italic">
+                        * Solo el usuario administrador puede cambiar el laboratorio.
+                      </p>
+                    )}
+                  </div>
 
                   {/* Client Search */}
                   <div className="space-y-1.5 relative" ref={dropdownRef}>
@@ -1251,6 +1263,26 @@ export const CrearConduces: React.FC = () => {
                   onChange={(e) => setEditCantidadBultos(e.target.value)}
                   required
                 />
+              </div>
+
+              {/* Edit Laboratory */}
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-lab" className="text-xs font-semibold">Laboratorio Destinatario</Label>
+                <Select value={editSelectedLab} onValueChange={setEditSelectedLab} disabled={!isAdmin}>
+                  <SelectTrigger id="edit-lab" className={!isAdmin ? "opacity-80 cursor-not-allowed bg-muted" : ""}>
+                    <SelectValue placeholder="Seleccione laboratorio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LABORATORIOS.map(lab => (
+                      <SelectItem key={lab} value={lab}>{lab}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!isAdmin && (
+                  <p className="text-[10px] text-muted-foreground italic">
+                    * Solo el usuario administrador puede cambiar el laboratorio.
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-2 justify-end pt-3 border-t">
