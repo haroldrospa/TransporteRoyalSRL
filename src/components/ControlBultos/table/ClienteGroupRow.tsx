@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, Package, Clock } from 'lucide-react';
 import { calculateTransitTime, getTransitTimeClasses } from '@/utils/time/transitTime';
 import GroupCheckbox from './GroupCheckbox';
+import { useAuth } from '@/contexts/AuthContext';
+import { isAdministrator } from '@/utils/userPermissions';
 
 interface ClienteGroup {
   numeroCliente: string;
@@ -38,6 +40,8 @@ const ClienteGroupRow = ({
   onToggleGroupSelection,
   getGroupRowColorClass
 }: ClienteGroupRowProps) => {
+  const { user } = useAuth();
+  const isAdmin = isAdministrator(user);
   // Show the worst transit time for the group
   const transitTimes = group.conduces.map(c => calculateTransitTime(c.fechaEntrega));
   const worstTime = transitTimes.reduce((worst, current) => 
@@ -96,34 +100,36 @@ const ClienteGroupRow = ({
         ) : <span className="text-[10px] md:text-sm break-all text-gray-500 md:text-gray-900 leading-tight">{group.numeroCliente}</span>}
       </TableCell>
       
-      <TableCell className="order-5 block md:table-cell w-full md:w-auto p-2 pt-1 pb-2 md:p-4 border-0 md:border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-wrap gap-1">
-            {group.laboratorio.split(', ').map((lab, i) => (
-              <Badge key={i} variant="outline" className={`text-[9px] h-5 px-1.5 md:text-xs md:h-auto md:px-2.5 ${
-                lab === 'LAM' ? 'bg-purple-50 text-purple-700 border-purple-200' : 
-                lab === 'Taapharmaceutica' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                lab === 'Innovacion Quimica' ? 'bg-green-50 text-green-700 border-green-200' :
-                lab === 'Fersuaz' ? 'bg-teal-50 text-teal-700 border-teal-200' :
-                'bg-teal-50 text-teal-700 border-teal-200'
-              }`}>
-                {lab === 'Taapharmaceutica' ? 'Taapharma' : lab === 'Innovacion Quimica' ? 'Innov. Quimica' : lab}
-              </Badge>
-            ))}
-          </div>
-          
-          <div className="flex items-center gap-3 md:hidden">
-            <div className="flex items-center gap-1" title="Conduces">
-              <span className="text-[10px] text-gray-400 font-bold uppercase">Cond:</span>
-              <span className="text-xs font-bold text-gray-700">{group.totalConduces}</span>
+      {isAdmin && (
+        <TableCell className="order-5 block md:table-cell w-full md:w-auto p-2 pt-1 pb-2 md:p-4 border-0 md:border-b">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-wrap gap-1">
+              {group.laboratorio.split(', ').map((lab, i) => (
+                <Badge key={i} variant="outline" className={`text-[9px] h-5 px-1.5 md:text-xs md:h-auto md:px-2.5 ${
+                  lab === 'LAM' ? 'bg-purple-50 text-purple-700 border-purple-200' : 
+                  lab === 'Taapharmaceutica' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                  lab === 'Innovacion Quimica' ? 'bg-green-50 text-green-700 border-green-200' :
+                  lab === 'Fersuaz' ? 'bg-teal-50 text-teal-700 border-teal-200' :
+                  'bg-teal-50 text-teal-700 border-teal-200'
+                }`}>
+                  {lab === 'Taapharmaceutica' ? 'Taapharma' : lab === 'Innovacion Quimica' ? 'Innov. Quimica' : lab}
+                </Badge>
+              ))}
             </div>
-            <div className="flex items-center gap-1" title="Bultos">
-              <Package className="h-3 w-3 text-amber-500" />
-              <span className="text-xs font-bold text-gray-700">{group.totalBultos}</span>
+            
+            <div className="flex items-center gap-3 md:hidden">
+              <div className="flex items-center gap-1" title="Conduces">
+                <span className="text-[10px] text-gray-400 font-bold uppercase">Cond:</span>
+                <span className="text-xs font-bold text-gray-700">{group.totalConduces}</span>
+              </div>
+              <div className="flex items-center gap-1" title="Bultos">
+                <Package className="h-3 w-3 text-amber-500" />
+                <span className="text-xs font-bold text-gray-700">{group.totalBultos}</span>
+              </div>
             </div>
           </div>
-        </div>
-      </TableCell>
+        </TableCell>
+      )}
       
       <TableCell className="hidden md:table-cell font-semibold text-sm">
         {group.conduces.map(c => c.numeroConduce).join(', ')}

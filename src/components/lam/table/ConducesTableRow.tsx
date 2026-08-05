@@ -58,11 +58,11 @@ const ConducesTableRow = ({ conduce, index, isLamUser, onConduceClick }: Conduce
       <TableCell className="font-medium text-slate-700 py-2 px-2 border-r border-gray-100 text-xs">
         <span className="truncate">{conduce.numeroConduce}</span>
       </TableCell>
-      <TableCell 
-        className="text-slate-700 py-2 px-2 border-r border-gray-100 text-xs"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {isAdmin ? (
+      {isAdmin && (
+        <TableCell 
+          className="text-slate-700 py-2 px-2 border-r border-gray-100 text-xs"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Select
             value={conduce.laboratorio || 'LAM'}
             onValueChange={async (newLab) => {
@@ -91,12 +91,8 @@ const ConducesTableRow = ({ conduce, index, isLamUser, onConduceClick }: Conduce
               <SelectItem value="Innovacion Quimica">Innovacion Quimica</SelectItem>
             </SelectContent>
           </Select>
-        ) : (
-          <Badge variant="outline" className="text-[10px] font-semibold">
-            {conduce.laboratorio || '-'}
-          </Badge>
-        )}
-      </TableCell>
+        </TableCell>
+      )}
       <TableCell className="text-slate-700 py-2 px-2 border-r border-gray-100 text-xs">
         <div className="flex items-center gap-1">
           <User className="h-3 w-3 text-slate-500" />

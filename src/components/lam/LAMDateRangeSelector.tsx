@@ -53,7 +53,10 @@ const LAMDateRangeSelector = ({ dateRange, onDateRangeChange }: LAMDateRangeSele
               }
             />
           </div>
-          <MonthSelector onMonthSelect={handleMonthSelect} />
+          <MonthSelector 
+            onMonthSelect={handleMonthSelect} 
+            selectedMonthIndex={dateRange?.from ? dateRange.from.getMonth() : undefined}
+          />
         </div>
       )}
     </div>

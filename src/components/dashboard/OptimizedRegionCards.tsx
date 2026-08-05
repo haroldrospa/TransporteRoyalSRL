@@ -67,6 +67,7 @@ export const OptimizedRegionCards = memo(({
         {/* Norte Card */}
         {showNorte && (
       <motion.div
+        key="region-norte"
         whileHover={{ y: -4, boxShadow: '0 20px 40px -12px hsl(var(--primary) / 0.15)' }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 via-card to-card border border-border/50 p-5 sm:p-6 cursor-pointer group"
@@ -108,6 +109,7 @@ export const OptimizedRegionCards = memo(({
       {/* Sur Card */}
       {showSur && (
       <motion.div
+        key="region-sur"
         whileHover={{ y: -4, boxShadow: '0 20px 40px -12px hsl(var(--secondary) / 0.2)' }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-secondary/5 via-card to-card border border-border/50 p-5 sm:p-6 cursor-pointer group"
@@ -149,6 +151,7 @@ export const OptimizedRegionCards = memo(({
       {/* Este Card */}
       {showEste && (
       <motion.div
+        key="region-este"
         whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(168, 85, 247, 0.15)' }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/5 via-card to-card border border-border/50 p-5 sm:p-6 cursor-pointer group"

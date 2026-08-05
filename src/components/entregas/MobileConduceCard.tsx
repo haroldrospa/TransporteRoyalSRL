@@ -6,6 +6,8 @@ import { Card } from '@/components/ui/card';
 import { MapPin, CheckCircle, AlertCircle, Package, Clock, Navigation } from 'lucide-react';
 import { LazyTransitTimeDisplay } from './LazyTransitTimeDisplay';
 import { calculateTransitTime } from '@/utils/time/transitTime';
+import { useAuth } from '@/contexts/AuthContext';
+import { isAdministrator } from '@/utils/userPermissions';
 
 interface MobileConduceCardProps {
   conduce: Conduce;
@@ -28,6 +30,9 @@ export const MobileConduceCard = memo(({
   showDetails,
   renderStatusBadge
 }: MobileConduceCardProps) => {
+  const { user } = useAuth();
+  const isAdmin = isAdministrator(user);
+
   const handleDeliveryClick = useCallback(() => {
     onDelivery(conduce);
   }, [conduce, onDelivery]);
@@ -85,7 +90,7 @@ export const MobileConduceCard = memo(({
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
-          {conduce.laboratorio && (
+          {isAdmin && conduce.laboratorio && (
             <Badge 
               variant={conduce.laboratorio === 'LAM' ? 'default' : 'secondary'}
               className="text-xs"

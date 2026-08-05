@@ -19,6 +19,7 @@ interface LAMStatsAndChartsProps {
   onStateFilter?: (estado: string) => void;
   bultosTotalCount?: number;
   onMonthSelect?: (range: { from: Date; to: Date }) => void;
+  selectedMonth?: Date;
 }
 
 const LAMStatsAndCharts = ({
@@ -27,12 +28,13 @@ const LAMStatsAndCharts = ({
   conduces,
   onStateFilter,
   bultosTotalCount,
-  onMonthSelect
+  onMonthSelect,
+  selectedMonth
 }: LAMStatsAndChartsProps) => {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-        <LamCharts {...chartInfo} conduces={conduces} onStateFilter={onStateFilter} bultosTotalCount={bultosTotalCount} />
+        <LamCharts {...chartInfo} conduces={conduces} onStateFilter={onStateFilter} bultosTotalCount={bultosTotalCount} selectedMonth={selectedMonth} />
         <BultosMonthlyBarChart conduces={allConduces} onMonthSelect={onMonthSelect} />
       </div>
       

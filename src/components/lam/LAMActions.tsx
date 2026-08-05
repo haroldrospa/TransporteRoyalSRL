@@ -142,50 +142,117 @@ const LAMActions = ({ onRefresh, loading, userLevel, conduces = [], stats, chart
       
       // Hoja de conduces
       const conducesWorksheet = XLSX.utils.json_to_sheet(data);
+      
+      // Ajustar anchos de columna para conduces para que se vea limpio
+      conducesWorksheet['!cols'] = [
+        { wch: 15 }, // Factura
+        { wch: 15 }, // No. Bulto
+        { wch: 15 }, // Cliente
+        { wch: 10 }, // Bultos
+        { wch: 35 }, // Razón Social
+        { wch: 20 }, // Ciudad
+        { wch: 15 }, // Fecha Carga
+        { wch: 15 }, // Fecha Salida
+        { wch: 20 }, // Tiempo de Entrega
+        { wch: 20 }, // Tiempo en Tránsito
+        { wch: 15 }, // Estado
+        { wch: 25 }, // Encomendado
+        { wch: 15 }, // Laboratorio
+        { wch: 10 }, // Región
+        { wch: 10 }, // Prioridad
+        { wch: 10 }, // Excepción
+        { wch: 15 }, // Bulto Modificado
+        { wch: 30 }, // Nota
+        { wch: 30 }, // Motivo Excepción
+        { wch: 30 }, // Nota Modificación Bulto
+        { wch: 15 }, // Relación
+        { wch: 15 }, // Cantidad Entregados
+        { wch: 25 }  // Hora Entrega Exacta
+      ];
+      
       XLSX.utils.book_append_sheet(workbook, conducesWorksheet, 'Conduces LAM');
       
       // Hoja de estadísticas
       if (stats) {
-        const bultosTransitoPercent = stats.bultosTotalCount > 0 
-          ? Math.round((stats.bultosEnTransito / stats.bultosTotalCount) * 100) 
-          : 0;
-        const bultosEntregadosPercent = stats.bultosTotalCount > 0 
-          ? Math.round((stats.bultosEntregados / stats.bultosTotalCount) * 100) 
-          : 0;
-        const bultosDevueltosPercent = stats.bultosTotalCount > 0 
-          ? Math.round((stats.bultosDevueltos / stats.bultosTotalCount) * 100) 
-          : 0;
+        // Calcular rango de fechas de la carga de conduces
+        let rangoFechas = 'Todos los registros';
+        if (conduces.length > 0) {
+          const dates = conduces
+            .map(c => c.fechaCarga)
+            .filter(Boolean)
+            .map(d => {
+              const parts = d.split(' ')[0].split('/');
+              if (parts.length === 3) {
+                return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+              }
+              const isoParsed = new Date(d);
+              return isNaN(isoParsed.getTime()) ? null : isoParsed;
+            })
+            .filter((d): d is Date => d !== null && !isNaN(d.getTime()));
           
-        const statsData = [
-          { 'Métrica': 'Bultos en tránsito', 'Valor': stats.bultosEnTransito, 'Total': stats.bultosTotalCount, 'Porcentaje': `${bultosTransitoPercent}%` },
-          { 'Métrica': 'Bultos entregados', 'Valor': stats.bultosEntregados, 'Total': stats.bultosTotalCount, 'Porcentaje': `${bultosEntregadosPercent}%` },
-          { 'Métrica': 'Bultos devueltos', 'Valor': stats.bultosDevueltos, 'Total': stats.bultosTotalCount, 'Porcentaje': `${bultosDevueltosPercent}%` },
-          { 'Métrica': 'Clientes en tránsito', 'Valor': stats.clientesEnTransito, 'Total': '', 'Porcentaje': '' },
-          { 'Métrica': 'Total de bultos', 'Valor': stats.bultosTotalCount, 'Total': '', 'Porcentaje': '' }
+          if (dates.length > 0) {
+            const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+            const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+            const formatDateStr = (d: Date) => {
+              const day = String(d.getDate()).padStart(2, '0');
+              const month = String(d.getMonth() + 1).padStart(2, '0');
+              const year = d.getFullYear();
+              return `${day}/${month}/${year}`;
+            };
+            rangoFechas = `${formatDateStr(minDate)} al ${formatDateStr(maxDate)}`;
+          }
+        }
+
+        const formattedDate = new Date().toLocaleString('es-DO', {
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        });
+
+        const aoaData: any[][] = [
+          [`REPORTE DE CONTROL DE BULTOS - ${laboratorio.toUpperCase()}`],
+          [`Rango de Fechas: ${rangoFechas}`],
+          [`Fecha de Generación: ${formattedDate}`],
+          [],
+          ['RESUMEN DE DISTRIBUCIÓN DE BULTOS', '', ''],
+          ['Métrica / Estado', 'Bultos', 'Porcentaje del Total'],
+          ['Bultos entregados', stats.bultosEntregados, stats.bultosTotalCount > 0 ? `${((stats.bultosEntregados / stats.bultosTotalCount) * 100).toFixed(2)}%` : '0.00%'],
+          ['Bultos en tránsito', stats.bultosEnTransito, stats.bultosTotalCount > 0 ? `${((stats.bultosEnTransito / stats.bultosTotalCount) * 100).toFixed(2)}%` : '0.00%'],
+          ['Bultos devueltos', stats.bultosDevueltos, stats.bultosTotalCount > 0 ? `${((stats.bultosDevueltos / stats.bultosTotalCount) * 100).toFixed(2)}%` : '0.00%'],
+          ['Total bultos recibidos (Cargados)', stats.bultosTotalCount, '100.00%'],
+          [],
         ];
 
-        // Agregar datos de actividad si están disponibles
         if (chartInfo) {
           const atrasadosBultosValor = (chartInfo as any).atrasadosBultos ?? 0;
           const excepcionesBultosValor = (chartInfo as any).excepcionesBultos ?? 0;
-          const atrasadosPercent = stats.bultosTotalCount > 0 
-            ? Math.round((atrasadosBultosValor / stats.bultosTotalCount) * 100) 
-            : 0;
-          const excepcionesPercent = stats.bultosTotalCount > 0 
-            ? Math.round((excepcionesBultosValor / stats.bultosTotalCount) * 100) 
-            : 0;
+          const onTimeDeliveredBultos = Math.max(0, stats.bultosEntregados - atrasadosBultosValor);
 
-          statsData.push(
-            { 'Métrica': 'Bultos atrasados', 'Valor': atrasadosBultosValor, 'Total': stats.bultosTotalCount, 'Porcentaje': `${atrasadosPercent}%` },
-            { 'Métrica': 'Bultos con excepción', 'Valor': excepcionesBultosValor, 'Total': stats.bultosTotalCount, 'Porcentaje': `${excepcionesPercent}%` },
-            { 'Métrica': 'Conduces entregados (clientes regulares)', 'Valor': chartInfo.regularClientesCount, 'Total': chartInfo.totalEntregados, 'Porcentaje': '' },
-            { 'Métrica': 'Conduces entregados (visitadores)', 'Valor': chartInfo.visitadoresClientesCount, 'Total': chartInfo.totalEntregados, 'Porcentaje': '' },
-            { 'Métrica': 'Total conduces entregados', 'Valor': chartInfo.totalEntregados, 'Total': '', 'Porcentaje': '' },
-            { 'Métrica': 'Total conduces devueltos', 'Valor': chartInfo.devueltosCount, 'Total': '', 'Porcentaje': '' }
+          aoaData.push(
+            ['DESGLOSE DE ENTREGAS', '', ''],
+            ['Estado de Entrega', 'Bultos', 'Porcentaje del Total'],
+            ['Bultos entregados a tiempo (Normal + Excepción)', onTimeDeliveredBultos, stats.bultosTotalCount > 0 ? `${((onTimeDeliveredBultos / stats.bultosTotalCount) * 100).toFixed(2)}%` : '0.00%'],
+            ['Bultos atrasados (Entregados con retraso)', atrasadosBultosValor, stats.bultosTotalCount > 0 ? `${((atrasadosBultosValor / stats.bultosTotalCount) * 100).toFixed(2)}%` : '0.00%'],
+            ['Bultos entregados con excepción (Detalle)', excepcionesBultosValor, stats.bultosTotalCount > 0 ? `${((excepcionesBultosValor / stats.bultosTotalCount) * 100).toFixed(2)}%` : '0.00%'],
+            [],
+            ['DETALLE DE CONDUCES Y CLIENTES', '', ''],
+            ['Métrica de Gestión', 'Cantidad', ''],
+            ['Conduces entregados (Clientes regulares)', chartInfo.regularClientesCount, ''],
+            ['Conduces entregados (Visitadores)', chartInfo.visitadoresClientesCount, ''],
+            ['Total conduces entregados', chartInfo.totalEntregados, ''],
+            ['Total conduces devueltos', chartInfo.devueltosCount, ''],
+            ['Clientes en tránsito', stats.clientesEnTransito, '']
           );
         }
+
+        const statsWorksheet = XLSX.utils.aoa_to_sheet(aoaData);
         
-        const statsWorksheet = XLSX.utils.json_to_sheet(statsData);
+        // Ajustar anchos de columna para estadísticas para que no se corten los textos
+        statsWorksheet['!cols'] = [
+          { wch: 45 }, // Métrica
+          { wch: 20 }, // Cantidad / Valor
+          { wch: 25 }  // Porcentaje
+        ];
+
         XLSX.utils.book_append_sheet(workbook, statsWorksheet, 'Estadísticas LAM');
       }
 

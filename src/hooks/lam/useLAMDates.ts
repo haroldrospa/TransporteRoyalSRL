@@ -20,27 +20,67 @@ export const useLAMDates = (conduces: Conduce[]) => {
   
   // Initialize selectedMonth as undefined - no month filter by default
   const [selectedMonth, setSelectedMonth] = useState<Date | undefined>(undefined);
-
-  // Sync selectedMonth when dateRange changes
-  useEffect(() => {
-    if (dateRange?.from && isValid(dateRange.from)) {
-      const monthStart = startOfMonth(dateRange.from);
-      console.log('🔄 Syncing selectedMonth with dateRange:', dateRange.from, '-> month:', monthStart);
-      setSelectedMonth(monthStart);
-    } else {
-      console.log('🔄 Clearing selectedMonth because dateRange is not set');
-      setSelectedMonth(undefined);
-    }
-  }, [dateRange]);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Get unique dates with proper error handling
   const uniqueDates = useMemo(() => 
     getUniqueDates(conduces)
   , [conduces]);
-  
-  // Set selectedDate to latest load date when data loads
+
+  // Sync selectedMonth and set selectedDate to a date in the new dateRange when dateRange changes
   useEffect(() => {
-    if (uniqueDates.length > 0 && !selectedDate) {
+    if (dateRange?.from && isValid(dateRange.from)) {
+      const monthStart = startOfMonth(dateRange.from);
+      console.log('🔄 Syncing selectedMonth with dateRange:', dateRange.from, '-> month:', monthStart);
+      setSelectedMonth(monthStart);
+      
+      setSelectedDate(prevDate => {
+        const rangeStart = startOfDay(dateRange.from!);
+        const rangeEnd = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from!);
+        
+        // If there is an active day filter, check if it fits the new range
+        if (prevDate) {
+          const parsedSelectedDate = safelyParseDate(prevDate);
+          if (parsedSelectedDate) {
+            const inRange = isWithinInterval(parsedSelectedDate, {
+              start: rangeStart,
+              end: rangeEnd
+            });
+            if (inRange) return prevDate;
+          }
+        }
+        
+        // If not in range or not set, auto-select the latest available day in uniqueDates that falls in the new range
+        const datesInRange = uniqueDates.filter(dateStr => {
+          const d = safelyParseDate(dateStr);
+          return d && isWithinInterval(d, { start: rangeStart, end: rangeEnd });
+        });
+
+        if (datesInRange.length > 0) {
+          const parsedDates = datesInRange.map(dateStr => ({
+            str: dateStr,
+            date: safelyParseDate(dateStr)
+          })).filter((x): x is { str: string; date: Date } => x.date !== null);
+          
+          if (parsedDates.length > 0) {
+            // Sort descending to get the latest date in the range
+            parsedDates.sort((a, b) => b.date.getTime() - a.date.getTime());
+            return parsedDates[0].str;
+          }
+        }
+        
+        return '';
+      });
+    } else {
+      console.log('🔄 Clearing selectedMonth because dateRange is not set');
+      setSelectedMonth(undefined);
+      setSelectedDate('');
+    }
+  }, [dateRange, uniqueDates]);
+  
+  // Set selectedDate to latest load date when data loads (runs ONLY ONCE upon initial load)
+  useEffect(() => {
+    if (uniqueDates.length > 0 && !hasInitialized) {
       // Avoid picking a future typo date (e.g. 2034). Allow up to tomorrow.
       const maxAllowed = new Date();
       maxAllowed.setDate(maxAllowed.getDate() + 1);
@@ -60,6 +100,7 @@ export const useLAMDates = (conduces: Conduce[]) => {
       
       console.log('📅 Setting initial selectedDate to latest load date:', initialDate);
       setSelectedDate(initialDate);
+      setHasInitialized(true);
 
       // Sync dateRange to the month of the latest load to prevent mismatch
       // where selectedDate is in June but dateRange is July (resulting in 0 stats)
@@ -70,7 +111,7 @@ export const useLAMDates = (conduces: Conduce[]) => {
         });
       }
     }
-  }, [uniqueDates, selectedDate]);
+  }, [uniqueDates, hasInitialized]);
   
   const latestLoadDate = useMemo(() => {
     if (uniqueDates.length === 0) return '';
@@ -137,12 +178,8 @@ export const useLAMDates = (conduces: Conduce[]) => {
     return (regionConduces: Conduce[]) => {
       // If no date range is selected, return all conduces
       if (!dateRange?.from) {
-        console.log('📅 No dateRange.from - returning all conduces:', regionConduces.length);
         return regionConduces;
       }
-      
-      console.log('📅 Filtering by dateRange:', dateRange);
-      console.log('📅 Sample conduce dates:', regionConduces.slice(0, 3).map(c => ({ numero: c.numeroConduce, fecha: c.fechaEntrega })));
       
       const filtered = regionConduces.filter(conduce => {
         try {
@@ -159,9 +196,6 @@ export const useLAMDates = (conduces: Conduce[]) => {
               start: rangeStart, 
               end: rangeEnd 
             });
-            if (!inRange) {
-              console.log('📅 NOT in range:', conduce.numeroConduce, conduceDate, 'vs', { start: rangeStart, end: rangeEnd });
-            }
             return inRange;
           }
           
@@ -173,7 +207,6 @@ export const useLAMDates = (conduces: Conduce[]) => {
         }
       });
       
-      console.log('📅 Filtered result count:', filtered.length);
       return filtered;
     };
   }, [dateRange]);

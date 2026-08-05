@@ -1,6 +1,7 @@
 import { Conduce } from '@/types/conduces';
 import { safelyParseDate } from '../timeUtils';
 import { isWithinInterval, startOfMonth, endOfMonth, isValid, format } from 'date-fns';
+import { isConduceDelayed } from '../time/conduceDelay';
 
 export const filterConducesBySearch = (conduces: Conduce[], searchTerm: string) => {
   if (!Array.isArray(conduces)) return [];
@@ -81,38 +82,18 @@ export const filterAndSortConduces = (
         // Map chart names to actual estados
         if (estadoFilter === 'Entregados') {
           if (conduce.estado !== 'Entregado') return false;
+          if (isConduceDelayed(conduce) || conduce.excepcion) return false;
         } else if (estadoFilter === 'Devueltos') {
           if (conduce.estado !== 'Devuelto') return false;
         } else if (estadoFilter === 'En tránsito') {
           if (conduce.estado !== 'En tránsito') return false;
         } else if (estadoFilter === 'Atrasados') {
-          // Filter for late deliveries without exception
+          // Filter for late deliveries or deliveries with exception
           if (conduce.estado !== 'Entregado') return false;
-          if (conduce.excepcion === true) return false;
-          
-          // Check if delivery was late
-          const tiempoEntrega = conduce.tiempoEntrega;
-          if (!tiempoEntrega) return false;
-          
-          const deliveryHours = parseDeliveryTime(tiempoEntrega);
-          const isVisitador = conduce.numeroCliente?.startsWith('60');
-          const timeLimit = isVisitador ? 60 : 36;
-          
-          if (deliveryHours <= timeLimit) return false; // Not late
-        } else if (estadoFilter === 'Entregado con excepción') {
-          // Filter for late deliveries with exception
-          if (conduce.estado !== 'Entregado') return false;
+          if (!isConduceDelayed(conduce) && !conduce.excepcion) return false;
+        } else if (estadoFilter === 'Entregado con excepción' || estadoFilter === 'Excepción') {
+          // Filter for any delivery/conduce with exception
           if (conduce.excepcion !== true) return false;
-          
-          // Check if delivery was late
-          const tiempoEntrega = conduce.tiempoEntrega;
-          if (!tiempoEntrega) return false;
-          
-          const deliveryHours = parseDeliveryTime(tiempoEntrega);
-          const isVisitador = conduce.numeroCliente?.startsWith('60');
-          const timeLimit = isVisitador ? 60 : 36;
-          
-          if (deliveryHours <= timeLimit) return false; // Not late
         } else {
           // Direct estado match for any other case
           if (conduce.estado !== estadoFilter) return false;

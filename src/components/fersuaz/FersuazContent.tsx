@@ -97,6 +97,7 @@ const FersuazContent = memo(() => {
               onStateFilter={handleStateFilter}
               bultosTotalCount={stats.bultosTotalCount}
               onMonthSelect={setDateRange}
+              selectedMonth={selectedMonth}
             />
           </Suspense>
 

@@ -72,6 +72,7 @@ const InnovacionQuimicaContent = memo(() => {
               conduces={statsFilteredConduces || []} onStateFilter={handleStateFilter}
               bultosTotalCount={stats.bultosTotalCount}
               onMonthSelect={setDateRange}
+              selectedMonth={selectedMonth}
             />
           </Suspense>
 

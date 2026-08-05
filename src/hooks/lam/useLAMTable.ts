@@ -26,7 +26,7 @@ export const useLAMTable = (
     // (ignorando el filtro de región) para que el usuario siempre encuentre el conduce
     const conducesToFilter = debouncedSearchTerm && Array.isArray(allLabConduces) && allLabConduces.length > 0
       ? allLabConduces
-      : regionConduces;
+      : statsFilteredConduces;
     
     if (!Array.isArray(conducesToFilter)) return [];
     
@@ -40,7 +40,7 @@ export const useLAMTable = (
     );
     
     return result;
-  }, [regionConduces, allLabConduces, debouncedSearchTerm, selectedDate, parseDeliveryTime, estadoFilter]);
+  }, [statsFilteredConduces, allLabConduces, debouncedSearchTerm, selectedDate, parseDeliveryTime, estadoFilter]);
 
   // Memoize click handler
   const handleConduceClick = useCallback((conduce: Conduce) => {

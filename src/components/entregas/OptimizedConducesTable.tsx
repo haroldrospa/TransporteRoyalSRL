@@ -105,8 +105,8 @@ const ConduceRow = memo(({
         </div>
       </TableCell>
 
-      <TableCell className="py-2.5" onClick={(e) => e.stopPropagation()}>
-        {isAdmin ? (
+      {isAdmin && (
+        <TableCell className="py-2.5" onClick={(e) => e.stopPropagation()}>
           <Select
             value={conduce.laboratorio || 'LAM'}
             onValueChange={async (newLab) => {
@@ -135,20 +135,8 @@ const ConduceRow = memo(({
               <SelectItem value="Innovacion Quimica">Innovacion Quimica</SelectItem>
             </SelectContent>
           </Select>
-        ) : conduce.laboratorio ? (
-          <Badge
-            className={`whitespace-nowrap font-bold text-xs shadow-sm ${
-              conduce.laboratorio === 'LAM' 
-                ? 'bg-royal-blue hover:bg-royal-blue/90 text-white' 
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
-            }`}
-          >
-            {conduce.laboratorio}
-          </Badge>
-        ) : (
-          <span className="text-muted-foreground text-sm">-</span>
-        )}
-      </TableCell>
+        </TableCell>
+      )}
 
       <TableCell className="py-2.5">
         <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
@@ -358,12 +346,14 @@ export const OptimizedConducesTable = memo(({
               Bultos
             </div>
           </TableHead>
-          <TableHead className="font-bold text-white bg-royal-blue w-14 py-2.5">
-            <div className="flex items-center gap-1">
-              <FlaskConical className="h-3.5 w-3.5 text-royal-yellow" />
-              Lab
-            </div>
-          </TableHead>
+          {isAdmin && (
+            <TableHead className="font-bold text-white bg-royal-blue w-14 py-2.5">
+              <div className="flex items-center gap-1">
+                <FlaskConical className="h-3.5 w-3.5 text-royal-yellow" />
+                Lab
+              </div>
+            </TableHead>
+          )}
           <TableHead className="font-bold text-white bg-royal-blue w-24 py-2.5">
             <div className="flex items-center gap-1">
               <Package className="h-3.5 w-3.5 text-royal-yellow" />

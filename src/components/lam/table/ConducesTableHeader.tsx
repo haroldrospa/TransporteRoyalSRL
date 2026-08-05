@@ -1,12 +1,17 @@
 
 import { TableHeader, TableRow, TableHead } from '@/components/ui/table';
 import { Package, FileText, User, Building2, MapPin, Calendar, Clock, AlertTriangle, FlaskConical } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { isAdministrator } from '@/utils/userPermissions';
 
 interface ConducesTableHeaderProps {
   isLamUser: boolean;
 }
 
 const ConducesTableHeader = ({ isLamUser }: ConducesTableHeaderProps) => {
+  const { user } = useAuth();
+  const isAdmin = isAdministrator(user);
+
   return (
     <TableHeader className="sticky top-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10">
       <TableRow className="border-0 hover:bg-transparent">
@@ -22,12 +27,14 @@ const ConducesTableHeader = ({ isLamUser }: ConducesTableHeaderProps) => {
             No. bulto
           </div>
         </TableHead>
-        <TableHead className="text-white font-semibold text-xs py-3 px-2 border-r border-slate-700 bg-royal-blue w-28">
-          <div className="flex items-center gap-1">
-            <FlaskConical className="h-3 w-3" />
-            Laboratorio
-          </div>
-        </TableHead>
+        {isAdmin && (
+          <TableHead className="text-white font-semibold text-xs py-3 px-2 border-r border-slate-700 bg-royal-blue w-28">
+            <div className="flex items-center gap-1">
+              <FlaskConical className="h-3 w-3" />
+              Laboratorio
+            </div>
+          </TableHead>
+        )}
         <TableHead className="text-white font-semibold text-xs py-3 px-2 border-r border-slate-700 bg-royal-blue w-16">
           <div className="flex items-center gap-1">
             <User className="h-3 w-3" />

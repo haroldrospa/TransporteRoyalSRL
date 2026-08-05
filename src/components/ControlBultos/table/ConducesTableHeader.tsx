@@ -3,6 +3,8 @@ import { TableHeader, TableRow, TableHead } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Package, Building2, MapPin, Clock, Truck, User, FileText, FlaskConical } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { isAdministrator } from '@/utils/userPermissions';
 
 interface ConducesTableHeaderProps {
   selectedConduces: string[];
@@ -11,6 +13,8 @@ interface ConducesTableHeaderProps {
 }
 
 const ConducesTableHeader = ({ selectedConduces, totalConduces, onSelectAll }: ConducesTableHeaderProps) => {
+  const { user } = useAuth();
+  const isAdmin = isAdministrator(user);
   const checkboxRef = useRef<HTMLButtonElement>(null);
   const isAllSelected = selectedConduces.length === totalConduces && totalConduces > 0;
   const isPartiallySelected = selectedConduces.length > 0 && selectedConduces.length < totalConduces;
@@ -52,12 +56,14 @@ const ConducesTableHeader = ({ selectedConduces, totalConduces, onSelectAll }: C
             No. Cliente
           </div>
         </TableHead>
-        <TableHead className="hidden md:table-cell">
-          <div className="flex items-center gap-2">
-            <FlaskConical className="h-4 w-4" />
-            Laboratorio
-          </div>
-        </TableHead>
+        {isAdmin && (
+          <TableHead className="hidden md:table-cell">
+            <div className="flex items-center gap-2">
+              <FlaskConical className="h-4 w-4" />
+              Laboratorio
+            </div>
+          </TableHead>
+        )}
         <TableHead className="hidden md:table-cell">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4" />

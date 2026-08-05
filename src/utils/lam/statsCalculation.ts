@@ -92,12 +92,19 @@ export const calculateLamStats = (conduces: Conduce[], selectedMonth?: Date, all
       })
       .reduce((total, conduce) => total + conduce.cantidadBultos, 0);
 
+    const bultosExcepcion = filteredConduces
+      .filter(c => c?.excepcion === true)
+      .reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
+    const conducesExcepcionCount = filteredConduces.filter(c => c?.excepcion === true).length;
+
     return {
       bultosTotalCount,
       bultosEntregados,
       bultosDevueltos,
       bultosEnTransito,
       bultosAtrasados,
+      bultosExcepcion,
+      conducesExcepcionCount,
       clientesEnTransito,
       totalBultosEntregadosDB: finalTotalBultosEntregadosDB
     };
@@ -109,6 +116,8 @@ export const calculateLamStats = (conduces: Conduce[], selectedMonth?: Date, all
       bultosDevueltos: 0,
       bultosEnTransito: 0,
       bultosAtrasados: 0,
+      bultosExcepcion: 0,
+      conducesExcepcionCount: 0,
       clientesEnTransito: 0,
       totalBultosEntregadosDB: 0
     };

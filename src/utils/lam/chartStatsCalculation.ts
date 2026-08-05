@@ -33,42 +33,39 @@ export const calculateChartCounts = (conduces: Conduce[], parseDeliveryTime: (ti
     const visitadoresClientesCount = filteredConduces.filter(c => c?.estado === 'Entregado' && c?.numeroCliente && c.numeroCliente.startsWith('60')).length;
     const devueltosCount = filteredConduces.filter(c => c?.estado === 'Devuelto').length;
     
-    // Calculate all delayed conduces (including those with exceptions)
+    // Calculate all delayed conduces
     const allDelayedConduces = filteredConduces.filter(c => {
       if (!c || c.estado !== 'Entregado') return false;
       return isConduceDelayed(c);
     });
     
-    // Calculate delayed conduces WITHOUT exception (for regular "Atrasados")
+    // Delayed conduces without exception
     const delayedConduces = allDelayedConduces.filter(c => !c.excepcion);
-    
-    // Calculate delayed conduces WITH exception (subset of delayed conduces)
+    // Delayed conduces with exception
     const delayedWithExceptionConduces = allDelayedConduces.filter(c => c.excepcion);
     
     const atrasadosCount = delayedConduces.length;
     const atrasadosConExcepcionCount = delayedWithExceptionConduces.length;
     
-    const excepcionesCount = filteredConduces.filter(c => c?.excepcion).length || 0;
-    const excepcionesBultos = filteredConduces
-      .filter(c => c?.excepcion)
-      .reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
+    const conducesConExcepcion = filteredConduces.filter(c => c?.excepcion === true);
+    const excepcionesCount = conducesConExcepcion.length;
+    const excepcionesBultos = conducesConExcepcion.reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
     const totalEntregados = filteredConduces.filter(c => c?.estado === 'Entregado').length;
 
-    // Calculate bultos for each category (mutually exclusive to sum to 100%)
+    // Calculate bultos for each category (mutually exclusive to sum to total bultos)
     const atrasadosBultos = delayedConduces.reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
     const atrasadosConExcepcionBultos = delayedWithExceptionConduces.reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
-    const totalDelayedBultos = atrasadosBultos + atrasadosConExcepcionBultos;
-    
-    // Entregados = delivered bultos MINUS delayed (sin excepción) MINUS delayed con excepción.
-    const totalEntregadosBultos = countBultosByEstado(filteredConduces, 'Entregado');
     const devueltosBultos = countBultosByEstado(filteredConduces, 'Devuelto');
-    const entregadosBultos = totalEntregadosBultos - atrasadosBultos + devueltosBultos;
+    const enTransitoBultos = countBultosByEstado(filteredConduces, 'En tránsito');
     
-    // Prepare data for pie chart
+    const bultosTotalCount = filteredConduces.reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
+    const totalAtrasadosBultos = atrasadosBultos + excepcionesBultos;
+    const entregadosNormalBultos = Math.max(0, bultosTotalCount - enTransitoBultos - totalAtrasadosBultos);
+    
+    // Prepare data for pie chart containing only Entregados and Atrasados
     const chartData = [
-      { name: 'Entregados', value: entregadosBultos, color: '#10B981' },
-      { name: 'En tránsito', value: countBultosByEstado(filteredConduces, 'En tránsito'), color: '#F59E0B' },
-      { name: 'Atrasados', value: atrasadosBultos, color: '#EF4444' },
+      { name: 'Entregados', value: entregadosNormalBultos, color: '#10B981' },
+      { name: 'Atrasados', value: totalAtrasadosBultos, color: '#EF4444' },
     ];
 
     return {
