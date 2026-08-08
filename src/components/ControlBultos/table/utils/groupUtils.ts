@@ -21,7 +21,8 @@ export const groupConducesByClient = (
   conduces: Conduce[], 
   clientesRncMap?: Map<string, string>,
   clienteGrupoMap?: Map<string, string>,
-  clienteEncomendadoMap?: Map<string, string>
+  clienteEncomendadoMap?: Map<string, string>,
+  clienteRazonSocialMap?: Map<string, string>
 ): ClienteGroup[] => {
   return conduces.reduce((groups: ClienteGroup[], conduce) => {
     const hasCliente = conduce.numeroCliente && String(conduce.numeroCliente).trim() !== '';
@@ -34,7 +35,7 @@ export const groupConducesByClient = (
         numeroCliente: uniqueKey,
         allNumeroClientes: [],
         rnc: '',
-        razonSocial: conduce.razonSocial || '',
+        razonSocial: conduce.razonSocial?.trim() || 'Sin asignar',
         ciudad: conduce.ciudad || '',
         totalConduces: 1,
         totalBultos: conduce.cantidadBultos,
@@ -62,16 +63,23 @@ export const groupConducesByClient = (
       if (!existingGroup.allNumeroClientes.includes(conduce.numeroCliente)) {
         existingGroup.allNumeroClientes.push(conduce.numeroCliente);
       }
+      if (!existingGroup.razonSocial?.trim()) {
+        const razonSocial = conduce.razonSocial?.trim() || clienteRazonSocialMap?.get(conduce.numeroCliente)?.trim() || '';
+        if (razonSocial) {
+          existingGroup.razonSocial = razonSocial;
+        }
+      }
       // Append lab info if different
       if (conduce.laboratorio && !existingGroup.laboratorio.includes(conduce.laboratorio)) {
         existingGroup.laboratorio += `, ${conduce.laboratorio}`;
       }
     } else {
+      const razonSocial = conduce.razonSocial?.trim() || clienteRazonSocialMap?.get(conduce.numeroCliente)?.trim() || '';
       groups.push({
         numeroCliente: conduce.numeroCliente,
         allNumeroClientes: [conduce.numeroCliente],
         rnc: clientesRncMap?.get(conduce.numeroCliente) || '',
-        razonSocial: conduce.razonSocial || '',
+        razonSocial: razonSocial,
         ciudad: conduce.ciudad || '',
         totalConduces: 1,
         totalBultos: conduce.cantidadBultos,

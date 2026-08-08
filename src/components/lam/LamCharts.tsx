@@ -36,20 +36,21 @@ const LamCharts = ({
     return (value / total * 100).toFixed(2);
   };
 
-  const updatedChartData = [
-    {
-      name: 'Entregados',
-      value: chartData.find(d => d.name === 'Entregados')?.value || 0,
-      color: '#0A1F44' // Azul Oscuro elegante (Navy)
-    },
-    {
-      name: 'Atrasados',
-      value: chartData.find(d => d.name === 'Atrasados')?.value || 0,
-      color: '#F59E0B' // Amarillo / Dorado elegante
-    }
-  ].filter(item => item.value > 0);
+  const updatedChartData = (chartData && chartData.length > 0 ? chartData : [])
+    .map(d => {
+      let color = d.color;
+      if (d.name === 'Entregados') color = '#0A1F44';
+      else if (d.name === 'Atrasados') color = '#F59E0B';
+      else if (d.name === 'En tránsito') color = '#3B82F6';
+      else if (d.name === 'Devueltos') color = '#EF4444';
+      return { ...d, color };
+    })
+    .filter(item => item.value > 0);
 
-  const totalChartBultos = updatedChartData.reduce((acc, item) => acc + item.value, 0);
+  const totalChartBultos = bultosTotalCount || updatedChartData.reduce((acc, item) => acc + item.value, 0);
+
+  const deliveredBultosSum = (updatedChartData.find(d => d.name === 'Entregados')?.value || 0) +
+                             (updatedChartData.find(d => d.name === 'Atrasados')?.value || 0);
 
   return (
     <Card className="col-span-2 md:col-span-1 overflow-hidden bg-white border border-gray-100 shadow-md hover:shadow-lg transition-all duration-500 hover:-translate-y-1 rounded-xl">
@@ -97,7 +98,10 @@ const LamCharts = ({
 
                     <Tooltip
                       wrapperStyle={{ zIndex: 1000, pointerEvents: 'none' }}
-                      formatter={(value: number, name: string) => [`${value} bultos`, name]}
+                      formatter={(value: number, name: string) => [
+                        `${Number(value).toLocaleString()} bultos (${calculatePercentage(Number(value), totalChartBultos)}%)`,
+                        name
+                      ]}
                       contentStyle={{
                         backgroundColor: '#0A1F44',
                         borderRadius: '8px',
@@ -117,10 +121,7 @@ const LamCharts = ({
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Entregas</span>
                   <span className="text-base font-extrabold text-[#0A1F44] leading-none mt-0.5">
-                    {calculatePercentage(
-                      updatedChartData.find(d => d.name === 'Entregados')?.value || 0,
-                      totalChartBultos
-                    )}%
+                    {calculatePercentage(deliveredBultosSum, totalChartBultos)}%
                   </span>
                 </div>
 
@@ -129,28 +130,33 @@ const LamCharts = ({
           </div>
           
           {/* Minimalist Legend */}
-          <div className={`${isMobile ? 'w-full max-w-sm' : 'flex-1 max-w-[200px]'} flex flex-col justify-center space-y-2`}>
+          <div className={`${isMobile ? 'w-full max-w-sm' : 'flex-1 max-w-[240px]'} flex flex-col justify-center space-y-2`}>
             <div className="space-y-1.5">
               {updatedChartData.map((item, index) => {
                 const percentVal = calculatePercentage(item.value, totalChartBultos);
                 return (
                   <div 
                     key={index} 
-                    className="flex items-center justify-between p-1.5 px-2 rounded-lg bg-slate-50/50 border border-slate-100 hover:bg-slate-50 hover:border-slate-200 transition-all duration-200 cursor-pointer group" 
+                    className="flex items-center justify-between p-1.5 px-2 rounded-lg bg-slate-50/50 border border-slate-100 hover:bg-slate-50 hover:border-slate-200 transition-all duration-200 cursor-pointer group gap-2" 
                     onClick={() => onStateFilter?.(item.name)}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div 
-                        className="w-2.5 h-2.5 rounded-full border border-white shadow-sm transition-transform duration-200 group-hover:scale-110" 
+                        className="w-2.5 h-2.5 rounded-full border border-white shadow-sm transition-transform duration-200 group-hover:scale-110 flex-shrink-0" 
                         style={{ background: item.color }} 
                       />
-                      <span className="font-semibold text-slate-600 text-xs transition-colors duration-200 group-hover:text-slate-900">
+                      <span className="font-semibold text-slate-600 text-xs transition-colors duration-200 group-hover:text-slate-900 truncate">
                         {item.name}
                       </span>
                     </div>
-                    <span className="font-bold text-slate-800 text-xs">
-                      {percentVal}%
-                    </span>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className="font-extrabold text-slate-800 text-xs">
+                        {item.value.toLocaleString()}
+                      </span>
+                      <span className="font-medium text-slate-500 text-[11px]">
+                        ({percentVal}%)
+                      </span>
+                    </div>
                   </div>
                 );
               })}

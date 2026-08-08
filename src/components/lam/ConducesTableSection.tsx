@@ -21,6 +21,7 @@ interface ConducesTableSectionProps {
   parseDeliveryTime: (timeStr: string) => number;
   navigateDate: (direction: 'prev' | 'next') => void;
   estadoFilter?: string;
+  onStateFilter?: (estado: string) => void;
   totalConducesCount?: number;
 }
 
@@ -37,6 +38,7 @@ const ConducesTableSection = memo(({
   parseDeliveryTime,
   navigateDate,
   estadoFilter,
+  onStateFilter,
   totalConducesCount = 0
 }: ConducesTableSectionProps) => {
   const isMobile = useIsMobile();
@@ -81,6 +83,7 @@ const ConducesTableSection = memo(({
                 onDateChange={onDateChange}
                 onMonthChange={onMonthChange}
                 estadoFilter={estadoFilter}
+                onStateFilter={onStateFilter}
               />
             </div>
           </div>

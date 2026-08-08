@@ -137,7 +137,7 @@ const ClienteGroupRow = ({
       
       <TableCell className="order-2 flex-1 block md:table-cell p-2 pb-0 md:p-4 border-0 md:border-b">
         <span className="font-bold text-royal-blue md:text-foreground text-xs sm:text-sm md:text-base line-clamp-2 leading-tight">
-          {group.razonSocial}
+          {group.razonSocial?.trim() || (group.numeroCliente && !group.numeroCliente.startsWith('__sin_asignar__') ? `Cliente #${group.numeroCliente}` : 'Sin Razón Social')}
         </span>
       </TableCell>
       

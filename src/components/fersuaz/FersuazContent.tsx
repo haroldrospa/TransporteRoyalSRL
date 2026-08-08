@@ -129,6 +129,7 @@ const FersuazContent = memo(() => {
               parseDeliveryTime={parseDeliveryTime}
               navigateDate={navigateDate}
               estadoFilter={estadoFilter}
+              onStateFilter={handleStateFilter}
             />
           </Suspense>
         </>

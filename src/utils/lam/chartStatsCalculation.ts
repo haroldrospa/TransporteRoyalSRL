@@ -60,12 +60,14 @@ export const calculateChartCounts = (conduces: Conduce[], parseDeliveryTime: (ti
     
     const bultosTotalCount = filteredConduces.reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
     const totalAtrasadosBultos = atrasadosBultos + excepcionesBultos;
-    const entregadosNormalBultos = Math.max(0, bultosTotalCount - enTransitoBultos - totalAtrasadosBultos);
+    const entregadosNormalBultos = Math.max(0, bultosTotalCount - enTransitoBultos - devueltosBultos - totalAtrasadosBultos);
     
-    // Prepare data for pie chart containing only Entregados and Atrasados
+    // Prepare data for pie chart containing all bultos states (sum equals bultosTotalCount)
     const chartData = [
-      { name: 'Entregados', value: entregadosNormalBultos, color: '#10B981' },
-      { name: 'Atrasados', value: totalAtrasadosBultos, color: '#EF4444' },
+      { name: 'Entregados', value: entregadosNormalBultos, color: '#0A1F44' },
+      { name: 'Atrasados', value: totalAtrasadosBultos, color: '#F59E0B' },
+      { name: 'En tránsito', value: enTransitoBultos, color: '#3B82F6' },
+      { name: 'Devueltos', value: devueltosBultos, color: '#EF4444' },
     ];
 
     return {

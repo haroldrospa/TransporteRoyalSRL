@@ -144,6 +144,7 @@ const LAMContent = memo(() => {
                   parseDeliveryTime={parseDeliveryTime}
                   navigateDate={navigateDate}
                   estadoFilter={estadoFilter}
+                  onStateFilter={handleStateFilter}
                   totalConducesCount={totalConducesCount}
                 />
               </Suspense>

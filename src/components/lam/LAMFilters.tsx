@@ -18,6 +18,7 @@ interface LAMFiltersProps {
   onDateChange: (value: string) => void;
   onMonthChange: (value: Date | undefined) => void;
   estadoFilter?: string;
+  onStateFilter?: (estado: string) => void;
 }
 
 const LAMFilters = ({
@@ -28,7 +29,8 @@ const LAMFilters = ({
   onSearchChange,
   onDateChange,
   onMonthChange,
-  estadoFilter
+  estadoFilter,
+  onStateFilter
 }: LAMFiltersProps) => {
   const [openDate, setOpenDate] = useState(false);
   const [openMonth, setOpenMonth] = useState(false);
@@ -160,24 +162,58 @@ const LAMFilters = ({
           {estadoFilter && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-royal-blue/5 text-royal-blue border border-royal-blue/20 rounded-full text-[11px] font-semibold">
               Estado: {estadoFilter}
+              {onStateFilter && (
+                <button
+                  type="button"
+                  onClick={() => onStateFilter('')}
+                  className="hover:text-red-600 focus:outline-none ml-0.5"
+                  title="Quitar filtro de estado"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
             </div>
           )}
           
           {searchTerm && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[11px] font-semibold">
               Búsqueda: {searchTerm}
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="hover:text-red-600 focus:outline-none ml-0.5"
+                title="Quitar búsqueda"
+              >
+                <X className="h-3 w-3" />
+              </button>
             </div>
           )}
 
           {selectedDate && (
              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[11px] font-semibold">
                Fecha: {formatDateForDisplay(parseDateString(selectedDate))}
+               <button
+                 type="button"
+                 onClick={() => onDateChange('')}
+                 className="hover:text-red-600 focus:outline-none ml-0.5"
+                 title="Quitar filtro de fecha"
+               >
+                 <X className="h-3 w-3" />
+               </button>
              </div>
           )}
 
           {selectedMonth && (
              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[11px] font-semibold">
                Mes: {formatSelectedMonth()}
+               <button
+                 type="button"
+                 onClick={() => onMonthChange(undefined)}
+                 className="hover:text-red-600 focus:outline-none ml-0.5"
+                 title="Quitar filtro de mes"
+               >
+                 <X className="h-3 w-3" />
+               </button>
              </div>
           )}
 
@@ -189,6 +225,7 @@ const LAMFilters = ({
               onDateChange('');
               onMonthChange(undefined);
               clearSearch();
+              if (onStateFilter) onStateFilter('');
             }}
           >
             <X className="h-3 w-3 mr-1" />
