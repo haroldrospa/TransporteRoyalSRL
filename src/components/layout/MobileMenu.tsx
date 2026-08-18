@@ -76,25 +76,31 @@ const MobileMenu = ({
               )}
 
               {/* Laboratorios */}
-              {navLinks.filter(link => ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica'].includes(link.to)).length > 0 && (
-                <div className="flex flex-col gap-1 w-full">
-                  <h3 className="px-3 text-xs font-semibold text-white/50 uppercase tracking-wider mb-1 text-left">Laboratorios</h3>
-                  {navLinks.filter(link => ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica'].includes(link.to)).map(link => {
-                    const Icon = link.icon;
-                    return (
-                      <Link 
-                        key={link.to} 
-                        to={link.to} 
-                        className="flex items-center justify-start gap-3 p-3 rounded-md text-white/80 hover:bg-white/10 hover:text-white transition-colors w-full text-left" 
-                        onClick={() => setIsOpen(false)}
-                      >
-                        <Icon className="h-5 w-5 flex-shrink-0" />
-                        <span>{link.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
+              {(() => {
+                const labLinks = navLinks.filter(link => ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/demo-laboratorio'].includes(link.to));
+                if (labLinks.length === 0) return null;
+                return (
+                  <div className="flex flex-col gap-1 w-full">
+                    {labLinks.length > 1 && (
+                      <h3 className="px-3 text-xs font-semibold text-white/50 uppercase tracking-wider mb-1 text-left">Laboratorios</h3>
+                    )}
+                    {labLinks.map(link => {
+                      const Icon = link.icon;
+                      return (
+                        <Link 
+                          key={link.to} 
+                          to={link.to} 
+                          className="flex items-center justify-start gap-3 p-3 rounded-md text-white/80 hover:bg-white/10 hover:text-white transition-colors w-full text-left" 
+                          onClick={() => setIsOpen(false)}
+                        >
+                          <Icon className="h-5 w-5 flex-shrink-0" />
+                          <span>{link.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               {/* Operaciones */}
               {navLinks.filter(link => ['/entregas', '/control-bultos', '/cargar-camiones', '/control-conduces'].includes(link.to)).length > 0 && (

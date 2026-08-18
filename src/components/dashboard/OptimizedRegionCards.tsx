@@ -26,7 +26,17 @@ export const OptimizedRegionCards = memo(({
 
   const selectRegion = (region: Region) => {
     setRegionActual(region);
-    navigate('/lam');
+    if (userLab === 'Fersuaz') {
+      navigate('/fersuaz');
+    } else if (userLab === 'Taapharmaceutica') {
+      navigate('/taapharmaceutica');
+    } else if (userLab === 'Innovacion Quimica') {
+      navigate('/innovacion-quimica');
+    } else if (userLab === 'Laboratorio Demo' || user?.email?.toLowerCase().startsWith('demo@')) {
+      navigate('/demo-laboratorio');
+    } else {
+      navigate('/lam');
+    }
   };
 
   const showNorte = !userLab || norteBultos > 0;

@@ -13,6 +13,7 @@ import LAM from "./pages/LAM";
 import Fersuaz from "./pages/Fersuaz";
 import Taapharmaceutica from "./pages/Taapharmaceutica";
 import InnovacionQuimica from "./pages/InnovacionQuimica";
+import DemoLaboratorio from "./pages/DemoLaboratorio";
 import NotFound from "./pages/NotFound";
 import ControlBultos from "./pages/ControlBultos";
 import CargarCamiones from "./pages/CargarCamiones";
@@ -41,6 +42,8 @@ const App = () => (
             <Route path="/fersuaz" element={<Fersuaz />} />
             <Route path="/taapharmaceutica" element={<Taapharmaceutica />} />
             <Route path="/innovacion-quimica" element={<InnovacionQuimica />} />
+            <Route path="/demo-laboratorio" element={<DemoLaboratorio />} />
+            <Route path="/demolab" element={<DemoLaboratorio />} />
             <Route path="/entregas" element={<Entregas />} />
             <Route path="/control-bultos" element={<ControlBultos />} />
             <Route path="/cargar-camiones" element={<CargarCamiones />} />

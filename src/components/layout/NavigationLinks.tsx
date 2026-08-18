@@ -19,6 +19,14 @@ interface NavigationLinksProps {
 }
 
 export const getNavLinks = (user: User | null) => {
+  // Si es cuenta demo de laboratorio, mostrar únicamente Dashboard y Laboratorio sin los demás
+  if (user?.laboratorio === 'Laboratorio Demo' || user?.email?.toLowerCase().includes('demo')) {
+    return [
+      { to: '/', label: 'Dashboard', icon: Home },
+      { to: '/demo-laboratorio', label: 'Laboratorio', icon: FlaskConical }
+    ];
+  }
+
   const baseLinks = [
     { to: '/', label: 'Dashboard', icon: Home },
     { to: '/lam', label: 'LAM', icon: FileText },
@@ -49,16 +57,16 @@ export const getNavLinks = (user: User | null) => {
 
   if (user?.nivel === 2) {
     if (user?.laboratorio === 'LAM') {
-      return baseLinks.filter(link => ['/', '/lam'].includes(link.to));
+      return [{ to: '/', label: 'Dashboard', icon: Home }, { to: '/lam', label: 'Laboratorio', icon: FileText }];
     }
     if (user?.laboratorio === 'Fersuaz') {
-      return baseLinks.filter(link => ['/', '/fersuaz'].includes(link.to));
+      return [{ to: '/', label: 'Dashboard', icon: Home }, { to: '/fersuaz', label: 'Laboratorio', icon: FlaskConical }];
     }
     if (user?.laboratorio === 'Taapharmaceutica') {
-      return baseLinks.filter(link => ['/', '/taapharmaceutica'].includes(link.to));
+      return [{ to: '/', label: 'Dashboard', icon: Home }, { to: '/taapharmaceutica', label: 'Laboratorio', icon: Pill }];
     }
     if (user?.laboratorio === 'Innovacion Quimica') {
-      return baseLinks.filter(link => ['/', '/innovacion-quimica'].includes(link.to));
+      return [{ to: '/', label: 'Dashboard', icon: Home }, { to: '/innovacion-quimica', label: 'Laboratorio', icon: Beaker }];
     }
     return baseLinks.filter(link => ['/', '/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica'].includes(link.to));
   }
@@ -120,7 +128,7 @@ const NavigationLinks = ({ links, mobile = false }: NavigationLinksProps) => {
 
   const dashboardLinks = linksToRender.filter(link => link.to === '/');
   
-  const labPaths = ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica'];
+  const labPaths = ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/demo-laboratorio'];
   const labLinks = linksToRender.filter(link => labPaths.includes(link.to));
   const isLabActive = labPaths.includes(location.pathname);
   
@@ -169,7 +177,13 @@ const NavigationLinks = ({ links, mobile = false }: NavigationLinksProps) => {
         );
       })}
 
-      {labLinks.length > 0 && (
+      {labLinks.length === 1 && (
+        <Link to={labLinks[0].to}>
+          <NavItem isActive={isLabActive} icon={labLinks[0].icon} label={labLinks[0].label} />
+        </Link>
+      )}
+
+      {labLinks.length > 1 && (
         <DropdownMenu>
           <DropdownMenuTrigger className="outline-none">
             <NavItem isActive={isLabActive} icon={Beaker} label="Laboratorios" hasDropdown />

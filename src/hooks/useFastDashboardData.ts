@@ -6,6 +6,7 @@ import { calculateDeliveryTime, isDeliveryDelayed } from '@/utils/time/deliveryT
 import { Region } from '@/types/conduces';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTrucksByRegion } from '@/utils/trucksByRegion';
+import { getDemoDashboardData } from '@/utils/demoLabData';
 
 interface DelayedConduce {
   numeroConduce: string;
@@ -49,21 +50,46 @@ interface RegionStats {
   region_conduces_devueltos: number;
 }
 
-// Cache ultra-rápido en memoria
 const statsCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 60 * 1000; // 1 minuto
 
+export const isDemoUser = (user: any): boolean => {
+  if (user?.laboratorio === 'Laboratorio Demo' || user?.email?.toLowerCase().includes('demo')) {
+    return true;
+  }
+  try {
+    const stored = localStorage.getItem('royal_user') || sessionStorage.getItem('royal_user');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return (
+        parsed.laboratorio === 'Laboratorio Demo' ||
+        parsed.email?.toLowerCase().includes('demo')
+      );
+    }
+  } catch {
+    return false;
+  }
+  return false;
+};
+
 export function useFastDashboardData() {
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState<DashboardStats>({
-    norteBultos: 0,
-    surBultos: 0,
-    esteBultos: 0,
-    delayedCount: 0,
-    delayedConduces: [],
-    recentDeliveries: [],
-    camionesStats: []
+  const isDemo = isDemoUser(user);
+  
+  const [isLoading, setIsLoading] = useState(!isDemo);
+  const [stats, setStats] = useState<DashboardStats>(() => {
+    if (isDemoUser(user)) {
+      return getDemoDashboardData();
+    }
+    return {
+      norteBultos: 0,
+      surBultos: 0,
+      esteBultos: 0,
+      delayedCount: 0,
+      delayedConduces: [],
+      recentDeliveries: [],
+      camionesStats: []
+    };
   });
   
   // Determinar región inicial basada en el camión del usuario
@@ -74,10 +100,15 @@ export function useFastDashboardData() {
   };
   
   const [regionActual, setRegionActual] = useState<Region>(getInitialRegion());
-  const hasFetchedRef = useRef(false);
 
   // Función ultra-rápida usando RPCs
   const fetchStats = useCallback(async (forceRefresh = false) => {
+    if (isDemoUser(user)) {
+      setStats(getDemoDashboardData());
+      setIsLoading(false);
+      return;
+    }
+
     const userLab = user?.laboratorio || (user?.puesto === 'LAM' ? 'LAM' : null);
     const cacheKey = userLab ? `dashboard-fast-stats-${userLab}` : 'dashboard-fast-stats';
     // Check cache first
@@ -292,15 +323,17 @@ export function useFastDashboardData() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
-  // Cargar al montar
+  // Cargar al montar o cuando el usuario cambia
   useEffect(() => {
-    if (!hasFetchedRef.current) {
-      hasFetchedRef.current = true;
-      fetchStats();
+    if (isDemoUser(user)) {
+      setStats(getDemoDashboardData());
+      setIsLoading(false);
+      return;
     }
-  }, [fetchStats]);
+    fetchStats();
+  }, [user, fetchStats]);
 
   // Refresh function
   const refreshData = useCallback(async (force = false) => {
