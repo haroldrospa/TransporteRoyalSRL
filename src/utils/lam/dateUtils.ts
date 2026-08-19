@@ -17,6 +17,8 @@ export const getUniqueDates = (conduces: Conduce[]) => {
   conduces.forEach(c => {
     if (!c) return;
 
+    // Solo indexamos fechaCarga para el calendario y la navegación de fechas.
+    // La fechaEntrega se usa solo para filtrado, no para poblar el calendario.
     if (c.fechaCarga) {
       try {
         const cargaDate = safelyParseDate(c.fechaCarga);
@@ -25,17 +27,6 @@ export const getUniqueDates = (conduces: Conduce[]) => {
         }
       } catch (e) {
         console.error('Error parsing fechaCarga in getUniqueDates:', e, c.fechaCarga);
-      }
-    }
-
-    if (c.fechaEntrega) {
-      try {
-        const entregaDate = safelyParseDate(c.fechaEntrega);
-        if (entregaDate && isValid(entregaDate) && entregaDate >= minAllowed && entregaDate <= maxAllowed) {
-          fechasSinHora.push(format(entregaDate, 'dd/MM/yy'));
-        }
-      } catch (e) {
-        console.error('Error parsing fechaEntrega in getUniqueDates:', e, c.fechaEntrega);
       }
     }
   });
