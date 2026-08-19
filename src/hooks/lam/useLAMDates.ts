@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { DateRange } from 'react-day-picker';
-import { startOfMonth, endOfMonth, isWithinInterval, isValid, format, startOfDay, endOfDay } from 'date-fns';
+import { startOfMonth, endOfMonth, isWithinInterval, isValid, format, startOfDay, endOfDay, addDays } from 'date-fns';
 import { Conduce } from '@/types/conduces';
 import { safelyParseDate } from '@/utils/timeUtils';
 import { getUniqueDates } from '@/utils/lam/dateUtils';
@@ -34,35 +34,78 @@ export const useLAMDates = (conduces: Conduce[]) => {
     getUniqueDates(conduces)
   , [conduces]);
 
-  // Find the latest valid load date (ignoring typo future years > 2030)
+  // Find the latest valid load date (only from fechaCarga, not futuras fechaEntrega)
   const latestLoadDate = useMemo(() => {
     if (uniqueDates.length === 0) return '';
     
-    for (let i = uniqueDates.length - 1; i >= 0; i--) {
-      const parsed = safelyParseDate(uniqueDates[i]);
-      if (parsed && isValid(parsed) && parsed.getFullYear() <= 2030 && parsed.getFullYear() >= 2020) {
-        return uniqueDates[i];
+    const maxAllowed = addDays(new Date(), 60);
+    const minAllowed = new Date(2020, 0, 1);
+
+    // Only look at fechaCarga dates from the conduces (not fechaEntrega)
+    const cargaDates: string[] = [];
+    conduces.forEach(c => {
+      if (!c?.fechaCarga) return;
+      const d = safelyParseDate(c.fechaCarga);
+      if (d && isValid(d) && d >= minAllowed && d <= maxAllowed) {
+        cargaDates.push(format(d, 'dd/MM/yy'));
       }
+    });
+
+    if (cargaDates.length > 0) {
+      const sorted = Array.from(new Set(cargaDates)).sort((a, b) => {
+        const da = safelyParseDate(a);
+        const db = safelyParseDate(b);
+        if (da && db) return da.getTime() - db.getTime();
+        return 0;
+      });
+      return sorted[sorted.length - 1];
     }
     
-    return uniqueDates[uniqueDates.length - 1] || uniqueDates[0];
-  }, [uniqueDates]);
+    // Fallback: last in uniqueDates
+    return uniqueDates[uniqueDates.length - 1] || '';
+  }, [uniqueDates, conduces]);
 
-  // Auto-sync selectedDate and dateRange whenever uniqueDates changes (initial load, region change, data update)
+  // Auto-sync selectedDate and dateRange whenever uniqueDates or conduces changes
   useEffect(() => {
     if (uniqueDates.length === 0) {
       setSelectedDate('');
       return;
     }
 
+    const maxAllowed = addDays(new Date(), 60);
+    const minAllowed = new Date(2020, 0, 1);
+
+    // Find latest fechaCarga date
+    const cargaDates: string[] = [];
+    conduces.forEach(c => {
+      if (!c?.fechaCarga) return;
+      const d = safelyParseDate(c.fechaCarga);
+      if (d && isValid(d) && d >= minAllowed && d <= maxAllowed) {
+        cargaDates.push(format(d, 'dd/MM/yy'));
+      }
+    });
+
     let latestValid = uniqueDates[uniqueDates.length - 1];
     let parsedLatest: Date | null = null;
-    for (let i = uniqueDates.length - 1; i >= 0; i--) {
-      const parsed = safelyParseDate(uniqueDates[i]);
-      if (parsed && isValid(parsed) && parsed.getFullYear() <= 2030 && parsed.getFullYear() >= 2020) {
-        latestValid = uniqueDates[i];
-        parsedLatest = parsed;
-        break;
+
+    if (cargaDates.length > 0) {
+      const sorted = Array.from(new Set(cargaDates)).sort((a, b) => {
+        const da = safelyParseDate(a);
+        const db = safelyParseDate(b);
+        if (da && db) return da.getTime() - db.getTime();
+        return 0;
+      });
+      latestValid = sorted[sorted.length - 1];
+      parsedLatest = safelyParseDate(latestValid);
+    } else {
+      // Fallback: scan uniqueDates for a valid date in range
+      for (let i = uniqueDates.length - 1; i >= 0; i--) {
+        const parsed = safelyParseDate(uniqueDates[i]);
+        if (parsed && isValid(parsed) && parsed >= minAllowed && parsed <= maxAllowed) {
+          latestValid = uniqueDates[i];
+          parsedLatest = parsed;
+          break;
+        }
       }
     }
 
@@ -77,17 +120,9 @@ export const useLAMDates = (conduces: Conduce[]) => {
       return latestValid;
     });
 
-    // Ensure dateRange includes the month of the latest valid date
-    if (parsedLatest) {
-      setDateRange(prevRange => {
-        if (!prevRange?.from || !prevRange?.to) {
-          return { from: startOfMonth(parsedLatest!), to: endOfMonth(parsedLatest!) };
-        }
-        if (!isWithinInterval(parsedLatest!, { start: startOfDay(prevRange.from), end: endOfDay(prevRange.to) })) {
-          return { from: startOfMonth(parsedLatest!), to: endOfMonth(parsedLatest!) };
-        }
-        return prevRange;
-      });
+    // Always update dateRange to the month of the latest valid CARGA date
+    if (parsedLatest && isValid(parsedLatest)) {
+      setDateRange({ from: startOfMonth(parsedLatest), to: endOfMonth(parsedLatest) });
     }
   }, [uniqueDates]);
 

@@ -1,12 +1,16 @@
 
 import { Conduce } from '@/types/conduces';
-import { format, parse, isValid } from 'date-fns';
+import { format, isValid, addDays } from 'date-fns';
 import { safelyParseDate } from '../timeUtils';
 
 export const getUniqueDates = (conduces: Conduce[]) => {
   if (!Array.isArray(conduces) || conduces.length === 0) {
     return [];
   }
+
+  // Max allowed future date: 60 days from today (razonable para entregas futuras)
+  const maxAllowed = addDays(new Date(), 60);
+  const minAllowed = new Date(2020, 0, 1);
 
   const fechasSinHora: string[] = [];
 
@@ -16,11 +20,8 @@ export const getUniqueDates = (conduces: Conduce[]) => {
     if (c.fechaCarga) {
       try {
         const cargaDate = safelyParseDate(c.fechaCarga);
-        if (cargaDate && isValid(cargaDate)) {
-          const year = cargaDate.getFullYear();
-          if (year >= 2020 && year <= 2030) {
-            fechasSinHora.push(format(cargaDate, 'dd/MM/yy'));
-          }
+        if (cargaDate && isValid(cargaDate) && cargaDate >= minAllowed && cargaDate <= maxAllowed) {
+          fechasSinHora.push(format(cargaDate, 'dd/MM/yy'));
         }
       } catch (e) {
         console.error('Error parsing fechaCarga in getUniqueDates:', e, c.fechaCarga);
@@ -30,11 +31,8 @@ export const getUniqueDates = (conduces: Conduce[]) => {
     if (c.fechaEntrega) {
       try {
         const entregaDate = safelyParseDate(c.fechaEntrega);
-        if (entregaDate && isValid(entregaDate)) {
-          const year = entregaDate.getFullYear();
-          if (year >= 2020 && year <= 2030) {
-            fechasSinHora.push(format(entregaDate, 'dd/MM/yy'));
-          }
+        if (entregaDate && isValid(entregaDate) && entregaDate >= minAllowed && entregaDate <= maxAllowed) {
+          fechasSinHora.push(format(entregaDate, 'dd/MM/yy'));
         }
       } catch (e) {
         console.error('Error parsing fechaEntrega in getUniqueDates:', e, c.fechaEntrega);
