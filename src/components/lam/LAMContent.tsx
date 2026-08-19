@@ -53,6 +53,7 @@ const LAMContent = memo(() => {
     loadConduceImage,
     statsFilteredConduces,
     regionConduces,
+    safeConduces,
     estadoFilter,
     handleStateFilter,
     totalConducesCount
@@ -82,6 +83,7 @@ const LAMContent = memo(() => {
               <RegionToggle 
                 regionActual={regionActual}
                 onRegionChange={handleRegionChange}
+                conduces={safeConduces || []}
               />
             </Suspense>
             

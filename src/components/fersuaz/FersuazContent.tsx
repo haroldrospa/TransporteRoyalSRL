@@ -48,6 +48,7 @@ const FersuazContent = memo(() => {
     loadConduceImage,
     statsFilteredConduces,
     regionConduces,
+    safeConduces,
     estadoFilter,
     handleStateFilter
   } = useFersuazContent();
@@ -78,6 +79,7 @@ const FersuazContent = memo(() => {
               <RegionToggle 
                 regionActual={regionActual}
                 onRegionChange={handleRegionChange}
+                conduces={safeConduces || []}
               />
             </Suspense>
           </div>

@@ -31,7 +31,7 @@ const InnovacionQuimicaContent = memo(() => {
     handleSaveConduceChanges, handleConduceClick,
     handleRefresh, navigateDate,
     hasNoData, loadConduceImage,
-    regionConduces, statsFilteredConduces,
+    regionConduces, safeConduces, statsFilteredConduces,
     estadoFilter, handleStateFilter
   } = useInnovacionQuimicaContent();
 
@@ -58,7 +58,11 @@ const InnovacionQuimicaContent = memo(() => {
         <>
           <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
             <Suspense fallback={<div className="h-8 w-32 bg-muted animate-pulse rounded"></div>}>
-              <RegionToggle regionActual={regionActual} onRegionChange={handleRegionChange} />
+              <RegionToggle 
+                regionActual={regionActual} 
+                onRegionChange={handleRegionChange} 
+                conduces={safeConduces || []} 
+              />
             </Suspense>
           </div>
 

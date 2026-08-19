@@ -32,7 +32,9 @@ const FersuazHeader = ({ regionActual, loading, onRefresh, conduces, stats, char
   return (
     <div className={`${isMobile ? 'flex flex-col gap-3' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'}`}>
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Panel Fersuaz - Región {regionActual}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Panel Fersuaz - {regionActual === 'Todas' ? 'Todas las Zonas' : `Región ${regionActual}`}
+        </h1>
         <p className="text-sm text-muted-foreground">
           Gestión y seguimiento de conduce y bultos Fersuaz
         </p>

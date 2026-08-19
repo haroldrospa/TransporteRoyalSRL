@@ -51,7 +51,8 @@ export const useLAMContent = () => {
   
   // Filter conduces by region with stable reference
   const regionConduces = useMemo(() => {
-    if (!Array.isArray(safeConduces) || !regionActual) return [];
+    if (!Array.isArray(safeConduces)) return [];
+    if (!regionActual || regionActual === 'Todas') return safeConduces;
     return safeConduces.filter(c => c?.region === regionActual);
   }, [safeConduces, regionActual]);
   
@@ -155,6 +156,7 @@ export const useLAMContent = () => {
     sortedConduces,
     statsFilteredConduces,
     regionConduces,
+    safeConduces,
     handleSaveConduceChanges: handleSaveChanges,
     handleConduceClick,
     handleRefresh: memoizedRefresh,

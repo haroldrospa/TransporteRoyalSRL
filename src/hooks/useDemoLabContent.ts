@@ -39,7 +39,8 @@ export const useDemoLabContent = () => {
   const totalConducesCount = safeConduces.length;
 
   const regionConduces = useMemo(() => {
-    if (!Array.isArray(safeConduces) || !regionActual) return [];
+    if (!Array.isArray(safeConduces)) return [];
+    if (!regionActual || regionActual === 'Todas') return safeConduces;
     return safeConduces.filter(c => c?.region === regionActual);
   }, [safeConduces, regionActual]);
 
@@ -130,6 +131,7 @@ export const useDemoLabContent = () => {
     sortedConduces,
     statsFilteredConduces,
     regionConduces,
+    safeConduces,
     handleSaveConduceChanges,
     handleConduceClick,
     handleRefresh,

@@ -46,6 +46,7 @@ const DemoLaboratorioContent = memo(() => {
     loadConduceImage,
     statsFilteredConduces,
     regionConduces,
+    safeConduces,
     estadoFilter,
     handleStateFilter,
     totalConducesCount
@@ -71,6 +72,7 @@ const DemoLaboratorioContent = memo(() => {
           <RegionToggle 
             regionActual={regionActual}
             onRegionChange={handleRegionChange}
+            conduces={safeConduces || []}
           />
         </Suspense>
       </div>

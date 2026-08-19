@@ -85,7 +85,8 @@ export const calculateLamStats = (conduces: Conduce[], selectedMonth?: Date, all
         if (conduce.estado !== 'En tránsito') return false;
         if (conduce.excepcion) return false; // Excluir bultos marcados como excepción
         
-        const fechaCarga = new Date(conduce.fechaCarga);
+        const fechaCarga = safelyParseDate(conduce.fechaCarga);
+        if (!fechaCarga || !isValid(fechaCarga)) return false;
         const daysDiff = Math.floor((currentDate.getTime() - fechaCarga.getTime()) / (1000 * 60 * 60 * 24));
         
         return daysDiff > 3; // Packages older than 3 days

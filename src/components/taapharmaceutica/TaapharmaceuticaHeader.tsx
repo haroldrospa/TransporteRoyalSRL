@@ -32,7 +32,9 @@ const TaapharmaceuticaHeader = ({ regionActual, loading, onRefresh, conduces, st
   return (
     <div className={`${isMobile ? 'flex flex-col gap-3' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'}`}>
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Panel Taapharmaceutica - Región {regionActual}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Panel Taapharmaceutica - {regionActual === 'Todas' ? 'Todas las Zonas' : `Región ${regionActual}`}
+        </h1>
         <p className="text-sm text-muted-foreground">
           Gestión y seguimiento de conduce y bultos Taapharmaceutica
         </p>

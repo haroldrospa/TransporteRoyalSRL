@@ -39,7 +39,8 @@ export const useTaapharmaceuticaContent = () => {
   }, [optimizedConduces, userHasLabAccess]);
   
   const regionConduces = useMemo(() => {
-    if (!Array.isArray(safeConduces) || !regionActual) return [];
+    if (!Array.isArray(safeConduces)) return [];
+    if (!regionActual || regionActual === 'Todas') return safeConduces;
     return safeConduces.filter(c => c?.region === regionActual);
   }, [safeConduces, regionActual]);
   
@@ -100,7 +101,7 @@ export const useTaapharmaceuticaContent = () => {
     selectedConduce, showDetailsDialog, setShowDetailsDialog,
     stats, chartInfo, bultosMonthlyData,
     uniqueDates, latestLoadDate,
-    sortedConduces, statsFilteredConduces, regionConduces,
+    sortedConduces, statsFilteredConduces, regionConduces, safeConduces,
     handleSaveConduceChanges: handleSaveChanges,
     handleConduceClick,
     handleRefresh: memoizedRefresh,

@@ -45,7 +45,13 @@ const ConducesTableSection = memo(({
   
   // Memoize navigation state
   const navigationState = useMemo(() => {
-    const currentIndex = selectedDate ? uniqueDates.indexOf(selectedDate) : -1;
+    let normalized = selectedDate;
+    const parsed = safelyParseDate(selectedDate);
+    if (parsed) {
+      const f2 = format(parsed, 'dd/MM/yy');
+      if (uniqueDates.includes(f2)) normalized = f2;
+    }
+    const currentIndex = normalized ? uniqueDates.indexOf(normalized) : -1;
     return {
       canNavigatePrev: currentIndex > 0,
       canNavigateNext: currentIndex >= 0 && currentIndex < uniqueDates.length - 1

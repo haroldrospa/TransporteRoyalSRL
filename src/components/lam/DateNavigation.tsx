@@ -19,12 +19,8 @@ interface DateNavigationProps {
 
 const parseSelected = (dateStr: string): Date | undefined => {
   if (!dateStr) return undefined;
-  const yearPart = dateStr.split('/')[2] || '';
-  const primary = yearPart.length === 2 ? 'dd/MM/yy' : 'dd/MM/yyyy';
-  const fallback = yearPart.length === 2 ? 'dd/MM/yyyy' : 'dd/MM/yy';
-  let parsed = parse(dateStr, primary, new Date());
-  if (!isValid(parsed)) parsed = parse(dateStr, fallback, new Date());
-  return isValid(parsed) ? parsed : undefined;
+  const parsed = safelyParseDate(dateStr);
+  return parsed && isValid(parsed) ? parsed : undefined;
 };
 
 const DateNavigation = ({
@@ -49,7 +45,8 @@ const DateNavigation = ({
     if (!uniqueDates.length) return false;
     const f2 = format(date, 'dd/MM/yy');
     const f4 = format(date, 'dd/MM/yyyy');
-    return !uniqueDates.includes(f2) && !uniqueDates.includes(f4);
+    const iso = format(date, 'yyyy-MM-dd');
+    return !uniqueDates.includes(f2) && !uniqueDates.includes(f4) && !uniqueDates.includes(iso);
   };
 
   return (

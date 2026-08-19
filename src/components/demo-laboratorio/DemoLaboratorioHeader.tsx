@@ -41,7 +41,9 @@ const DemoLaboratorioHeader = ({
     <div className={`${isMobile ? 'flex flex-col gap-3' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'}`}>
       <div>
         <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Panel Laboratorio - Región {regionActual}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Panel Laboratorio - {regionActual === 'Todas' ? 'Todas las Zonas' : `Región ${regionActual}`}
+          </h1>
           <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 text-xs py-0.5">
             <Sparkles className="h-3 w-3" />
             Modo Demostración

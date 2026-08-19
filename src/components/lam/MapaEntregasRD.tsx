@@ -5,6 +5,7 @@ import { Conduce } from '@/types/conduces';
 import { encontrarProvinciaPorCiudad } from '@/constants/provinciasCiudades';
 import { MapPin, CheckCircle2, Package, Eye, AlertCircle, Info, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { formatReadableDate } from '@/utils/dateFormatters';
 
 interface MapaEntregasRDProps {
   conduces: Conduce[];
@@ -498,7 +499,7 @@ export const MapaEntregasRD: React.FC<MapaEntregasRDProps> = ({ conduces }) => {
                         </p>
                         <p className="text-[10px] text-muted-foreground flex items-center gap-1 justify-end">
                           <Calendar className="h-3 w-3" />
-                          {conduce.fechaEntrega ? new Date(conduce.fechaEntrega).toLocaleDateString() : 'Sin fecha'}
+                          {conduce.fechaEntrega ? formatReadableDate(conduce.fechaEntrega) : 'Sin fecha'}
                         </p>
                       </div>
                     </div>

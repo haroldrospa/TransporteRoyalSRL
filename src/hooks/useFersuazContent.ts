@@ -48,7 +48,8 @@ export const useFersuazContent = () => {
   
   // Filter conduces by region with stable reference
   const regionConduces = useMemo(() => {
-    if (!Array.isArray(safeConduces) || !regionActual) return [];
+    if (!Array.isArray(safeConduces)) return [];
+    if (!regionActual || regionActual === 'Todas') return safeConduces;
     return safeConduces.filter(c => c?.region === regionActual);
   }, [safeConduces, regionActual]);
   
@@ -94,7 +95,7 @@ export const useFersuazContent = () => {
     handleConduceClick,
     estadoFilter,
     setEstadoFilter
-  } = useLAMTable(regionConduces, statsFilteredConduces, selectedDate, selectedMonth, parseDeliveryTime);
+  } = useLAMTable(regionConduces, statsFilteredConduces, selectedDate, selectedMonth, parseDeliveryTime, safeConduces);
   
   // Use the conduce operations hook
   const { handleSaveConduceChanges, handleRefresh, handleRegionChange } = useLAMConduceOperations();
@@ -148,6 +149,7 @@ export const useFersuazContent = () => {
     sortedConduces,
     statsFilteredConduces,
     regionConduces,
+    safeConduces,
     handleSaveConduceChanges: handleSaveChanges,
     handleConduceClick,
     handleRefresh: memoizedRefresh,
