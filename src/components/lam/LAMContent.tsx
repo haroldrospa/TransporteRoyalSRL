@@ -90,7 +90,7 @@ const LAMContent = memo(() => {
             <Button
               onClick={() => setShowEntregasLAM(!showEntregasLAM)}
               variant={showEntregasLAM ? "default" : "outline"}
-              className="gap-2"
+              className="gap-2 h-11 px-4 text-sm font-semibold rounded-xl shadow-xs"
             >
               <Package className="h-4 w-4" />
               {showEntregasLAM ? 'Ver Conduces' : 'Ver Entregas LAM'}
