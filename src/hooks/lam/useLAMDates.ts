@@ -126,15 +126,22 @@ export const useLAMDates = (conduces: Conduce[]) => {
     }
   }, [uniqueDates]);
 
-  // Sync selectedMonth when dateRange changes
+
+  // Sync selectedMonth from selectedDate (highest priority) or dateRange as fallback
   useEffect(() => {
+    if (selectedDate) {
+      const parsed = safelyParseDate(selectedDate);
+      if (parsed && isValid(parsed)) {
+        setSelectedMonth(startOfMonth(parsed));
+        return;
+      }
+    }
     if (dateRange?.from && isValid(dateRange.from)) {
-      const monthStart = startOfMonth(dateRange.from);
-      setSelectedMonth(monthStart);
+      setSelectedMonth(startOfMonth(dateRange.from));
     } else {
       setSelectedMonth(undefined);
     }
-  }, [dateRange]);
+  }, [selectedDate, dateRange]);
 
   // Function to handle date navigation - navigate through all available dates
   const navigateDate = useCallback((direction: 'prev' | 'next') => {
@@ -179,6 +186,8 @@ export const useLAMDates = (conduces: Conduce[]) => {
   }, [selectedDate, uniqueDates]);
 
   // Function to filter conduces by date range
+  // When a selectedDate is active, also include any conduce that matches that specific day
+  // to avoid blocking conduces when dateRange month doesn't match selectedDate month.
   const filterConducesByDateRange = useMemo(() => {
     return (conducesList: Conduce[]) => {
       if (!dateRange?.from) {
@@ -193,6 +202,18 @@ export const useLAMDates = (conduces: Conduce[]) => {
           const entregaDate = safelyParseDate(conduce.fechaEntrega);
           
           if ((!cargaDate || !isValid(cargaDate)) && (!entregaDate || !isValid(entregaDate))) return false;
+          
+          // If there's a selectedDate, also accept conduces that match that specific day
+          // (even if they are outside the dateRange month)
+          if (selectedDate) {
+            const selParsed = safelyParseDate(selectedDate);
+            if (selParsed && isValid(selParsed)) {
+              const selDay = format(selParsed, 'dd/MM/yy');
+              const cargaDay = cargaDate && isValid(cargaDate) ? format(cargaDate, 'dd/MM/yy') : null;
+              const entregaDay = entregaDate && isValid(entregaDate) ? format(entregaDate, 'dd/MM/yy') : null;
+              if (cargaDay === selDay || entregaDay === selDay) return true;
+            }
+          }
           
           if (dateRange.to && isValid(dateRange.to)) {
             const rangeStart = startOfDay(dateRange.from);
@@ -211,7 +232,7 @@ export const useLAMDates = (conduces: Conduce[]) => {
         }
       });
     };
-  }, [dateRange]);
+  }, [dateRange, selectedDate]);
 
   return {
     dateRange,
