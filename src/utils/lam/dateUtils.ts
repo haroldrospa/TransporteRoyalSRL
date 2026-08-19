@@ -8,47 +8,47 @@ export const getUniqueDates = (conduces: Conduce[]) => {
     return [];
   }
 
-  // Extract only the date part (DD/MM/YY) without the hour
-  const fechasSinHora = conduces
-    .map(c => {
-      if (!c || !c.fechaCarga) return null;
-      
+  const fechasSinHora: string[] = [];
+
+  conduces.forEach(c => {
+    if (!c) return;
+
+    if (c.fechaCarga) {
       try {
-        const conduceDate = safelyParseDate(c.fechaCarga);
-        if (!conduceDate || !isValid(conduceDate)) return null;
-        
-        return format(conduceDate, 'dd/MM/yy');
-      } catch (error) {
-        console.error('Error getting unique dates:', error, c.fechaCarga);
-        return null;
+        const cargaDate = safelyParseDate(c.fechaCarga);
+        if (cargaDate && isValid(cargaDate)) {
+          const year = cargaDate.getFullYear();
+          if (year >= 2020 && year <= 2030) {
+            fechasSinHora.push(format(cargaDate, 'dd/MM/yy'));
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing fechaCarga in getUniqueDates:', e, c.fechaCarga);
       }
-    })
-    .filter(Boolean) as string[];
+    }
+
+    if (c.fechaEntrega) {
+      try {
+        const entregaDate = safelyParseDate(c.fechaEntrega);
+        if (entregaDate && isValid(entregaDate)) {
+          const year = entregaDate.getFullYear();
+          if (year >= 2020 && year <= 2030) {
+            fechasSinHora.push(format(entregaDate, 'dd/MM/yy'));
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing fechaEntrega in getUniqueDates:', e, c.fechaEntrega);
+      }
+    }
+  });
   
   // Sort dates chronologically - ensure all dates are valid before sorting
   return Array.from(new Set(fechasSinHora)).sort((a, b) => {
     try {
       if (!a || !b) return 0;
       
-      // Explicitly handle potential parsing errors
-      let dateA: Date | null = null;
-      let dateB: Date | null = null;
-      
-      try {
-        dateA = parse(a, 'dd/MM/yy', new Date());
-        if (!dateA || !isValid(dateA)) return 0;
-      } catch (err) {
-        console.error('Failed to parse date A:', a, err);
-        return 0;
-      }
-      
-      try {
-        dateB = parse(b, 'dd/MM/yy', new Date());
-        if (!dateB || !isValid(dateB)) return 0;
-      } catch (err) {
-        console.error('Failed to parse date B:', b, err);
-        return 0;
-      }
+      let dateA = safelyParseDate(a);
+      let dateB = safelyParseDate(b);
       
       if (dateA && dateB && isValid(dateA) && isValid(dateB)) {
         return dateA.getTime() - dateB.getTime();

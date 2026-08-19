@@ -122,8 +122,10 @@ export const filterAndSortConduces = (
       const skipDateFilters = !!lowerSearchTerm;
       
       // Date filtering logic - check individual date first, then month filter
-      const conduceDate = safelyParseDate(conduce.fechaCarga);
-      if (!conduceDate || !isValid(conduceDate)) {
+      const cargaDate = safelyParseDate(conduce.fechaCarga);
+      const entregaDate = safelyParseDate(conduce.fechaEntrega);
+      
+      if ((!cargaDate || !isValid(cargaDate)) && (!entregaDate || !isValid(entregaDate))) {
         return false;
       }
 
@@ -133,13 +135,26 @@ export const filterAndSortConduces = (
       // Individual date filtering (highest priority when specified)
       if (selectedDate) {
         try {
-          // Support both dd/MM/yy and dd/MM/yyyy formats for comparison
-          const formattedConduce4digit = format(conduceDate, 'dd/MM/yyyy');
-          const formattedConduce2digit = format(conduceDate, 'dd/MM/yy');
-          const matchesDay = formattedConduce4digit === selectedDate || formattedConduce2digit === selectedDate;
+          let matchesDay = false;
+          if (cargaDate && isValid(cargaDate)) {
+            const f4 = format(cargaDate, 'dd/MM/yyyy');
+            const f2 = format(cargaDate, 'dd/MM/yy');
+            const iso = format(cargaDate, 'yyyy-MM-dd');
+            if (f4 === selectedDate || f2 === selectedDate || iso === selectedDate) {
+              matchesDay = true;
+            }
+          }
+          if (!matchesDay && entregaDate && isValid(entregaDate)) {
+            const f4 = format(entregaDate, 'dd/MM/yyyy');
+            const f2 = format(entregaDate, 'dd/MM/yy');
+            const iso = format(entregaDate, 'yyyy-MM-dd');
+            if (f4 === selectedDate || f2 === selectedDate || iso === selectedDate) {
+              matchesDay = true;
+            }
+          }
           if (!matchesDay) return false;
         } catch (error) {
-          console.error('Error filtering by date:', error, conduce.fechaCarga);
+          console.error('Error filtering by date:', error, conduce);
           return false;
         }
       }
@@ -147,24 +162,20 @@ export const filterAndSortConduces = (
       // Month filtering with safe parsing (only if day filter didn't already filter)
       if (validSelectedMonth) {
         try {
-          // Create start and end dates for interval check
           const startDate = startOfMonth(validSelectedMonth);
           const endDate = endOfMonth(validSelectedMonth);
           
-          // Ensure both dates are valid
           if (!isValid(startDate) || !isValid(endDate)) {
             console.error('Invalid interval dates:', startDate, endDate);
             return false;
           }
           
-          const matchesMonth = isWithinInterval(conduceDate, { 
-            start: startDate, 
-            end: endDate 
-          });
+          const matchesCarga = cargaDate && isValid(cargaDate) && isWithinInterval(cargaDate, { start: startDate, end: endDate });
+          const matchesEntrega = entregaDate && isValid(entregaDate) && isWithinInterval(entregaDate, { start: startDate, end: endDate });
           
-          return matchesMonth;
+          if (!matchesCarga && !matchesEntrega) return false;
         } catch (error) {
-          console.error('Error filtering by month:', error, conduce.fechaCarga);
+          console.error('Error filtering by month:', error, conduce);
           return false;
         }
       }

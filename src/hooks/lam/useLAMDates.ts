@@ -34,17 +34,13 @@ export const useLAMDates = (conduces: Conduce[]) => {
     getUniqueDates(conduces)
   , [conduces]);
 
-  // Find the latest valid load date (ignoring typo future dates > tomorrow)
+  // Find the latest valid load date (ignoring typo future years > 2030)
   const latestLoadDate = useMemo(() => {
     if (uniqueDates.length === 0) return '';
     
-    const maxAllowed = new Date();
-    maxAllowed.setDate(maxAllowed.getDate() + 1);
-    maxAllowed.setHours(23, 59, 59, 999);
-    
     for (let i = uniqueDates.length - 1; i >= 0; i--) {
       const parsed = safelyParseDate(uniqueDates[i]);
-      if (parsed && parsed <= maxAllowed) {
+      if (parsed && isValid(parsed) && parsed.getFullYear() <= 2030 && parsed.getFullYear() >= 2020) {
         return uniqueDates[i];
       }
     }
@@ -59,15 +55,11 @@ export const useLAMDates = (conduces: Conduce[]) => {
       return;
     }
 
-    const maxAllowed = new Date();
-    maxAllowed.setDate(maxAllowed.getDate() + 1);
-    maxAllowed.setHours(23, 59, 59, 999);
-
     let latestValid = uniqueDates[uniqueDates.length - 1];
     let parsedLatest: Date | null = null;
     for (let i = uniqueDates.length - 1; i >= 0; i--) {
       const parsed = safelyParseDate(uniqueDates[i]);
-      if (parsed && parsed <= maxAllowed) {
+      if (parsed && isValid(parsed) && parsed.getFullYear() <= 2030 && parsed.getFullYear() >= 2020) {
         latestValid = uniqueDates[i];
         parsedLatest = parsed;
         break;
@@ -160,21 +152,24 @@ export const useLAMDates = (conduces: Conduce[]) => {
       
       return conducesList.filter(conduce => {
         try {
-          if (!conduce || !conduce.fechaCarga) return false;
+          if (!conduce) return false;
           
-          const conduceDate = safelyParseDate(conduce.fechaCarga);
-          if (!conduceDate || !isValid(conduceDate)) return false;
+          const cargaDate = safelyParseDate(conduce.fechaCarga);
+          const entregaDate = safelyParseDate(conduce.fechaEntrega);
+          
+          if ((!cargaDate || !isValid(cargaDate)) && (!entregaDate || !isValid(entregaDate))) return false;
           
           if (dateRange.to && isValid(dateRange.to)) {
             const rangeStart = startOfDay(dateRange.from);
             const rangeEnd = endOfDay(dateRange.to);
-            return isWithinInterval(conduceDate, { 
-              start: rangeStart, 
-              end: rangeEnd 
-            });
+            const inCarga = cargaDate && isValid(cargaDate) && isWithinInterval(cargaDate, { start: rangeStart, end: rangeEnd });
+            const inEntrega = entregaDate && isValid(entregaDate) && isWithinInterval(entregaDate, { start: rangeStart, end: rangeEnd });
+            return inCarga || inEntrega;
           }
           
-          return conduceDate >= startOfDay(dateRange.from);
+          const inCarga = cargaDate && isValid(cargaDate) && cargaDate >= startOfDay(dateRange.from);
+          const inEntrega = entregaDate && isValid(entregaDate) && entregaDate >= startOfDay(dateRange.from);
+          return inCarga || inEntrega;
         } catch (error) {
           console.error('Error filtering conduce by date range:', error);
           return false;
