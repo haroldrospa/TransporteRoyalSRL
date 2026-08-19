@@ -1,12 +1,14 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { memo, useMemo } from 'react';
+import { format } from 'date-fns';
 import ConducesTable from '@/components/lam/ConducesTable';
 import LAMFilters from '@/components/lam/LAMFilters';
 import DateNavigation from '@/components/lam/DateNavigation';
 import TableBultosStats from '@/components/lam/TableBultosStats';
 import { Conduce } from '@/types/conduces';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { safelyParseDate } from '@/utils/timeUtils';
 
 interface ConducesTableSectionProps {
   conduces: Conduce[];

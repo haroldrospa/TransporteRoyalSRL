@@ -6,6 +6,7 @@ import { format, parse, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { safelyParseDate } from '@/utils/timeUtils';
 
 interface DateNavigationProps {
   selectedDate: string;

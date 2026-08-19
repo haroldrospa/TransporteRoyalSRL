@@ -2,6 +2,7 @@
 import { Conduce, EstadoBulto } from '@/types/conduces';
 import { isValid } from 'date-fns';
 import { filterConducesByMonth } from './dateFilters';
+import { safelyParseDate } from '../timeUtils';
 
 /**
  * Helper function to count bultos by estado
