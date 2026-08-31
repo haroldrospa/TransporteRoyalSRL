@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,10 @@ const Login = () => {
   
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  const redirectPath = (location.state as any)?.from?.pathname || '/';
 
   // Check for remembered credentials on mount
   useEffect(() => {
@@ -32,11 +35,11 @@ const Login = () => {
       setRememberSession(rememberedSession);
     }
     
-    // If user is already authenticated and we have remembered session, redirect to home
-    if (isAuthenticated && rememberedSession) {
-      navigate('/');
+    // If user is already authenticated, redirect to original path
+    if (isAuthenticated) {
+      navigate(redirectPath, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, redirectPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +58,7 @@ const Login = () => {
         localStorage.removeItem('royal_remember_session');
       }
       
-      navigate('/');
+      navigate(redirectPath, { replace: true });
     } catch (error) {
       console.error('Error de login:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Error de autenticación');

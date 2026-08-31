@@ -11,7 +11,7 @@ import { Region } from '@/types/conduces';
 const ControlConduces = () => {
   const { user } = useAuth();
   const [scanValue, setScanValue] = useState('');
-  const [regionActual, setRegionActual] = useState<Region>('Norte');
+  const [regionActual, setRegionActual] = useState<Region | string>('Norte');
   const { voiceEnabled, voiceSpeed, toggleVoice, updateVoiceSpeed, announceConduce } = useVoiceAnnouncement();
   const lastAnnouncedRef = useRef<string | null>(null);
   
@@ -41,7 +41,9 @@ const ControlConduces = () => {
     const filtered: typeof relacionesPorFecha = {};
     
     Object.entries(relacionesPorFecha).forEach(([fecha, relaciones]) => {
-      const filteredRelaciones = relaciones.filter(rel => rel.region === regionActual);
+      const filteredRelaciones = (!regionActual || regionActual === 'Todas')
+        ? relaciones
+        : relaciones.filter(rel => rel.region === regionActual);
       
       if (filteredRelaciones.length > 0) {
         filtered[fecha] = filteredRelaciones;

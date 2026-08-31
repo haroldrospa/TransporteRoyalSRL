@@ -7,14 +7,16 @@ import {
 } from '@/services/controlBultos/fastControlBultosService';
 import { useToast } from '@/hooks/use-toast';
 
-export const useFastControlBultos = (regionActual: Region) => {
+export const useFastControlBultos = (regionActual: Region | string) => {
   const [allConduces, setAllConduces] = useState<Conduce[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
   
   // Filter conduces by region
-  const conduces = allConduces.filter(c => c.region === regionActual);
+  const conduces = (!regionActual || regionActual === 'Todas')
+    ? allConduces
+    : allConduces.filter(c => c.region === regionActual);
   
   console.log(`📊 [useFastControlBultos] Region: ${regionActual}, Total: ${allConduces.length}, Filtered: ${conduces.length}`);
   

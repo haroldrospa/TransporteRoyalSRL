@@ -1,12 +1,14 @@
 import { Region } from '@/types/conduces';
 
-export const getTrucksByRegion = (region: Region): string[] => {
+export const getTrucksByRegion = (region: Region | string): string[] => {
   if (region === 'Sur') {
     return ['R-01', 'R-02', 'Almacen'];
   } else if (region === 'Este') {
     return ['R-08', 'R-09', 'Almacen'];
-  } else {
+  } else if (region === 'Norte') {
     return ['R-03', 'R-04', 'R-05', 'R-06', 'R-07', 'C-01', 'Almacen'];
+  } else {
+    return getAllValidTrucks();
   }
 };
 

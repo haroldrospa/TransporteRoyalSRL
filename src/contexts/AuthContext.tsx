@@ -24,38 +24,30 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getStoredUser = (): User | null => {
+  try {
+    const storedUser = localStorage.getItem('royal_user') || sessionStorage.getItem('royal_user');
+    if (storedUser) {
+      return JSON.parse(storedUser);
+    }
+  } catch (e) {
+    console.error('Error reading stored user:', e);
+    localStorage.removeItem('royal_user');
+    sessionStorage.removeItem('royal_user');
+  }
+  return null;
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(getStoredUser);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Restore user from storage on mount so navigation/remounts don't log the user out.
-    // "Recordar mi sesión" only controls whether the session survives a full browser close:
-    // - true  => persisted in localStorage (auto-login on next visit)
-    // - false => kept only in sessionStorage (cleared when the browser tab/window closes)
-    const rememberedSession = localStorage.getItem('royal_remember_session') === 'true';
-    const storedUser =
-      localStorage.getItem('royal_user') || sessionStorage.getItem('royal_user');
-
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem('royal_user');
-        sessionStorage.removeItem('royal_user');
-      }
-
-      // If they didn't ask to be remembered across browser sessions, migrate the
-      // persisted copy to sessionStorage so it won't auto-login next time.
-      if (!rememberedSession) {
-        const value = storedUser;
-        sessionStorage.setItem('royal_user', value);
-        localStorage.removeItem('royal_user');
-      }
+    const initialUser = getStoredUser();
+    if (initialUser && !user) {
+      setUser(initialUser);
     }
-
-    setLoading(false);
-  }, []);
+  }, [user]);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
@@ -100,14 +92,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userData = data as User;
       setUser(userData);
       const serialized = JSON.stringify(userData);
-      const rememberedSession = localStorage.getItem('royal_remember_session') === 'true';
-      if (rememberedSession) {
-        localStorage.setItem('royal_user', serialized);
-        sessionStorage.removeItem('royal_user');
-      } else {
-        sessionStorage.setItem('royal_user', serialized);
-        localStorage.removeItem('royal_user');
-      }
+      localStorage.setItem('royal_user', serialized);
+      sessionStorage.setItem('royal_user', serialized);
     } catch (error) {
       console.error('Login error:', error);
       throw error;

@@ -11,13 +11,15 @@ type LayoutProps = {
 };
 
 const Layout = ({ children }: LayoutProps) => {
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
   
   // Always call hooks before any conditional returns
   useEffect(() => {
+    if (loading || !user) return;
+
     // For drivers, always redirect to entregas page if they're on home page
     if (user?.puesto === 'Chofer' && location.pathname === '/') {
       navigate('/entregas');
@@ -30,11 +32,19 @@ const Layout = ({ children }: LayoutProps) => {
     if (user?.nivel === 6 && !['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/crear-conduces', '/entregas'].includes(location.pathname)) {
       navigate('/lam');
     }
-  }, [user, location.pathname, navigate]);
+  }, [user, loading, location.pathname, navigate]);
   
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="h-8 w-8 border-3 border-royal-blue/30 border-t-royal-blue rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   // If not authenticated, redirect to login
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
   
   const navLinks = getNavLinks(user);

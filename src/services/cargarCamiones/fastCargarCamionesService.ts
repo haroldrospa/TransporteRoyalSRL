@@ -16,11 +16,13 @@ export interface VerifiedShipment {
   verified_at: string;
   bulto_sequence?: number;
   ciudad?: string;
+  region?: string;
   user_id?: string;
   user_name?: string;
   conduces?: {
     ciudad?: string;
     cantidad_bultos?: number;
+    region?: string;
   };
 }
 
@@ -175,7 +177,7 @@ export async function fetchVerifiedShipments(): Promise<VerifiedShipment[]> {
       
       const { data: pageData, error: pageError } = await supabase
         .from('verified_shipments')
-        .select('*, conduces(ciudad, cantidad_bultos)')
+        .select('*, conduces(ciudad, cantidad_bultos, region)')
         .order('verified_at', { ascending: false })
         .range(from, to);
       
@@ -197,7 +199,8 @@ export async function fetchVerifiedShipments(): Promise<VerifiedShipment[]> {
     
     const shipments = data?.map(item => ({
       ...item,
-      ciudad: item.conduces?.ciudad || null
+      ciudad: item.conduces?.ciudad || null,
+      region: item.conduces?.region || null
     })) || [];
     
     const endTime = performance.now();

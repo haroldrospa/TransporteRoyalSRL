@@ -26,6 +26,7 @@ import {
   hasOfflineData,
 } from '@/services/offline/offlineStorageService';
 import { syncPendingScans, getPendingScanCount } from '@/services/offline/syncService';
+import { speakResult } from '@/utils/speakResult';
 
 export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
   const [conduces, setConduces] = useState<Conduce[]>([]);
@@ -51,6 +52,19 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
     offline?: boolean; // New: indicates scan was saved offline
     timestamp: number;
   } | null>(null);
+
+  // Announce the scanned truck or result via voice (Speech Synthesis)
+  useEffect(() => {
+    if (!lastScannedInfo || !lastScannedInfo.conduceNumber) return;
+
+    speakResult({
+      encomendado: lastScannedInfo.encomendado,
+      duplicate: lastScannedInfo.duplicate,
+      notFound: lastScannedInfo.notFound,
+      delivered: lastScannedInfo.delivered,
+      unassigned: lastScannedInfo.unassigned,
+    });
+  }, [lastScannedInfo]);
   
   // Local state for real-time updates
   const [scannedConduces, setScannedConduces] = useState<Record<string, string[]>>({});
@@ -92,24 +106,29 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
     updatePendingCount();
   }, [updatePendingCount]);
 
+  const isSyncingRef = useRef(false);
+  const refreshDataRef = useRef<(showToast?: boolean) => Promise<void>>(async () => {});
+
   // Sync offline data
   const syncOfflineData = useCallback(async () => {
-    if (!isOnline || isSyncing) return;
+    if (!isOnline || isSyncingRef.current) return;
     
+    isSyncingRef.current = true;
     setIsSyncing(true);
     try {
       const result = await syncPendingScans();
       if (result.synced > 0) {
         // Refresh data after sync
-        await refreshData(false);
+        await refreshDataRef.current(false);
       }
       await updatePendingCount();
     } catch (error) {
       console.error('❌ Sync failed:', error);
     } finally {
+      isSyncingRef.current = false;
       setIsSyncing(false);
     }
-  }, [isOnline, isSyncing]);
+  }, [isOnline, updatePendingCount]);
 
   // Process shipments into local state
   const processShipments = useCallback((shipments: VerifiedShipment[]) => {
@@ -1182,15 +1201,25 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
     }
   }, [isOnline]);
 
-  // Load data on mount
+  // Keep refreshData ref up to date
   useEffect(() => {
-    loadInitialData();
+    refreshDataRef.current = refreshData;
+  }, [refreshData]);
+
+  // Load data on mount
+  const hasLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadInitialData();
+    }
   }, [loadInitialData]);
 
   // Real-time subscription (only when online)
   useEffect(() => {
     if (!isOnline) return;
 
+    let debounceTimer: any = null;
     const channel = supabase
       .channel('verified-shipments-realtime')
       .on(
@@ -1202,16 +1231,19 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
         },
         () => {
           console.log('🔔 Real-time update received');
-          // Debounce refresh
-          setTimeout(() => refreshData(false), 500);
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            refreshDataRef.current(false);
+          }, 1500);
         }
       )
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
-  }, [isOnline, refreshData]);
+  }, [isOnline]);
 
   return {
     conduces,

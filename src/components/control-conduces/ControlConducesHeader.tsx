@@ -26,8 +26,8 @@ import { toast } from 'sonner';
 interface ControlConducesHeaderProps {
   isRefreshing: boolean;
   onRefresh: () => void;
-  regionActual: Region;
-  onRegionChange: (region: Region) => void;
+  regionActual: Region | string;
+  onRegionChange: (region: any) => void;
   voiceEnabled: boolean;
   voiceSpeed: number;
   onToggleVoice: () => void;

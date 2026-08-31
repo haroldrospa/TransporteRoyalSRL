@@ -1,8 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { TableRow, TableCell } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Truck, Package, MapPin, Trash, Loader2, CheckCircle, XCircle, Shield } from 'lucide-react';
+import { Truck, Package, MapPin, Trash2, Loader2, Shield, User, Clock, Hash } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { canDeleteRecords } from '@/utils/userPermissions';
@@ -24,96 +23,106 @@ interface ShipmentRowProps {
   isDeleting: string | null;
 }
 
+// Formatear ciudad a Title Case para mejor legibilidad
+const formatCityName = (city?: string) => {
+  if (!city) return "No disponible";
+  return city
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const ShipmentTableRow = ({ shipment, isSelected, onSelect, onDelete, isDeleting }: ShipmentRowProps) => {
   const { user } = useAuth();
   const userCanDelete = canDeleteRecords(user);
   
-  // Handle delete click with confirmation
   const handleDeleteClick = () => {
-    if (window.confirm(`¿Está seguro que desea eliminar el conduce ${shipment.conduce_number}?`)) {
+    if (window.confirm(`¿Está seguro que desea eliminar el registro ${shipment.conduce_number}?`)) {
       onDelete(shipment.conduce_number);
     }
   };
 
   const isCurrentlyDeleting = isDeleting === shipment.conduce_number;
+  const cityName = formatCityName(shipment.ciudad);
+  const formattedTime = new Date(shipment.verified_at).toLocaleTimeString('es-DO', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
 
   return (
     <TableRow 
       key={shipment.conduce_number} 
-      className={`flex flex-wrap items-center md:table-row bg-white mb-1.5 rounded-lg border border-gray-200 shadow-sm md:mb-0 md:rounded-none md:border-0 md:border-b md:shadow-none hover:bg-gray-50 relative overflow-hidden transition-all ${isCurrentlyDeleting ? 'opacity-50' : ''} ${isSelected ? 'ring-1 ring-blue-400 bg-blue-50/40 md:ring-0 md:bg-blue-50' : ''}`}
+      className={`
+        group transition-colors duration-100 border-b border-border/30
+        ${isSelected 
+          ? 'bg-blue-50/50 dark:bg-blue-950/30' 
+          : 'hover:bg-muted/20 bg-card'
+        }
+        ${isCurrentlyDeleting ? 'opacity-40 pointer-events-none' : ''}
+      `}
     >
-      <TableCell className="w-12 min-w-[48px] shrink-0 px-2 md:px-4 align-middle border-0 md:border-b">
+      {/* Checkbox */}
+      <TableCell className="w-8 px-2 py-1.5 text-center align-middle">
         <input
           type="checkbox"
           checked={isSelected}
           onChange={(e) => onSelect(shipment.conduce_number, e.target.checked)}
           aria-label={`Seleccionar conduce ${shipment.conduce_number}`}
-          className="h-4 w-4 cursor-pointer"
+          className="h-3.5 w-3.5 rounded border-border/80 text-royal-blue focus:ring-royal-blue cursor-pointer"
         />
       </TableCell>
-      <TableCell className="block md:table-cell flex-1 font-medium px-1 py-1.5 md:p-4 border-0">
-        <div className="flex items-center gap-1">
-          <div className="text-gray-400 font-mono text-xs hidden md:block">|||</div>
-          <span className="text-base md:text-sm font-bold md:font-medium text-royal-blue md:text-foreground tracking-tight">{shipment.conduce_number}</span>
-        </div>
+
+      {/* Conduce / ID */}
+      <TableCell className="w-20 px-2 py-1.5 font-mono text-xs font-medium text-foreground">
+        {shipment.conduce_number}
       </TableCell>
-      <TableCell className="hidden md:table-cell py-0.5 md:py-4 border-b-0 md:border-b">
-        <div className="flex items-center gap-2">
-          <MapPin size={16} className="text-gray-500" />
-          <span className="text-sm font-normal">{shipment.ciudad || "No disponible"}</span>
-        </div>
+
+      {/* Ciudad */}
+      <TableCell className="px-2 py-1.5 text-xs text-muted-foreground truncate" title={cityName}>
+        {cityName}
       </TableCell>
-      <TableCell className="hidden md:table-cell py-0.5 md:py-4 border-b-0 md:border-b">
-        <div className="flex items-center gap-2">
-          <Truck size={16} className="text-gray-500" />
-          <span className="text-sm">{shipment.encomendado}</span>
-        </div>
+
+      {/* Encomendado (Camión) */}
+      <TableCell className="w-16 px-2 py-1.5 text-center text-xs font-medium text-foreground">
+        {shipment.encomendado || "—"}
       </TableCell>
-      <TableCell className="w-1/3 md:w-auto px-1 py-1 pb-1.5 md:p-4 block md:table-cell align-middle border-0 md:border-b">
-        <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-0 md:gap-1">
-          <span className="md:hidden text-[9px] text-gray-400 uppercase tracking-wider font-bold leading-none mb-0.5 w-full text-center">Bultos</span>
-          <div className="flex items-center justify-center md:justify-start gap-1 md:gap-2 w-full text-center md:text-left">
-            <Package size={14} className="text-gray-400 hidden md:block" />
-            <span className="text-[13px] md:text-sm font-bold text-gray-800 leading-none">{shipment.packageCount}</span>
-          </div>
-        </div>
+
+      {/* Paquetes / Bultos */}
+      <TableCell className="w-14 px-2 py-1.5 text-center text-xs font-semibold text-foreground">
+        {shipment.packageCount}
       </TableCell>
-      <TableCell className="w-1/3 md:w-auto px-1 py-1 pb-1.5 md:p-4 block md:table-cell align-middle border-0 md:border-b">
-        <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-0 md:gap-1">
-          <span className="md:hidden text-[9px] text-gray-400 uppercase tracking-wider font-bold leading-none mb-0.5 w-full text-center">Usuario</span>
-          <span className="text-[11px] md:text-sm text-gray-600 truncate max-w-full px-1 leading-none text-center md:text-left">{shipment.user_name?.split(' ')[0] || "No reg."}</span>
-        </div>
+
+      {/* Usuario */}
+      <TableCell className="w-20 px-2 py-1.5 text-xs text-muted-foreground truncate" title={shipment.user_name || "No registrado"}>
+        {shipment.user_name?.split(' ')[0] || "—"}
       </TableCell>
-      <TableCell className="hidden sm:block md:table-cell w-1/3 md:w-auto px-1 py-1 pb-1.5 md:p-4 align-middle border-0 md:border-b">
-        <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-0 md:gap-1">
-          <span className="md:hidden text-[9px] text-gray-400 uppercase tracking-wider font-bold leading-none mb-0.5 w-full text-center">Hora</span>
-          <span className="text-[11px] md:text-sm text-gray-500 font-medium leading-none text-center md:text-left">{new Date(shipment.verified_at).toLocaleString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit'
-          })}</span>
-        </div>
+
+      {/* Hora */}
+      <TableCell className="w-14 px-2 py-1.5 text-right font-mono text-xs text-muted-foreground whitespace-nowrap">
+        {formattedTime}
       </TableCell>
-      <TableCell className="block md:table-cell absolute top-1.5 right-1.5 md:relative md:top-auto md:right-auto p-0 md:p-4 w-auto border-0 md:border-b text-right">
+
+      {/* Acción */}
+      <TableCell className="w-8 px-1 py-1.5 text-right">
         {userCanDelete ? (
           <Button
             variant="ghost"
             size="sm"
             onClick={handleDeleteClick}
             disabled={isCurrentlyDeleting}
-            className="h-8 w-8 p-0 text-gray-400 hover:text-red-500 bg-gray-50 md:bg-transparent rounded-full md:rounded-md border border-gray-100 md:border-0"
+            className="h-6 w-6 p-0 text-muted-foreground/30 hover:text-rose-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Eliminar"
           >
             {isCurrentlyDeleting ? (
-              <Loader2 className="h-4 w-4 animate-spin text-red-500" />
+              <Loader2 className="h-3 w-3 animate-spin text-rose-500" />
             ) : (
-              <Trash className="h-4 w-4" />
+              <Trash2 className="h-3 w-3" />
             )}
             <span className="sr-only">Eliminar</span>
           </Button>
-        ) : (
-          <div className="flex items-center justify-center h-8 w-8">
-            <Shield size={14} className="text-gray-300" />
-          </div>
-        )}
+        ) : null}
       </TableCell>
     </TableRow>
   );

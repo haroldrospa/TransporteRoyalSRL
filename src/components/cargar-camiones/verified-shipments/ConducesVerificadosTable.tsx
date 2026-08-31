@@ -97,7 +97,7 @@ const ConducesVerificadosTable = ({
         onExportComplete={onExportComplete}
       />
 
-      <div className="border rounded-md overflow-hidden bg-white">
+      <div className="border border-border/40 rounded-lg overflow-hidden bg-card max-h-[520px] overflow-y-auto w-full">
         <Table>
           <ShipmentTableHeader 
             allSelected={allSelected}
@@ -117,16 +117,19 @@ const ConducesVerificadosTable = ({
                 />
               ))
             ) : (
-              <EmptyShipmentState />
+              <EmptyShipmentState 
+                title="No hay conduces verificados" 
+                description="Los conduces escaneados por código de barra aparecerán aquí."
+              />
             )}
           </TableBody>
         </Table>
       </div>
       
       {filteredShipments.length > 0 && conducesToDisplay.length === 0 && (
-        <Alert>
-          <AlertDescription>
-            No se encontraron resultados con los filtros actuales.
+        <Alert className="bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50">
+          <AlertDescription className="text-xs text-amber-800 dark:text-amber-300">
+            No se encontraron conduces que coincidan con los filtros actuales.
           </AlertDescription>
         </Alert>
       )}

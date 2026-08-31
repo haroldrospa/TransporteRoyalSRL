@@ -11,6 +11,8 @@ import { waitForPendingSaves } from '@/services/cargarCamiones/fastCargarCamione
 import { Region } from '@/types/conduces';
 import { useBeforeUnload } from '@/hooks/useBeforeUnload';
 import LabBultosStats from '@/components/cargar-camiones/LabBultosStats';
+import CargarCamionesLoadingScreen from '@/components/cargar-camiones/CargarCamionesLoadingScreen';
+import { getTrucksByRegion } from '@/utils/trucksByRegion';
 
 const CargarCamiones = () => {
   const { user } = useAuth();
@@ -18,7 +20,7 @@ const CargarCamiones = () => {
   const [selectedRelacion, setSelectedRelacion] = useState<string>('');
   const [currentScanValue, setCurrentScanValue] = useState('');
   const [currentScanType, setCurrentScanType] = useState<'conduce' | 'bulto'>('conduce');
-  const [regionActual, setRegionActual] = useState<Region>('Norte');
+  const [regionActual, setRegionActual] = useState<Region | string>('Norte');
 
   // Pre-warm camera only if the browser already granted permission.
   // (Requesting permission automatically on page load is blocked on some browsers.)
@@ -83,8 +85,65 @@ const CargarCamiones = () => {
   
   // Filter conduces by region
   const filteredConduces = useMemo(() => {
+    if (!regionActual || regionActual === 'Todas') return conduces;
     return conduces.filter(c => c.region === regionActual);
   }, [conduces, regionActual]);
+
+  // Filter verified shipments by region
+  const filteredVerifiedShipments = useMemo(() => {
+    if (!regionActual || regionActual === 'Todas') return verifiedShipments;
+
+    const validTrucks = new Set(getTrucksByRegion(regionActual));
+    const conduceRegionMap = new Map<string, string>();
+    conduces.forEach(c => {
+      if (c.numeroConduce && c.region) {
+        conduceRegionMap.set(c.numeroConduce, c.region);
+      }
+    });
+
+    return verifiedShipments.filter(shipment => {
+      const region = conduceRegionMap.get(shipment.conduce_number) || shipment.region || (shipment as any).conduces?.region;
+      if (region) {
+        return region === regionActual;
+      }
+      if (shipment.encomendado && shipment.encomendado !== 'Almacen') {
+        return validTrucks.has(shipment.encomendado);
+      }
+      return false;
+    });
+  }, [verifiedShipments, conduces, regionActual]);
+
+  // Compute scanned state for the filtered region
+  const { filteredScannedConduces, filteredScannedBultos, filteredScannedBultoIds } = useMemo(() => {
+    const scConduces: Record<string, string[]> = {};
+    const scBultos: Record<string, number> = {};
+    const scBultoIds: Record<string, string[]> = {};
+
+    filteredVerifiedShipments.forEach(item => {
+      const { encomendado, conduce_number, scan_type } = item;
+      if (!encomendado) return;
+
+      if (!scConduces[encomendado]) scConduces[encomendado] = [];
+      if (!scBultos[encomendado]) scBultos[encomendado] = 0;
+      if (!scBultoIds[encomendado]) scBultoIds[encomendado] = [];
+
+      if (scan_type === 'conduce' && !scConduces[encomendado].includes(conduce_number)) {
+        scConduces[encomendado] = [...scConduces[encomendado], conduce_number];
+      }
+
+      if (scan_type === 'bulto') {
+        scBultos[encomendado]++;
+        const bultoId = `${conduce_number}-${item.bulto_sequence || 1}`;
+        scBultoIds[encomendado] = [...scBultoIds[encomendado], bultoId];
+      }
+    });
+
+    return {
+      filteredScannedConduces: scConduces,
+      filteredScannedBultos: scBultos,
+      filteredScannedBultoIds: scBultoIds
+    };
+  }, [filteredVerifiedShipments]);
 
   // Use last scanned info for persistent display, or current input for immediate feedback
   const displayScanValue = lastScannedInfo?.conduceNumber || currentScanValue;
@@ -150,6 +209,14 @@ const CargarCamiones = () => {
     };
   }, []);
 
+  if (loading) {
+    return (
+      <Layout>
+        <CargarCamionesLoadingScreen message="Cargando Carga de Camiones" />
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="max-w-[1600px] w-full mx-auto px-2 sm:px-6 space-y-6 animate-fade-in pb-8">
@@ -165,16 +232,18 @@ const CargarCamiones = () => {
           onRefresh={() => refreshData(true)}
           regionActual={regionActual}
           onRegionChange={setRegionActual}
+          conduces={conduces}
         />
 
-        <LabBultosStats conduces={filteredConduces} />
+        <LabBultosStats conduces={filteredConduces} loading={loading} />
         
         <CargarCamionesContent
           conduces={filteredConduces}
-          scannedConduces={scannedConduces}
-          scannedBultos={scannedBultos}
-          scannedBultoIds={scannedBultoIds}
-          verifiedShipments={verifiedShipments}
+          loading={loading}
+          scannedConduces={filteredScannedConduces}
+          scannedBultos={filteredScannedBultos}
+          scannedBultoIds={filteredScannedBultoIds}
+          verifiedShipments={filteredVerifiedShipments}
           currentScanValue={currentScanValue}
           currentScanType={currentScanType}
           displayScanValue={displayScanValue}

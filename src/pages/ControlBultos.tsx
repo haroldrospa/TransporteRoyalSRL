@@ -35,10 +35,11 @@ const ControlBultos = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   
   // Use fast hook for conduces (cache-first, only "En tránsito")
-  const [regionActual, setRegionActual] = useState<Region>('Norte');
+  const [regionActual, setRegionActual] = useState<Region | string>('Todas');
   const [holidaysCacheVersion, setHolidaysCacheVersion] = useState(0);
   const { 
     conduces, 
+    allConduces,
     loading, 
     refreshing,
     refreshData, 
@@ -244,6 +245,7 @@ const ControlBultos = () => {
             <RegionToggle 
               regionActual={regionActual}
               onRegionChange={setRegionActual}
+              conduces={allConduces}
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">

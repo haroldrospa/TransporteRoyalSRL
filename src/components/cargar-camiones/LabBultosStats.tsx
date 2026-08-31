@@ -4,9 +4,10 @@ import { Conduce } from '@/types/conduces';
 
 interface LabBultosStatsProps {
   conduces: Conduce[];
+  loading?: boolean;
 }
 
-const LabBultosStats = ({ conduces }: LabBultosStatsProps) => {
+const LabBultosStats = ({ conduces, loading = false }: LabBultosStatsProps) => {
   const stats = useMemo(() => {
     const enTransito = conduces.filter(c => c.estado === 'En tránsito');
     const sumBy = (lab: string) =>
@@ -20,40 +21,63 @@ const LabBultosStats = ({ conduces }: LabBultosStatsProps) => {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* LAM */}
       <div className="flex items-center gap-3 rounded-lg border bg-purple-50 p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-500">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-500 shrink-0">
           <Package className="h-4 w-4 text-white" />
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">LAM en tránsito</p>
-          <p className="text-xl font-bold text-purple-700">{stats.lamBultos}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground font-medium truncate">LAM en tránsito</p>
+          {loading ? (
+            <div className="h-6 w-14 bg-purple-200/70 dark:bg-purple-900/50 animate-pulse rounded mt-1" />
+          ) : (
+            <p className="text-xl font-bold text-purple-700">{stats.lamBultos}</p>
+          )}
         </div>
       </div>
+
+      {/* Fersuaz */}
       <div className="flex items-center gap-3 rounded-lg border bg-teal-50 p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-500">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-500 shrink-0">
           <Package className="h-4 w-4 text-white" />
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Fersuaz en tránsito</p>
-          <p className="text-xl font-bold text-teal-700">{stats.fersuazBultos}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground font-medium truncate">Fersuaz en tránsito</p>
+          {loading ? (
+            <div className="h-6 w-14 bg-teal-200/70 dark:bg-teal-900/50 animate-pulse rounded mt-1" />
+          ) : (
+            <p className="text-xl font-bold text-teal-700">{stats.fersuazBultos}</p>
+          )}
         </div>
       </div>
+
+      {/* Taapharma */}
       <div className="flex items-center gap-3 rounded-lg border bg-amber-50 p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 shrink-0">
           <Package className="h-4 w-4 text-white" />
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Taapharma en tránsito</p>
-          <p className="text-xl font-bold text-amber-700">{stats.taaBultos}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground font-medium truncate">Taapharma en tránsito</p>
+          {loading ? (
+            <div className="h-6 w-14 bg-amber-200/70 dark:bg-amber-900/50 animate-pulse rounded mt-1" />
+          ) : (
+            <p className="text-xl font-bold text-amber-700">{stats.taaBultos}</p>
+          )}
         </div>
       </div>
+
+      {/* Innov. Quimica */}
       <div className="flex items-center gap-3 rounded-lg border bg-green-50 p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-500">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-500 shrink-0">
           <Package className="h-4 w-4 text-white" />
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Innov. Quimica en tránsito</p>
-          <p className="text-xl font-bold text-green-700">{stats.innovBultos}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground font-medium truncate">Innov. Química en tránsito</p>
+          {loading ? (
+            <div className="h-6 w-14 bg-green-200/70 dark:bg-green-900/50 animate-pulse rounded mt-1" />
+          ) : (
+            <p className="text-xl font-bold text-green-700">{stats.innovBultos}</p>
+          )}
         </div>
       </div>
     </div>

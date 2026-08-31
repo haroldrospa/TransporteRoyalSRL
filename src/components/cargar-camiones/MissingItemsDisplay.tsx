@@ -10,13 +10,15 @@ interface MissingItemsDisplayProps {
   scannedConduces: Record<string, string[]>;
   scannedBultos: Record<string, number>;
   scannedBultoIds: Record<string, string[]>;
+  loading?: boolean;
 }
 
 const MissingItemsDisplay = ({
   conduces,
   scannedConduces,
   scannedBultos,
-  scannedBultoIds
+  scannedBultoIds,
+  loading = false
 }: MissingItemsDisplayProps) => {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -116,14 +118,25 @@ const MissingItemsDisplay = ({
         </CardHeader>
         <CollapsibleContent>
           <CardContent>
-            {!hasMissingItems && (
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
+                <div className="border rounded-lg p-4 bg-muted/20 animate-pulse space-y-3">
+                  <div className="h-5 bg-muted/60 rounded w-1/3" />
+                  <div className="h-10 bg-muted/40 rounded" />
+                  <div className="h-10 bg-muted/40 rounded" />
+                </div>
+                <div className="border rounded-lg p-4 bg-muted/20 animate-pulse space-y-3">
+                  <div className="h-5 bg-muted/60 rounded w-1/3" />
+                  <div className="h-10 bg-muted/40 rounded" />
+                  <div className="h-10 bg-muted/40 rounded" />
+                </div>
+              </div>
+            ) : !hasMissingItems ? (
               <div className="flex items-center justify-center gap-2 text-green-600 py-6">
                 <Package className="h-6 w-6" />
                 <span className="text-lg font-medium">Todos los conduces y bultos han sido escaneados</span>
               </div>
-            )}
-            
-            {hasMissingItems && (
+            ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Columna de Conduces Pendientes */}
                 <div className="border rounded-lg p-4 bg-blue-50/50">

@@ -12,14 +12,16 @@ import { Label } from '@/components/ui/label';
 interface CargarCamionesHeaderProps {
   isRefreshing: boolean;
   onRefresh: () => void;
-  regionActual: Region;
-  onRegionChange: (region: Region) => void;
+  regionActual: Region | string;
+  onRegionChange: (region: any) => void;
+  conduces?: any[];
 }
 const CargarCamionesHeader = ({
   isRefreshing,
   onRefresh,
   regionActual,
-  onRegionChange
+  onRegionChange,
+  conduces = []
 }: CargarCamionesHeaderProps) => {
   const [isOrganizing, setIsOrganizing] = useState(false);
   const { enabled: voiceEnabled, toggle: toggleVoice, rate, setRate, pitch, setPitch } = useScanVoiceSetting();
@@ -111,7 +113,7 @@ const CargarCamionesHeader = ({
           </Button>
         </div>
       </div>
-      <RegionToggle regionActual={regionActual} onRegionChange={onRegionChange} />
+      <RegionToggle regionActual={regionActual} onRegionChange={onRegionChange} conduces={conduces} />
     </div>
   );
 };

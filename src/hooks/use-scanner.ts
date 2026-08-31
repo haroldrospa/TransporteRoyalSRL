@@ -53,25 +53,17 @@ export const useScanner = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [lastScrollPosition, setLastScrollPosition] = useState(0);
 
-  // Focus input after scan completion and preserve scroll position
+  // Focus input after scan completion on desktop only (avoid opening mobile keyboard)
   useEffect(() => {
-    // If not processing and input exists, focus it
-    if (!isProcessing && inputRef.current) {
-      // Wait for processing overlay to disappear
+    const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+    if (!isProcessing && inputRef.current && !isMobileDevice) {
       setTimeout(() => {
-        if (inputRef.current) {
-          const currentPosition = window.scrollY;
+        if (inputRef.current && !isMobileDevice) {
           inputRef.current.focus();
-          
-          // If on mobile and we have a stored position, restore it
-          if (lastScrollPosition > 0) {
-            window.scrollTo(0, lastScrollPosition);
-            setLastScrollPosition(0); // Reset after use
-          }
         }
       }, 100);
     }
-  }, [isProcessing, lastScrollPosition]);
+  }, [isProcessing]);
 
   // Update the parent component with current scan value and type
   const handleScanValueChange = (value: string) => {
@@ -83,15 +75,13 @@ export const useScanner = ({
   const handleScanTypeChange = (type: 'conduce' | 'bulto') => {
     setScanType(type);
     onUpdateScanValue(scanValue, type);
-    // Focus input when changing scan type
-    if (inputRef.current) {
-      // Save position before focus to prevent unwanted scrolling
-      setLastScrollPosition(window.scrollY);
+    const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+    if (inputRef.current && !isMobileDevice) {
       inputRef.current.focus();
     }
   };
 
-  const handleScan = () => {
+  const handleScan = (directValue?: string) => {
     // Store scroll position before any processing
     setLastScrollPosition(window.scrollY);
     
@@ -99,7 +89,8 @@ export const useScanner = ({
       return;
     }
 
-    const normalizedValue = scanValue.trim();
+    const valueToUse = directValue !== undefined ? directValue : scanValue;
+    const normalizedValue = valueToUse.trim();
 
     if (!normalizedValue) {
       emitStatusMessage('Por favor ingrese un valor para escanear', 'warning');
