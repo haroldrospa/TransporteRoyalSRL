@@ -15,6 +15,7 @@ const AdminConfiguracion = () => {
   const [gasoilPrice, setGasoilPrice] = useState<number>(195.50);
   const [adminEmails, setAdminEmails] = useState<string[]>([]);
   const [newEmail, setNewEmail] = useState('');
+  const [cartoApiKey, setCartoApiKey] = useState('');
 
   useEffect(() => {
     loadConfig();
@@ -27,6 +28,9 @@ const AdminConfiguracion = () => {
       if (config) {
         setGasoilPrice(config.gasoil_price);
         setAdminEmails(config.admin_emails);
+        if (config.carto_api_key) {
+          setCartoApiKey(config.carto_api_key);
+        }
       } else {
         setAdminEmails(['Haroldrospa@gmail.com']); // Default
       }
@@ -40,7 +44,7 @@ const AdminConfiguracion = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const success = await saveAppConfig(gasoilPrice, adminEmails);
+      const success = await saveAppConfig(gasoilPrice, adminEmails, cartoApiKey);
       if (success) {
         toast({
           title: "Configuración guardada",
@@ -134,8 +138,47 @@ const AdminConfiguracion = () => {
                 </CardContent>
               </Card>
 
-              {/* Correos */}
+              {/* API Key de Mapas */}
               <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Settings className="h-5 w-5 text-slate-500" />
+                    API Key del Mapa (CARTO)
+                  </CardTitle>
+                  <CardDescription>
+                    Clave de acceso para los mapas de calles en alta resolución de CARTO.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>CARTO Basemaps API Key</Label>
+                    <Input 
+                      type="text" 
+                      placeholder="Ingrese su clave de CARTO (ej: key=...)" 
+                      value={cartoApiKey} 
+                      onChange={(e) => setCartoApiKey(e.target.value)}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-800 p-3 rounded-md border border-border space-y-1">
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">ℹ️ Información:</p>
+                    <p>• Si deja este campo vacío, el sistema utilizará OpenStreetMap estándar sin marcas de agua.</p>
+                    <p>• Puede solicitar una clave gratuita directamente en{' '}
+                      <a 
+                        href="https://carto.com/basemaps/apikey" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-royal-blue underline font-medium hover:text-blue-700"
+                      >
+                        carto.com/basemaps/apikey
+                      </a>
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Correos */}
+              <Card className="md:col-span-2">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Mail className="h-5 w-5 text-slate-500" />

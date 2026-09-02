@@ -47,6 +47,9 @@ const ClienteGroupRow = ({
   const worstTime = transitTimes.reduce((worst, current) => 
     current.totalHours > worst.totalHours ? current : worst
   );
+  const encomendados = Array.from(
+    new Set(group.conduces.map(c => c.encomendado).filter(Boolean))
+  ) as string[];
   const classes = getTransitTimeClasses(worstTime.status);
 
   return (
@@ -90,14 +93,36 @@ const ClienteGroupRow = ({
       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{group.rnc || '-'}</TableCell>
       
       <TableCell className="order-4 block md:table-cell w-full md:w-auto p-2 pt-0 md:p-4 border-0 md:border-b text-sm font-medium">
-        <div className="md:hidden text-[9px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Cliente / RNC</div>
-        {group.allNumeroClientes.length > 1 ? (
-          <div className="flex flex-col gap-0.5">
-            {group.allNumeroClientes.map(nc => (
-              <span key={nc} className="text-[10px] md:text-xs break-all text-gray-500 md:text-gray-900 leading-tight">{nc}</span>
-            ))}
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="md:hidden text-[9px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Cliente / RNC</div>
+            {group.allNumeroClientes.length > 1 ? (
+              <div className="flex flex-col gap-0.5">
+                {group.allNumeroClientes.map(nc => (
+                  <span key={nc} className="text-[10px] md:text-xs break-all text-gray-500 md:text-gray-900 leading-tight">{nc}</span>
+                ))}
+              </div>
+            ) : <span className="text-[10px] md:text-sm break-all text-gray-500 md:text-gray-900 leading-tight">{group.numeroCliente}</span>}
           </div>
-        ) : <span className="text-[10px] md:text-sm break-all text-gray-500 md:text-gray-900 leading-tight">{group.numeroCliente}</span>}
+
+          {/* Encomendado Asignado en Vista Móvil */}
+          <div className="md:hidden flex flex-col items-end">
+            <span className="text-[9px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Encomendado</span>
+            {encomendados.length > 0 ? (
+              <div className="flex flex-wrap justify-end gap-1">
+                {encomendados.map((enc, idx) => (
+                  <Badge key={idx} className="bg-green-600 hover:bg-green-700 text-white text-[10px] h-5 px-1.5 font-bold shadow-xs">
+                    {enc}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <Badge variant="outline" className="text-orange-600 border-orange-300 text-[10px] h-5 px-1.5 font-bold bg-orange-50/60">
+                Sin asignar
+              </Badge>
+            )}
+          </div>
+        </div>
       </TableCell>
       
       {isAdmin && (

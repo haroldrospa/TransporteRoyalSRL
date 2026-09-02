@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Conduce } from '@/types/conduces';
 import { useData } from '@/contexts/DataContext';
+import { getMapTileUrl } from '@/services/configService';
 
 interface RoutePoint {
   numeroCliente: string;
@@ -31,7 +32,7 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
   onReturn,
   initialLocation
 }) => {
-  const { getClienteByNumero } = useData();
+  const { getClienteByNumero, conduces: allConduces = [] } = useData();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
@@ -44,12 +45,24 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
 
   const [currentStopIndex, setCurrentStopIndex] = useState(() => {
     const saved = localStorage.getItem('nav_current_stop');
-    return saved ? parseInt(saved, 10) : 0;
+    const parsed = saved ? parseInt(saved, 10) : 0;
+    if (route && route.length > 0 && (parsed >= route.length || isNaN(parsed) || parsed < 0)) {
+      return Math.max(0, route.length - 1);
+    }
+    return Math.max(0, isNaN(parsed) ? 0 : parsed);
   });
+
+  // Asegurar que el índice nunca exceda los límites de la ruta
+  useEffect(() => {
+    if (route && route.length > 0 && currentStopIndex >= route.length) {
+      setCurrentStopIndex(Math.max(0, route.length - 1));
+    }
+  }, [route, currentStopIndex]);
 
   useEffect(() => {
     localStorage.setItem('nav_current_stop', currentStopIndex.toString());
   }, [currentStopIndex]);
+
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number; speed?: number; heading?: number } | null>(initialLocation || null);
   const [distanceText, setDistanceText] = useState<string>('Calculando...');
   const [etaText, setEtaText] = useState<string>('');
@@ -59,6 +72,7 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
   const [isRouting, setIsRouting] = useState(false);
   const [isFollowing, setIsFollowing] = useState(true);
   const [routeHeading, setRouteHeading] = useState<number | null>(null);
+  const [isCardCollapsed, setIsCardCollapsed] = useState(false);
 
   // Inject keyframe animation styles once for Leaflet icons (Leaflet is outside React/Tailwind DOM)
   useEffect(() => {
@@ -74,9 +88,25 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
     }
   }, []);
 
-  const currentStop = useMemo(() => route[currentStopIndex], [route, currentStopIndex]);
+  // Índice seguro para la parada actual
+  const safeIndex = route && route.length > 0 ? Math.min(Math.max(0, currentStopIndex), route.length - 1) : 0;
+  const currentStop = useMemo(() => route[safeIndex], [route, safeIndex]);
   const clientDetails = useMemo(() => currentStop ? getClienteByNumero(currentStop.numeroCliente) : null, [currentStop, getClienteByNumero]);
-  const isFinished = currentStopIndex >= route.length;
+
+  // Verificar si TODOS los bultos/conduces de la ruta han sido efectivamente entregados o devueltos
+  const allBultosDelivered = useMemo(() => {
+    if (!route || route.length === 0) return false;
+    const allConduceNumeros = route.flatMap(stop => (stop.conduces || []).map(c => c.numeroConduce));
+    if (allConduceNumeros.length === 0) return false;
+
+    return allConduceNumeros.every(num => {
+      const live = allConduces.find(c => c.numeroConduce === num);
+      return live?.estado === 'entregado' || live?.estado === 'devuelto';
+    });
+  }, [route, allConduces]);
+
+  // Solo se considera terminada la ruta si se entregaron TODOS los bultos reales
+  const isFinished = route.length > 0 && allBultosDelivered;
 
   // Calcula el ángulo de rotación del mapa para que siempre apunte hacia adelante ("derecho")
   const currentHeading = useMemo(() => {
@@ -113,28 +143,39 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
 
     const map = L.map(mapContainerRef.current, {
       center: initialCenter,
-      zoom: 14,
+      zoom: 16,
       zoomControl: false,
       attributionControl: false,
+      tap: false,
+      bounceAtZoomLimits: false,
+      fadeAnimation: true,
+      zoomAnimation: true,
     });
 
-    map.on('dragstart', () => {
+    const stopFollowing = () => {
       setIsFollowing(false);
+    };
+
+    map.on('dragstart zoomstart', stopFollowing);
+    map.on('movestart', (e: any) => {
+      if (e.originalEvent) {
+        stopFollowing();
+      }
     });
 
     const isDark = document.documentElement.classList.contains('dark');
-    const tileUrl = isDark
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    const tileUrl = getMapTileUrl(isDark);
 
     L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
 
     mapInstanceRef.current = map;
 
     // Use ResizeObserver to ensure the map always recalculates its size when the container changes
-    // This perfectly solves the "blank map" issue when opening the portal or animating it.
     let resizeObserver: ResizeObserver | null = null;
     if (mapContainerRef.current) {
+      mapContainerRef.current.addEventListener('touchstart', stopFollowing, { passive: true });
+      mapContainerRef.current.addEventListener('pointerdown', stopFollowing, { passive: true });
+
       resizeObserver = new ResizeObserver(() => {
         if (mapInstanceRef.current) {
           mapInstanceRef.current.invalidateSize();
@@ -250,6 +291,24 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
     }
   };
 
+  // Helper de distancia para throttling de GPS
+  const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  };
+
+  const lastGpsUpdateRef = useRef<{ lat: number; lon: number; heading: number; time: number }>({
+    lat: 0,
+    lon: 0,
+    heading: 0,
+    time: 0
+  });
+
   useEffect(() => {
     if (!navigator.geolocation || isFinished) {
       return;
@@ -258,6 +317,25 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude, speed, heading } = position.coords;
+        const now = Date.now();
+        const prev = lastGpsUpdateRef.current;
+        
+        // Throttling inteligente: evitar re-renderizados continuos a menos que haya movimiento real
+        const distKm = getDistanceKm(prev.lat, prev.lon, latitude, longitude);
+        const headingDiff = Math.abs((heading || 0) - prev.heading);
+        const timeDiff = now - prev.time;
+
+        if (prev.time > 0 && distKm < 0.003 && headingDiff < 8 && timeDiff < 1000) {
+          return; // Pequeño jitter de GPS sin movimiento real, ignorar para fluidez a 60fps
+        }
+
+        lastGpsUpdateRef.current = {
+          lat: latitude,
+          lon: longitude,
+          heading: heading || 0,
+          time: now
+        };
+
         setUserLocation({ 
           lat: latitude, 
           lon: longitude, 
@@ -271,7 +349,7 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
           setUserLocation({ lat: route[0].lat, lon: route[0].lon });
         }
       },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 1000 }
     );
 
     return () => {
@@ -369,7 +447,8 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
   }, [currentStop, currentStopIndex, userLocation, isFinished]);
 
   const handleNextStop = () => {
-    setCurrentStopIndex(prev => Math.min(route.length, prev + 1));
+    if (route.length === 0) return;
+    setCurrentStopIndex(prev => Math.min(Math.max(0, route.length - 1), prev + 1));
   };
 
   const handlePrevStop = () => {
@@ -405,6 +484,16 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (!route || route.length === 0) {
+      onClose(false);
+    }
+  }, [route, onClose]);
+
+  if (!route || route.length === 0) {
+    return null;
+  }
+
   if (isFinished) {
     return (
       <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center p-6 text-center">
@@ -422,174 +511,191 @@ export const DeliveryNavigationMode: React.FC<DeliveryNavigationModeProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 overflow-hidden" translate="no">
-      {/* Header flotante */}
-      <div className="absolute top-0 left-0 w-full z-[1000] p-4 bg-gradient-to-b from-black/60 via-black/30 to-transparent flex items-center justify-between pointer-events-none">
-        <button 
-          onClick={() => onClose(false)}
-          className="w-12 h-12 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg text-slate-700 hover:bg-white transition-colors pointer-events-auto"
-        >
-          <ArrowLeft className="h-6 w-6" />
-        </button>
-        <div className="bg-white/95 backdrop-blur-md px-2 py-1.5 rounded-full shadow-lg flex items-center gap-3 font-bold text-royal-blue text-sm pointer-events-auto">
-          <button 
-            onClick={handlePrevStop} 
-            disabled={currentStopIndex === 0}
-            className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          
-          <div className="flex items-center gap-2 whitespace-nowrap">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-sm"></span>
-            Parada {currentStopIndex + 1} de {route.length}
-          </div>
-
-          <button 
-            onClick={handleNextStop} 
-            disabled={currentStopIndex >= route.length - 1}
-            className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Contenedor del Mapa (rotado por CSS) */}
+      {/* Contenedor del Mapa a pantalla completa (100% nativo, ultra fluido) */}
       <div 
         ref={mapContainerRef} 
-        className="absolute z-0 transition-transform duration-700 ease-out bg-muted/20" 
-        style={{
-          width: '200vmax',
-          height: '200vmax',
-          left: 'calc(50vw - 100vmax)',
-          top: 'calc(70vh - 100vmax)',
-          transform: `rotate(${isFollowing ? -currentHeading : 0}deg)`,
-          transformOrigin: '50% 50%'
-        }}
+        className="absolute inset-0 w-full h-full z-0 bg-slate-100 dark:bg-slate-900" 
       />
 
-      {/* Botón de Brújula / Recenter */}
+      {/* Botón Flotante para Re-centrar en el camión */}
       {!isFollowing && (
         <button 
           onClick={() => {
             setIsFollowing(true);
             if (mapInstanceRef.current && userLocation) {
-              mapInstanceRef.current.setView([userLocation.lat, userLocation.lon], 18, { animate: true });
+              mapInstanceRef.current.setView([userLocation.lat, userLocation.lon], 17, { animate: true });
             }
           }}
-          className="absolute bottom-32 right-4 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-royal-blue z-[2000] animate-in fade-in"
+          className="absolute bottom-20 right-4 h-11 px-4 bg-royal-blue text-white rounded-full shadow-2xl flex items-center gap-2 font-bold text-xs z-[1500] animate-in fade-in transition-all active:scale-95 border-2 border-white pointer-events-auto"
         >
-          <LocateFixed className="h-6 w-6" />
+          <LocateFixed className="h-4 w-4 text-royal-yellow" />
+          <span>Centrar</span>
         </button>
       )}
 
-      {/* Panel Superior Flotante (Antes Inferior) */}
-      <div className="absolute top-[72px] left-0 w-full z-[1000] p-4 pt-2 pointer-events-none">
+      {/* Panel Superior Compacto Unificado (Diseño minimalista y moderno) */}
+      <div className="absolute top-2 left-0 w-full z-[1000] px-3 pointer-events-none">
         <div 
-          className="bg-card rounded-3xl shadow-2xl border border-border overflow-hidden pointer-events-auto max-w-lg mx-auto flex flex-col max-h-[75vh]"
+          className="bg-card/95 backdrop-blur-md rounded-2xl shadow-xl border border-border/70 p-3 max-w-md mx-auto pointer-events-auto transition-all duration-200"
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >
-          
-          {/* Cabecera del Panel (Info del Destino y ETA) */}
-          <div className="p-3 pb-2 border-b border-border/50 flex flex-col gap-2 relative">
-            <div className="flex gap-3 items-center">
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-black text-foreground truncate leading-tight">
-                  {currentStop?.razonSocial}
-                </h3>
-              </div>
+          {/* Fila 1: Botón Volver + Píldora de Parada + Teléfono + Toggle Minimizar */}
+          <div className="flex items-center justify-between gap-2">
+            <button 
+              onClick={() => onClose(false)}
+              className="w-8 h-8 rounded-full bg-muted/80 hover:bg-muted text-foreground flex items-center justify-center transition-colors shrink-0 shadow-sm"
+              title="Pausar y salir al mapa general"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+
+            {/* Píldora de Parada con controles previos y siguientes */}
+            <div className="flex items-center gap-1.5 text-xs font-bold text-royal-blue bg-blue-50/90 dark:bg-blue-950/60 px-2.5 py-1 rounded-full border border-blue-200/50 dark:border-blue-800/50">
+              <button 
+                onClick={handlePrevStop} 
+                disabled={currentStopIndex === 0}
+                className="p-0.5 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900 disabled:opacity-25 transition-colors"
+                title="Parada anterior"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="whitespace-nowrap text-[11px]">Parada {currentStopIndex + 1} de {route.length}</span>
+              <button 
+                onClick={handleNextStop} 
+                disabled={currentStopIndex >= route.length - 1}
+                className="p-0.5 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900 disabled:opacity-25 transition-colors"
+                title="Siguiente parada"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
               {clientDetails?.contacto && (
                 <a 
                   href={`tel:${clientDetails.contacto.replace(/\D/g,'')}`}
-                  className="w-10 h-10 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center shadow transition-colors shrink-0"
+                  className="w-8 h-8 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-sm transition-colors"
+                  title="Llamar al cliente"
                 >
-                  <Phone className="h-4 w-4" />
+                  <Phone className="h-3.5 w-3.5" />
                 </a>
               )}
+              <button
+                onClick={() => setIsCardCollapsed(!isCardCollapsed)}
+                className="w-8 h-8 rounded-full bg-muted/60 hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors"
+                title={isCardCollapsed ? "Expandir detalles" : "Minimizar"}
+              >
+                {isCardCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              </button>
             </div>
           </div>
 
-          {/* Lista de Conduces (Collapsible) */}
-          <div 
-            className="flex items-center justify-between px-3 py-1.5 bg-muted/10 cursor-pointer border-b border-border/30 hover:bg-muted/20 transition-colors"
-            onClick={() => setShowConduces(!showConduces)}
-          >
-            <h4 className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5" /> {currentStop?.totalBultos} bultos a entregar
-            </h4>
-            {showConduces ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          {/* Fila 2: Nombre del Cliente + Bultos */}
+          <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border/40">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-black text-foreground truncate leading-tight">
+                {currentStop?.razonSocial}
+              </h3>
+              {clientDetails?.direccion && !isCardCollapsed && (
+                <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                  📍 {clientDetails.direccion}
+                </p>
+              )}
+            </div>
+
+            {/* Contador de bultos con opción a desplegar conduces */}
+            <button
+              onClick={() => setShowConduces(!showConduces)}
+              className="flex items-center gap-1 text-[11px] font-bold bg-muted/80 hover:bg-muted text-foreground px-2.5 py-1 rounded-lg transition-colors shrink-0"
+              title="Ver conduces y facturas"
+            >
+              <Package className="h-3.5 w-3.5 text-royal-blue" />
+              <span>{currentStop?.totalBultos} bulto{currentStop?.totalBultos !== 1 ? 's' : ''}</span>
+              {showConduces ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
           </div>
-          
-          {showConduces && (
-            <div className="overflow-y-auto p-3 py-2 space-y-2 bg-muted/10 flex-1 max-h-[30vh]">
+
+          {/* Desplegable de conduces si se expande */}
+          {showConduces && !isCardCollapsed && (
+            <div className="overflow-y-auto mt-2 pt-2 border-t border-border/40 space-y-1.5 max-h-[22vh]">
               {currentStop?.conduces.map((conduce, idx) => (
-                <div key={conduce.numeroConduce} className="bg-background border border-border/50 rounded-lg p-2 shadow-sm flex items-center justify-between">
+                <div key={conduce.numeroConduce} className="bg-muted/40 rounded-lg p-1.5 px-2.5 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-[10px]">
+                    <span className="w-5 h-5 rounded-full bg-royal-blue/10 text-royal-blue font-black flex items-center justify-center text-[10px]">
                       {idx + 1}
-                    </div>
-                    <div>
-                      <p className="font-bold text-xs">#{conduce.numeroConduce}</p>
-                      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <FileText className="h-2.5 w-2.5" /> {conduce.numeroFactura}
-                      </p>
-                    </div>
+                    </span>
+                    <span className="font-bold">#{conduce.numeroConduce}</span>
+                    <span className="text-[10px] text-muted-foreground">({conduce.numeroFactura})</span>
                   </div>
-                  <div className="text-right">
-                    <p className="font-black text-sm text-royal-blue">{conduce.cantidadBultos}</p>
-                    <p className="text-[8px] text-muted-foreground uppercase font-bold">Bultos</p>
-                  </div>
+                  <span className="font-black text-royal-blue">{conduce.cantidadBultos} bulto{conduce.cantidadBultos !== 1 ? 's' : ''}</span>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Acciones */}
-          <div className="p-3 pt-2 grid grid-cols-3 gap-2 mt-auto bg-background rounded-b-3xl">
+          {/* Fila 3: Botones de Acción (diseño táctil de baja altura) */}
+          {!isCardCollapsed && (
+            <div className="grid grid-cols-3 gap-2 mt-2.5 pt-2 border-t border-border/40">
               <Button 
                 variant="outline" 
                 size="sm"
-                className="h-10 rounded-lg font-bold border-2 text-xs hover:bg-muted"
+                className="h-9 rounded-xl font-bold border text-xs text-foreground hover:bg-muted shadow-sm"
                 onClick={handleNextStop}
+                disabled={currentStopIndex >= route.length - 1}
               >
                 Siguiente <ChevronRight className="ml-0.5 h-3 w-3" />
               </Button>
               <Button 
                 variant="outline"
                 size="sm"
-                className="h-10 rounded-lg font-bold border-2 border-red-200 text-red-600 hover:bg-red-50 text-xs shadow-sm transition-all"
+                className="h-9 rounded-xl font-bold border border-red-200 dark:border-red-900 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs shadow-sm transition-colors"
                 onClick={handleReturn}
               >
                 Devolución
               </Button>
               <Button 
                 size="sm"
-                className="h-10 rounded-lg font-black bg-royal-yellow hover:bg-yellow-500 text-royal-blue text-sm shadow hover:shadow-md transition-all"
+                className="h-9 rounded-xl font-black bg-royal-yellow hover:bg-yellow-400 text-royal-blue text-xs shadow-md transition-transform active:scale-95"
                 onClick={handleDeliver}
               >
                 Entregar
               </Button>
             </div>
+          )}
         </div>
       </div>
 
-      {/* Panel Inferior Flotante (Tiempo, Distancia, ETA) */}
-      <div className="absolute bottom-0 left-0 w-full z-[1000] p-4 bg-gradient-to-t from-black/20 to-transparent pointer-events-none pb-8">
-        <div className="bg-card rounded-2xl shadow-xl border border-border p-4 pointer-events-auto max-w-lg mx-auto flex items-center justify-between">
-          <div>
-            <div className="flex items-end gap-2 mb-0.5">
-              <span className="text-3xl font-black text-royal-blue leading-none">{durationText ? durationText.replace(' min', '') : '--'}</span>
-              <span className="text-lg font-bold text-muted-foreground leading-none mb-0.5">{durationText?.includes('h') ? '' : 'min'}</span>
-            </div>
-            <div className="text-sm font-bold text-muted-foreground flex items-center gap-1.5">
-              {distanceText} <span className="w-1 h-1 rounded-full bg-border"></span> Llegada: {etaText || '--:--'}
+      {/* Barra Inferior Flotante Compacta (Tiempo, Distancia y ETA) */}
+      <div className="absolute bottom-3 left-0 w-full z-[1000] px-3 pointer-events-none pb-safe">
+        <div className="bg-card/95 backdrop-blur-md rounded-2xl shadow-xl border border-border/70 py-2 px-3.5 pointer-events-auto max-w-md mx-auto flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-lg font-black text-royal-blue leading-none">
+              {durationText ? durationText.replace(' min', '') : '--'}
+              <span className="text-[11px] font-bold text-muted-foreground ml-0.5">{durationText?.includes('h') ? '' : 'min'}</span>
+            </span>
+            <span className="h-3.5 w-px bg-border"></span>
+            <div className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5 truncate">
+              <span>{distanceText}</span>
+              <span className="w-1 h-1 rounded-full bg-muted-foreground/60"></span>
+              <span>Llegada: {etaText || '--:--'}</span>
             </div>
           </div>
+
+          {/* Si el panel superior está minimizado, mostrar botón rápido de Entregar */}
+          {isCardCollapsed && (
+            <Button 
+              size="sm"
+              className="h-8 px-3.5 rounded-lg font-black bg-royal-yellow hover:bg-yellow-400 text-royal-blue text-xs shadow-sm shrink-0"
+              onClick={handleDeliver}
+            >
+              Entregar
+            </Button>
+          )}
+
           {isRouting && (
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
-              <Navigation className="h-6 w-6 animate-spin text-royal-blue opacity-50" />
-            </div>
+            <Navigation className="h-4 w-4 animate-spin text-royal-blue opacity-70 shrink-0" />
           )}
         </div>
       </div>

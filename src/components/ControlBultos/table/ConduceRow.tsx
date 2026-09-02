@@ -63,11 +63,23 @@ const ConduceRow = ({ conduce, isSelected, onToggleSelection, getRowColorClass }
       <TableCell className="hidden md:table-cell text-sm">{conduce.fechaEntrega}</TableCell>
       
       <TableCell className="order-6 block md:table-cell w-full md:w-auto p-1.5 pt-0 md:p-4 border-0 md:border-b">
-        {conduce.prioridad && (
-          <Badge variant="outline" className="text-red-600 border-red-400 text-[10px] h-4">
-            Prioridad
-          </Badge>
-        )}
+        <div className="flex items-center justify-between gap-2">
+          {conduce.prioridad ? (
+            <Badge variant="outline" className="text-red-600 border-red-400 text-[10px] h-4">
+              Prioridad
+            </Badge>
+          ) : <div />}
+          <div className="md:hidden flex items-center gap-1">
+            <span className="text-[9px] text-gray-400 uppercase font-bold">Encomendado:</span>
+            {conduce.encomendado ? (
+              <Badge className="bg-green-600 text-white text-[9px] h-4 px-1.5 font-bold">
+                {conduce.encomendado}
+              </Badge>
+            ) : (
+              <span className="text-[9px] text-orange-600 italic">Sin asignar</span>
+            )}
+          </div>
+        </div>
       </TableCell>
       
       <TableCell className="hidden md:table-cell"></TableCell>
