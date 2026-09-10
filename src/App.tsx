@@ -13,6 +13,7 @@ import LAM from "./pages/LAM";
 import Fersuaz from "./pages/Fersuaz";
 import Taapharmaceutica from "./pages/Taapharmaceutica";
 import InnovacionQuimica from "./pages/InnovacionQuimica";
+import KrishparCare from "./pages/KrishparCare";
 import DemoLaboratorio from "./pages/DemoLaboratorio";
 import NotFound from "./pages/NotFound";
 import ControlBultos from "./pages/ControlBultos";
@@ -42,6 +43,9 @@ const App = () => (
             <Route path="/fersuaz" element={<Fersuaz />} />
             <Route path="/taapharmaceutica" element={<Taapharmaceutica />} />
             <Route path="/innovacion-quimica" element={<InnovacionQuimica />} />
+            <Route path="/krishpar" element={<KrishparCare />} />
+            <Route path="/krishpar-care" element={<KrishparCare />} />
+            <Route path="/krishpar-care-dominicana" element={<KrishparCare />} />
             <Route path="/demo-laboratorio" element={<DemoLaboratorio />} />
             <Route path="/demolab" element={<DemoLaboratorio />} />
             <Route path="/entregas" element={<Entregas />} />

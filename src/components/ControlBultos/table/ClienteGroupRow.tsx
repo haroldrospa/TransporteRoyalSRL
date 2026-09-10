@@ -135,9 +135,13 @@ const ClienteGroupRow = ({
                   lab === 'Taapharmaceutica' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                   lab === 'Innovacion Quimica' ? 'bg-green-50 text-green-700 border-green-200' :
                   lab === 'Fersuaz' ? 'bg-teal-50 text-teal-700 border-teal-200' :
+                  (lab === 'Krishpar Care Dominicana' || lab === 'Krishpar care dominicana') ? 'bg-rose-50 text-rose-700 border-rose-200' :
                   'bg-teal-50 text-teal-700 border-teal-200'
                 }`}>
-                  {lab === 'Taapharmaceutica' ? 'Taapharma' : lab === 'Innovacion Quimica' ? 'Innov. Quimica' : lab}
+                  {lab === 'Taapharmaceutica' ? 'Taapharma' : 
+                   lab === 'Innovacion Quimica' ? 'Innov. Quimica' : 
+                   (lab === 'Krishpar Care Dominicana' || lab === 'Krishpar care dominicana') ? 'Krishpar' : 
+                   lab}
                 </Badge>
               ))}
             </div>

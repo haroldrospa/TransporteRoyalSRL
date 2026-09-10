@@ -7,8 +7,10 @@ import {
   clearProgressiveCache 
 } from '@/services/conduces/progressiveFetchConduces';
 
+import { Laboratorio } from '@/types/importTypes';
+
 interface UseProgressiveConducesOptions {
-  laboratorio?: 'LAM' | 'Fersuaz' | 'Taapharmaceutica' | 'Innovacion Quimica';
+  laboratorio?: Laboratorio;
 }
 
 export function useProgressiveConducesData(options?: UseProgressiveConducesOptions) {

@@ -89,6 +89,7 @@ const ConducesTableRow = ({ conduce, index, isLamUser, onConduceClick }: Conduce
               <SelectItem value="Fersuaz">Fersuaz</SelectItem>
               <SelectItem value="Taapharmaceutica">Taapharmaceutica</SelectItem>
               <SelectItem value="Innovacion Quimica">Innovacion Quimica</SelectItem>
+              <SelectItem value="Krishpar Care Dominicana">Krishpar Care Dominicana</SelectItem>
             </SelectContent>
           </Select>
         </TableCell>

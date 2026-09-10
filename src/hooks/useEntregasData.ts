@@ -46,12 +46,12 @@ export const useEntregasData = () => {
       return [];
     }
     
+    // For a driver, show all their assigned conduces
     const userSpecificConduces = filteredConduces.filter(c => 
-      c.region === regionActual && 
       c.encomendado === user.camion
     );
     
-    console.log(`🚛 Conduces asignados al camión ${user.camion} en región ${regionActual}: ${userSpecificConduces.length}`);
+    console.log(`🚛 Conduces asignados al camión ${user.camion}: ${userSpecificConduces.length}`);
     console.log(`🔍 Verificando si existe conduce 80812552:`, filteredConduces.find(c => c.numeroConduce === '80812552'));
     
     return userSpecificConduces;

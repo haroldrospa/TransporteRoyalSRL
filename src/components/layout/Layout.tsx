@@ -29,7 +29,7 @@ const Layout = ({ children }: LayoutProps) => {
       navigate('/cargar-camiones');
     }
     // For level 6 users, redirect to LAM if they're on an unauthorized page
-    if (user?.nivel === 6 && !['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/crear-conduces', '/entregas'].includes(location.pathname)) {
+    if (user?.nivel === 6 && !['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/krishpar', '/crear-conduces', '/entregas'].includes(location.pathname)) {
       navigate('/lam');
     }
   }, [user, loading, location.pathname, navigate]);

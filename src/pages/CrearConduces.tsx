@@ -21,7 +21,7 @@ import { toast } from '@/hooks/use-toast';
 import { isAdministrator } from '@/utils/userPermissions';
 import { FileText, Printer, Plus, Trash2, CheckCircle2, ShieldAlert, ArrowLeft, Loader2, Pencil } from 'lucide-react';
 
-const LABORATORIOS = ['Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'LAM'];
+const LABORATORIOS = ['Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'Krishpar Care Dominicana', 'LAM'];
 
 export const CrearConduces: React.FC = () => {
   const { user } = useAuth();
@@ -60,6 +60,7 @@ export const CrearConduces: React.FC = () => {
   const [editNumeroConduce, setEditNumeroConduce] = useState('');
   const [editNumeroFactura, setEditNumeroFactura] = useState('');
   const [editCantidadBultos, setEditCantidadBultos] = useState('');
+  const [editFechaCarga, setEditFechaCarga] = useState('');
   const [editSelectedLab, setEditSelectedLab] = useState('');
   const [editSelectedClient, setEditSelectedClient] = useState<Cliente | null>(null);
   const [editSearchQuery, setEditSearchQuery] = useState('');
@@ -467,6 +468,28 @@ export const CrearConduces: React.FC = () => {
     }
   };
 
+  // Helper to format date string to YYYY-MM-DD for date input
+  const formatForDateInput = (val?: string): string => {
+    if (!val) return new Date().toISOString().split('T')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    if (val.includes('/')) {
+      const parts = val.split('/');
+      if (parts.length === 3) {
+        if (parts[2].length === 4) {
+          return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        if (parts[0].length === 4) {
+          return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        }
+      }
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+    return new Date().toISOString().split('T')[0];
+  };
+
   // Handle start editing a staged conduce
   const handleEditClick = (conduce: Conduce) => {
     setEditingConduce(conduce);
@@ -474,6 +497,7 @@ export const CrearConduces: React.FC = () => {
     setEditNumeroFactura(conduce.numeroFactura);
     setEditCantidadBultos(String(conduce.cantidadBultos));
     setEditSelectedLab(conduce.laboratorio || selectedLab || 'Fersuaz');
+    setEditFechaCarga(formatForDateInput(conduce.fechaCarga || conduce.fechaEntrega || fechaCarga));
     
     // Find the client object from the database list of clients
     const client = clientes.find(c => c.numeroCliente === conduce.numeroCliente);
@@ -583,7 +607,9 @@ export const CrearConduces: React.FC = () => {
       ubicacion: cleanedAddress,
       cantidadBultos: bultosNum,
       laboratorio: editSelectedLab || c.laboratorio,
-      region: editSelectedClient.zona === 'Sur' ? 'Sur' : 'Norte',
+      fechaCarga: editFechaCarga || c.fechaCarga || fechaCarga,
+      fechaEntrega: editFechaCarga || c.fechaEntrega || fechaCarga,
+      region: editSelectedClient.zona === 'Sur' ? 'Sur' : (editSelectedClient.zona === 'Este' ? 'Este' : 'Norte'),
     } : c));
 
     setIsEditConduceOpen(false);
@@ -637,6 +663,7 @@ export const CrearConduces: React.FC = () => {
       if (destLab === 'Fersuaz') navigate('/fersuaz');
       else if (destLab === 'Taapharmaceutica') navigate('/taapharmaceutica');
       else if (destLab === 'Innovacion Quimica') navigate('/innovacion-quimica');
+      else if (destLab === 'Krishpar Care Dominicana' || destLab === 'Krishpar care dominicana') navigate('/krishpar');
       else navigate('/control-bultos');
       
     } catch (error) {
@@ -657,6 +684,7 @@ export const CrearConduces: React.FC = () => {
     if (destLab === 'Fersuaz') navigate('/fersuaz');
     else if (destLab === 'Taapharmaceutica') navigate('/taapharmaceutica');
     else if (destLab === 'Innovacion Quimica') navigate('/innovacion-quimica');
+    else if (destLab === 'Krishpar Care Dominicana' || destLab === 'Krishpar care dominicana') navigate('/krishpar');
     else if (destLab === 'LAM') navigate('/lam');
     else navigate('/control-bultos');
   };
@@ -985,7 +1013,16 @@ export const CrearConduces: React.FC = () => {
                               {conducesCreados.length - index}
                             </TableCell>
                             <TableCell className="font-bold">{item.numeroConduce}</TableCell>
-                            <TableCell className="font-semibold text-muted-foreground">{item.numeroFactura}</TableCell>
+                            <TableCell className="font-semibold text-muted-foreground">
+                              <div>
+                                <span>{item.numeroFactura}</span>
+                                {item.fechaCarga && (
+                                  <span className="block text-[10px] text-muted-foreground/80 font-normal">
+                                    📅 {item.fechaCarga}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <div>
                                 <p className="font-bold text-xs">{item.razonSocial}</p>
@@ -1253,16 +1290,28 @@ export const CrearConduces: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-cant-bultos" className="text-xs font-semibold">Cantidad de Bultos</Label>
-                <Input 
-                  id="edit-cant-bultos" 
-                  type="number" 
-                  min="1" 
-                  value={editCantidadBultos}
-                  onChange={(e) => setEditCantidadBultos(e.target.value)}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-cant-bultos" className="text-xs font-semibold">Cantidad de Bultos</Label>
+                  <Input 
+                    id="edit-cant-bultos" 
+                    type="number" 
+                    min="1" 
+                    value={editCantidadBultos}
+                    onChange={(e) => setEditCantidadBultos(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-fecha-carga" className="text-xs font-semibold">Fecha</Label>
+                  <Input 
+                    id="edit-fecha-carga" 
+                    type="date" 
+                    value={editFechaCarga}
+                    onChange={(e) => setEditFechaCarga(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
 
               {/* Edit Laboratory */}

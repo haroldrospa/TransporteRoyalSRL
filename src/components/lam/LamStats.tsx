@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, TruckIcon, Users } from 'lucide-react';
+import { Package, TruckIcon, Users, Clock } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface LamStatsProps {
@@ -54,7 +54,7 @@ const CustomStatCard = ({
           <div className="flex-1 h-2 bg-gray-100 rounded-full">
             <div
               className="bg-royal-yellow h-2 rounded-full"
-              style={{ width: `${percentage}%` }}
+              style={{ width: `${Math.min(percentage, 100)}%` }}
             />
           </div>
           <span className="text-xs font-bold text-royal-yellow">
@@ -92,11 +92,12 @@ const LamStats = ({
   return (
     <div className="space-y-6">
       {/* Stats Cards Grid */}
-      <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"}`}>
+      <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}>
         <CustomStatCard
           title="Bultos en tránsito"
           value={bultosEnTransito}
           icon={TruckIcon}
+          percentage={parseFloat(transitoPercentage)}
           subtitle={`De un total de ${bultosTotalCount} bultos`}
           onClick={onStateFilter}
           estado="En tránsito"
@@ -111,9 +112,19 @@ const LamStats = ({
           title="Bultos entregados"
           value={bultosEntregados}
           icon={Package}
+          percentage={parseFloat(entregadosPercentage)}
           subtitle={`${bultosDevueltos} bultos devueltos`}
           onClick={onStateFilter}
-          estado="Entregado"
+          estado="Entregados"
+        />
+        <CustomStatCard
+          title="Bultos atrasados"
+          value={bultosAtrasados}
+          icon={Clock}
+          percentage={parseFloat(atrasadosPercentage)}
+          subtitle="Entregas fuera de tiempo / excepción"
+          onClick={onStateFilter}
+          estado="Atrasados"
         />
       </div>
     </div>
@@ -121,3 +132,4 @@ const LamStats = ({
 };
 
 export default LamStats;
+

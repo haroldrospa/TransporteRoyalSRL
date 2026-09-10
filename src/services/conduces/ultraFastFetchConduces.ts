@@ -32,7 +32,6 @@ export async function fetchBasicEntregasStats(region: string, userCamion?: strin
     let query = supabase
       .from('conduces')
       .select('estado, cantidad_bultos, numero_cliente, encomendado')
-      .eq('region', region)
       .eq('estado', 'En tránsito')
       .or('encomendado.neq.Almacen,encomendado.is.null');
 
@@ -41,6 +40,7 @@ export async function fetchBasicEntregasStats(region: string, userCamion?: strin
       query = query.eq('encomendado', userCamion);
       console.log(`🎯 UltraFast: Filtering by camion: ${userCamion}`);
     } else {
+      query = query.eq('region', region);
       console.log(`🎯 UltraFast: Admin mode - showing all region data`);
     }
 
@@ -122,7 +122,6 @@ export async function fetchPendingConducesOnly(region: string, userCamion?: stri
         encomendado,
         created_at
       `)
-      .eq('region', region)
       .eq('estado', 'En tránsito')
       .or('encomendado.neq.Almacen,encomendado.is.null')
       .order('prioridad', { ascending: false })
@@ -132,6 +131,7 @@ export async function fetchPendingConducesOnly(region: string, userCamion?: stri
       query = query.eq('encomendado', userCamion);
       console.log(`👤 Filtering pending by camion: ${userCamion}`);
     } else {
+      query = query.eq('region', region);
       console.log(`👑 Admin mode - showing all pending in region`);
     }
 
@@ -159,13 +159,14 @@ export async function fetchTodayCompletedConduces(region: string, userCamion?: s
     let query = supabase
       .from('conduces')
       .select('*')
-      .eq('region', region)
       .eq('estado', 'Entregado')
       .order('created_at', { ascending: false })
       .limit(100); // Aumentar límite para mostrar más históricos
 
     if (userCamion) {
       query = query.eq('encomendado', userCamion);
+    } else {
+      query = query.eq('region', region);
     }
 
     const { data, error } = await query;
@@ -190,13 +191,14 @@ export async function fetchTodayReturnedConduces(region: string, userCamion?: st
     let query = supabase
       .from('conduces')
       .select('*')
-      .eq('region', region)
       .eq('estado', 'Devuelto')
       .order('created_at', { ascending: false })
       .limit(100); // Aumentar límite para mostrar más históricos
 
     if (userCamion) {
       query = query.eq('encomendado', userCamion);
+    } else {
+      query = query.eq('region', region);
     }
 
     const { data, error } = await query;
@@ -223,7 +225,6 @@ export async function preloadMoreConduces(region: string, userCamion?: string, o
     let query = supabase
       .from('conduces')
       .select('*')
-      .eq('region', region)
       .eq('estado', 'En tránsito')
       .or('encomendado.neq.Almacen,encomendado.is.null')
       .order('prioridad', { ascending: false })
@@ -232,6 +233,8 @@ export async function preloadMoreConduces(region: string, userCamion?: string, o
 
     if (userCamion) {
       query = query.eq('encomendado', userCamion);
+    } else {
+      query = query.eq('region', region);
     }
 
     const { data, error } = await query;

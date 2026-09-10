@@ -59,7 +59,6 @@ export const useOptimizedEntregasData = () => {
     }
     
     return filteredConduces.filter(c => 
-      c.region === regionActual && 
       c.encomendado === user.camion
     );
   }, [fallbackConduces, regionActual, user?.camion, isAdmin]);

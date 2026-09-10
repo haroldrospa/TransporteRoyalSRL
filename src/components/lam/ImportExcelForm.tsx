@@ -16,7 +16,7 @@ import { isAdministrator } from '@/utils/userPermissions';
 const importFormSchema = z.object({
   fechaSalida: z.string().min(1, 'Debe ingresar una fecha de salida'),
   region: z.enum(['Norte', 'Sur']),
-  laboratorio: z.enum(['LAM', 'Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica'], {
+  laboratorio: z.enum(['LAM', 'Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'Krishpar Care Dominicana', 'Krishpar care dominicana'], {
     required_error: 'Debe seleccionar un laboratorio'
   }),
   formatType: z.enum(['asignados', 'sin_asignar']).default('asignados')
@@ -31,7 +31,7 @@ const ImportExcelForm = ({ isUploading, onFileUpload }: ImportExcelFormProps) =>
   const { user } = useAuth();
   const isAdmin = isAdministrator(user);
 
-  const defaultLab = (user?.laboratorio && ['LAM', 'Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica'].includes(user.laboratorio))
+  const defaultLab = (user?.laboratorio && ['LAM', 'Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'Krishpar Care Dominicana', 'Krishpar care dominicana'].includes(user.laboratorio))
     ? (user.laboratorio as any)
     : undefined;
 
@@ -109,6 +109,7 @@ const ImportExcelForm = ({ isUploading, onFileUpload }: ImportExcelFormProps) =>
                   <SelectItem value="Fersuaz">Fersuaz</SelectItem>
                   <SelectItem value="Taapharmaceutica">Taapharmaceutica</SelectItem>
                   <SelectItem value="Innovacion Quimica">Innovacion Quimica</SelectItem>
+                  <SelectItem value="Krishpar Care Dominicana">Krishpar Care Dominicana</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

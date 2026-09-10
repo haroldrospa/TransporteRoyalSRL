@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, FileText, AlertTriangle, CheckCircle, FlaskConical, Pill, Beaker } from 'lucide-react';
+import { Package, FileText, AlertTriangle, CheckCircle, FlaskConical, Pill, Beaker, Microscope } from 'lucide-react';
 import { Conduce } from '@/types/conduces';
 
 interface EncomendadoDetailsDialogProps {
@@ -89,10 +89,16 @@ const EncomendadoDetailsDialog = ({
     { key: 'Fersuaz', label: 'Fersuaz', icon: FlaskConical, color: 'teal' },
     { key: 'Taapharmaceutica', label: 'Taapharma', icon: Pill, color: 'amber' },
     { key: 'Innovacion Quimica', label: 'Innov. Quimica', icon: Beaker, color: 'green' },
+    { key: 'Krishpar Care Dominicana', label: 'Krishpar', icon: Microscope, color: 'rose' },
   ] as const;
 
   const labStats = labConfig.map(lab => {
-    const labItems = processedConduces.filter(item => item.conduce.laboratorio === lab.key);
+    const labItems = processedConduces.filter(item => {
+      if (lab.key === 'Krishpar Care Dominicana') {
+        return item.conduce.laboratorio === 'Krishpar Care Dominicana' || item.conduce.laboratorio === 'Krishpar care dominicana';
+      }
+      return item.conduce.laboratorio === lab.key;
+    });
     const totalConduces = labItems.length;
     const totalBultos = labItems.reduce((acc, item) => acc + item.totalBultos, 0);
     const scannedBultos = labItems.reduce((acc, item) => acc + item.scannedBultos, 0);
@@ -109,12 +115,14 @@ const EncomendadoDetailsDialog = ({
     teal: 'bg-teal-50 border-teal-200 text-teal-700',
     amber: 'bg-amber-50 border-amber-200 text-amber-700',
     green: 'bg-green-50 border-green-200 text-green-700',
+    rose: 'bg-rose-50 border-rose-200 text-rose-700',
   };
   const iconBgClasses: Record<string, string> = {
     purple: 'bg-purple-500',
     teal: 'bg-teal-500',
     amber: 'bg-amber-500',
     green: 'bg-green-500',
+    rose: 'bg-rose-500',
   };
 
   return (

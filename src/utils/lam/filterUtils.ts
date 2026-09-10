@@ -80,14 +80,14 @@ export const filterAndSortConduces = (
       // Filter by estado if specified - handle special filters
       if (estadoFilter) {
         // Map chart names to actual estados
-        if (estadoFilter === 'Entregados') {
+        if (estadoFilter === 'Entregados' || estadoFilter === 'Entregado') {
           if (conduce.estado !== 'Entregado') return false;
           if (isConduceDelayed(conduce) || conduce.excepcion) return false;
-        } else if (estadoFilter === 'Devueltos') {
+        } else if (estadoFilter === 'Devueltos' || estadoFilter === 'Devuelto') {
           if (conduce.estado !== 'Devuelto') return false;
-        } else if (estadoFilter === 'En tránsito') {
+        } else if (estadoFilter === 'En tránsito' || estadoFilter === 'En Transito' || estadoFilter === 'En transito') {
           if (conduce.estado !== 'En tránsito') return false;
-        } else if (estadoFilter === 'Atrasados') {
+        } else if (estadoFilter === 'Atrasados' || estadoFilter === 'Atrasado') {
           // Filter for late deliveries or deliveries with exception
           if (conduce.estado !== 'Entregado') return false;
           if (!isConduceDelayed(conduce) && !conduce.excepcion) return false;

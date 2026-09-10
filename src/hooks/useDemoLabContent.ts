@@ -105,8 +105,12 @@ export const useDemoLabContent = () => {
   }, [safeConduces]);
 
   const handleStateFilter = useCallback((estado: string) => {
-    setEstadoFilter(estado === estadoFilter ? '' : estado);
-  }, [estadoFilter, setEstadoFilter]);
+    const newFilter = estado === estadoFilter ? '' : estado;
+    setEstadoFilter(newFilter);
+    if (newFilter) {
+      setSelectedDate('');
+    }
+  }, [estadoFilter, setEstadoFilter, setSelectedDate]);
 
   return {
     loading,

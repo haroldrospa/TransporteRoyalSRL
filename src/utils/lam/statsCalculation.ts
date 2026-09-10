@@ -3,6 +3,7 @@ import { Conduce, EstadoBulto } from '@/types/conduces';
 import { isValid } from 'date-fns';
 import { filterConducesByMonth } from './dateFilters';
 import { safelyParseDate } from '../timeUtils';
+import { isConduceDelayed } from '@/utils/time/conduceDelay';
 
 /**
  * Helper function to count bultos by estado
@@ -32,8 +33,10 @@ export const calculateLamStats = (conduces: Conduce[], selectedMonth?: Date, all
       bultosDevueltos: 0,
       bultosEnTransito: 0,
       bultosAtrasados: 0,
+      bultosExcepcion: 0,
+      conducesExcepcionCount: 0,
       clientesEnTransito: 0,
-      totalBultosEntregadosDB: 0 // Nuevo campo para total de DB
+      totalBultosEntregadosDB: 0
     };
   }
   
@@ -41,30 +44,19 @@ export const calculateLamStats = (conduces: Conduce[], selectedMonth?: Date, all
   const filteredConduces = conduces;
 
   try {
-    // Log data for debugging
-    const entregadosConduces = filteredConduces.filter(c => c && c.estado === 'Entregado');
-    console.log('LAM Stats Debug:', {
-      totalConduces: filteredConduces.length,
-      entregadosConduces: entregadosConduces.length,
-      firstFewEntregados: entregadosConduces.slice(0, 5).map(c => ({
-        numeroConduce: c.numeroConduce,
-        estado: c.estado,
-        cantidadBultos: c.cantidadBultos
-      }))
-    });
-    
     const bultosTotalCount = filteredConduces.reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
-    const bultosEntregados = countBultosByEstado(filteredConduces, 'Entregado');
+    const totalEntregadosBultos = countBultosByEstado(filteredConduces, 'Entregado');
     const bultosDevueltos = countBultosByEstado(filteredConduces, 'Devuelto');
     const bultosEnTransito = countBultosByEstado(filteredConduces, 'En tránsito');
-    
-    console.log('LAM Stats Calculation:', {
-      bultosTotalCount,
-      bultosEntregados,
-      bultosDevueltos,
-      bultosEnTransito,
-      totalConducesProcessed: filteredConduces.length
+
+    // Calculate all delayed delivered conduces
+    const delayedConduces = filteredConduces.filter(c => {
+      if (!c || c.estado !== 'Entregado') return false;
+      return isConduceDelayed(c) || c.excepcion === true;
     });
+
+    const bultosAtrasados = delayedConduces.reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
+    const bultosEntregados = Math.max(0, bultosTotalCount - bultosEnTransito - bultosDevueltos - bultosAtrasados);
     
     const clientesEnTransitoSet = new Set(
       filteredConduces
@@ -77,27 +69,11 @@ export const calculateLamStats = (conduces: Conduce[], selectedMonth?: Date, all
 
     // Use the total from DB if provided, otherwise calculate from filtered data
     const finalTotalBultosEntregadosDB = totalBultosEntregadosDB || 
-      (allConduces ? countBultosByEstado(allConduces, 'Entregado') : bultosEntregados);
+      (allConduces ? countBultosByEstado(allConduces, 'Entregado') : totalEntregadosBultos);
 
-    // Calculate delayed packages (older than 3 days and still in transit)
-    const currentDate = new Date();
-    const bultosAtrasados = filteredConduces
-      .filter(conduce => {
-        if (conduce.estado !== 'En tránsito') return false;
-        if (conduce.excepcion) return false; // Excluir bultos marcados como excepción
-        
-        const fechaCarga = safelyParseDate(conduce.fechaCarga);
-        if (!fechaCarga || !isValid(fechaCarga)) return false;
-        const daysDiff = Math.floor((currentDate.getTime() - fechaCarga.getTime()) / (1000 * 60 * 60 * 24));
-        
-        return daysDiff > 3; // Packages older than 3 days
-      })
-      .reduce((total, conduce) => total + conduce.cantidadBultos, 0);
-
-    const bultosExcepcion = filteredConduces
-      .filter(c => c?.excepcion === true)
-      .reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
-    const conducesExcepcionCount = filteredConduces.filter(c => c?.excepcion === true).length;
+    const conducesConExcepcion = filteredConduces.filter(c => c?.excepcion === true);
+    const bultosExcepcion = conducesConExcepcion.reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
+    const conducesExcepcionCount = conducesConExcepcion.length;
 
     return {
       bultosTotalCount,

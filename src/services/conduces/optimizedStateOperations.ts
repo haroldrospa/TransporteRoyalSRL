@@ -1,5 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { Region } from '@/types/conduces';
+import { getRegionByTruck } from '@/utils/trucksByRegion';
+import { clearUltraCache } from './ultraFastFetchConduces';
 
 // Batch operation for multiple conduce updates
 export async function batchUpdateConduces(updates: Array<{ id: string; data: any }>): Promise<void> {
@@ -98,12 +101,20 @@ export async function devolverConduceFast(id: string, nota: string): Promise<voi
 // Batch assign encomendado - more efficient for multiple conduces
 export async function asignarEncomendadoBatch(conduceIds: string[], encomendado: string, prioridad: boolean = false): Promise<void> {
   try {
+    const targetRegion = getRegionByTruck(encomendado);
+    const updates: { encomendado: string; prioridad: boolean; region?: Region } = { encomendado, prioridad };
+    if (targetRegion) {
+      updates.region = targetRegion;
+    }
+
     const { error } = await supabase
       .from('conduces')
-      .update({ encomendado, prioridad })
+      .update(updates)
       .in('id', conduceIds);
     
     if (error) throw error;
+
+    clearUltraCache();
   } catch (error) {
     console.error('Error asignando encomendado:', error);
     toast({

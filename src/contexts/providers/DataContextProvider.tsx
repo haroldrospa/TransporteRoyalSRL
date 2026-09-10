@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { fetchConducesOptimized } from '@/services/conduces/optimizedFetchConduces';
 import { fetchClientesOptimized } from '@/services/optimizedDataService';
 import { useAuth } from '../AuthContext';
-import { getTrucksByRegion } from '@/utils/trucksByRegion';
+import { getTrucksByRegion, getRegionByTruck } from '@/utils/trucksByRegion';
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
@@ -29,8 +29,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   // Determinar región inicial basada en el camión del usuario
   const getInitialRegion = (): Region => {
     if (!user?.camion) return 'Norte';
-    const surTrucks = getTrucksByRegion('Sur');
-    return surTrucks.includes(user.camion) ? 'Sur' : 'Norte';
+    return getRegionByTruck(user.camion) || 'Norte';
   };
   
   const [regionActual, setRegionActual] = useState<Region>(getInitialRegion());
@@ -118,14 +117,23 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       // Auto-asignar encomendado del cliente cuando el conduce no tiene uno
       const clienteMap = new Map<string, Cliente>();
       clientesData.forEach(c => clienteMap.set(c.numeroCliente, c));
-      const conducesToUpdate: { numeroConduce: string; encomendado: string }[] = [];
+      const conducesToUpdate: { numeroConduce: string; encomendado: string; region?: Region }[] = [];
       
       const enrichedConduces = conducesData.map(conduce => {
         if (!conduce.encomendado && conduce.estado === 'En tránsito') {
           const cliente = clienteMap.get(conduce.numeroCliente);
           if (cliente?.encomendado) {
-            conducesToUpdate.push({ numeroConduce: conduce.numeroConduce, encomendado: cliente.encomendado });
-            return { ...conduce, encomendado: cliente.encomendado };
+            const targetRegion = getRegionByTruck(cliente.encomendado);
+            conducesToUpdate.push({ 
+              numeroConduce: conduce.numeroConduce, 
+              encomendado: cliente.encomendado,
+              ...(targetRegion ? { region: targetRegion } : {})
+            });
+            return { 
+              ...conduce, 
+              encomendado: cliente.encomendado,
+              ...(targetRegion ? { region: targetRegion } : {})
+            };
           }
         }
         return conduce;
@@ -135,8 +143,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       if (conducesToUpdate.length > 0) {
         console.log(`🔄 [DataProvider] Auto-asignando encomendado a ${conducesToUpdate.length} conduces desde clientes`);
         Promise.all(
-          conducesToUpdate.map(({ numeroConduce, encomendado }) =>
-            supabase.from('conduces').update({ encomendado }).eq('numero_conduce', numeroConduce)
+          conducesToUpdate.map(({ numeroConduce, encomendado, region }) =>
+            supabase.from('conduces').update({ 
+              encomendado,
+              ...(region ? { region } : {})
+            }).eq('numero_conduce', numeroConduce)
           )
         ).then(() => {
           console.log(`✅ [DataProvider] Auto-asignación completada para ${conducesToUpdate.length} conduces`);

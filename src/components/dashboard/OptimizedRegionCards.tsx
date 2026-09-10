@@ -32,6 +32,8 @@ export const OptimizedRegionCards = memo(({
       navigate('/taapharmaceutica');
     } else if (userLab === 'Innovacion Quimica') {
       navigate('/innovacion-quimica');
+    } else if (userLab === 'Krishpar Care Dominicana' || userLab === 'Krishpar care dominicana') {
+      navigate('/krishpar');
     } else if (userLab === 'Laboratorio Demo' || user?.email?.toLowerCase().startsWith('demo@')) {
       navigate('/demo-laboratorio');
     } else {

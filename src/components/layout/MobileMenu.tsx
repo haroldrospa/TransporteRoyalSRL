@@ -77,7 +77,7 @@ const MobileMenu = ({
 
               {/* Laboratorios */}
               {(() => {
-                const labLinks = navLinks.filter(link => ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/demo-laboratorio'].includes(link.to));
+                const labLinks = navLinks.filter(link => ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/krishpar', '/demo-laboratorio'].includes(link.to));
                 if (labLinks.length === 0) return null;
                 return (
                   <div className="flex flex-col gap-1 w-full">

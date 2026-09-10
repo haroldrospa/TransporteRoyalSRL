@@ -33,7 +33,7 @@ export const EntregasFilters = ({
     )
   ).sort();
 
-  const laboratories = ['LAM', 'Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica'];
+  const laboratories = ['LAM', 'Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'Krishpar Care Dominicana'];
   const hasActiveFilters = selectedCity !== '' || selectedLab !== '';
 
   return (

@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +10,10 @@ import { useLAMConduceOperations } from './lam/useLAMConduceOperations';
 import { useProgressiveConducesData } from './useProgressiveConducesData';
 import { useTotalBultosEntregados } from './useTotalBultosEntregados';
 
-export const useTaapharmaceuticaContent = () => {
+const isKrishparLab = (lab?: string | null) => 
+  lab === 'Krishpar Care Dominicana' || lab === 'Krishpar care dominicana';
+
+export const useKrishparCareContent = () => {
   const { regionActual, setRegionActual } = useData();
   const { user } = useAuth();
   
@@ -23,19 +25,19 @@ export const useTaapharmaceuticaContent = () => {
     loadConduceImage,
     updateConduce: updateOptimizedConduce,
     refresh: refreshOptimized
-  } = useProgressiveConducesData({ laboratorio: 'Taapharmaceutica' });
+  } = useProgressiveConducesData({ laboratorio: 'Krishpar Care Dominicana' });
 
   const userHasLabAccess = useMemo(() => {
     if (!user) return false;
     if (user.nivel >= 4 || !user.laboratorio) return true;
     if (user.nivel === 6) return true;
-    return user.laboratorio === 'Taapharmaceutica';
+    return isKrishparLab(user.laboratorio);
   }, [user]);
   
   const safeConduces = useMemo(() => {
     if (!Array.isArray(optimizedConduces)) return [];
     if (!userHasLabAccess) return [];
-    return optimizedConduces.filter(c => c?.laboratorio === 'Taapharmaceutica');
+    return optimizedConduces.filter(c => isKrishparLab(c?.laboratorio));
   }, [optimizedConduces, userHasLabAccess]);
   
   const regionConduces = useMemo(() => {

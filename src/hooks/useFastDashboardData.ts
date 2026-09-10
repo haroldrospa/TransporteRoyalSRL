@@ -5,7 +5,7 @@ import { isVisitador } from '@/components/clientes/utils/clienteTypeUtils';
 import { calculateDeliveryTime, isDeliveryDelayed } from '@/utils/time/deliveryTime';
 import { Region } from '@/types/conduces';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTrucksByRegion } from '@/utils/trucksByRegion';
+import { getTrucksByRegion, getRegionByTruck } from '@/utils/trucksByRegion';
 import { getDemoDashboardData } from '@/utils/demoLabData';
 
 interface DelayedConduce {
@@ -95,8 +95,7 @@ export function useFastDashboardData() {
   // Determinar región inicial basada en el camión del usuario
   const getInitialRegion = (): Region => {
     if (!user?.camion) return 'Norte';
-    const surTrucks = getTrucksByRegion('Sur');
-    return surTrucks.includes(user.camion) ? 'Sur' : 'Norte';
+    return getRegionByTruck(user.camion) || 'Norte';
   };
   
   const [regionActual, setRegionActual] = useState<Region>(getInitialRegion());

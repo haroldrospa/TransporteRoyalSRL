@@ -1,6 +1,9 @@
 import { Conduce } from '@/types/conduces';
+import { Laboratorio } from '@/types/importTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { mapDbConduceToConduce } from '@/utils/mappers/conduceMappers';
+import { getRegionByTruck } from '@/utils/trucksByRegion';
+import { clearUltraCache } from './ultraFastFetchConduces';
 
 // Cache optimizado
 const cache = new Map<string, { data: Conduce[], timestamp: number }>();
@@ -252,7 +255,7 @@ export async function fetchAllConducesBackground(
  * Carga optimizada por laboratorio - Solo lo que necesita cada página
  */
 export async function fetchConducesByLab(
-  laboratorio: 'LAM' | 'Fersuaz' | 'Taapharmaceutica' | 'Innovacion Quimica',
+  laboratorio: Laboratorio,
   options?: { limit?: number; offset?: number }
 ): Promise<Conduce[]> {
   const cacheKey = `conduces-${laboratorio}-${options?.limit || 'all'}`;
@@ -280,6 +283,8 @@ export async function fetchConducesByLab(
         
       if (laboratorio === 'LAM') {
         query = query.or('laboratorio.eq.LAM,laboratorio.is.null,laboratorio.eq.');
+      } else if (laboratorio === 'Krishpar Care Dominicana' || (laboratorio as string) === 'Krishpar care dominicana') {
+        query = query.or('laboratorio.eq.Krishpar Care Dominicana,laboratorio.eq.Krishpar care dominicana');
       } else {
         query = query.eq('laboratorio', laboratorio);
       }
@@ -299,6 +304,8 @@ export async function fetchConducesByLab(
         
       if (laboratorio === 'LAM') {
         countQuery = countQuery.or('laboratorio.eq.LAM,laboratorio.is.null,laboratorio.eq.');
+      } else if (laboratorio === 'Krishpar Care Dominicana' || (laboratorio as string) === 'Krishpar care dominicana') {
+        countQuery = countQuery.or('laboratorio.eq.Krishpar Care Dominicana,laboratorio.eq.Krishpar care dominicana');
       } else {
         countQuery = countQuery.eq('laboratorio', laboratorio);
       }
@@ -328,6 +335,8 @@ export async function fetchConducesByLab(
             
           if (laboratorio === 'LAM') {
             batchQuery = batchQuery.or('laboratorio.eq.LAM,laboratorio.is.null,laboratorio.eq.');
+          } else if (laboratorio === 'Krishpar Care Dominicana' || (laboratorio as string) === 'Krishpar care dominicana') {
+            batchQuery = batchQuery.or('laboratorio.eq.Krishpar Care Dominicana,laboratorio.eq.Krishpar care dominicana');
           } else {
             batchQuery = batchQuery.eq('laboratorio', laboratorio);
           }
@@ -509,6 +518,10 @@ export async function approvePendingBatch(
       // Solo asignar si hay un encomendado válido
       if (encomendado !== 'unassigned') {
         updateData.encomendado = encomendado;
+        const targetRegion = getRegionByTruck(encomendado);
+        if (targetRegion) {
+          updateData.region = targetRegion;
+        }
       }
       
       const { error: updateError } = await supabase
@@ -524,6 +537,7 @@ export async function approvePendingBatch(
     
     // Limpiar cache para que se carguen los datos frescos
     clearProgressiveCache();
+    clearUltraCache();
     
     return { success: true, message: `Lote de ${pendingItems.length} conduces aprobado con éxito` };
   } catch (error) {

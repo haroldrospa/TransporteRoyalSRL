@@ -188,6 +188,7 @@ const FormFieldGroups = ({ control, isSubmitting, isChofer, isEditing }: FormFie
                 <option value="Fersuaz">Fersuaz</option>
                 <option value="Taapharmaceutica">Taapharmaceutica</option>
                 <option value="Innovacion Quimica">Innovacion Quimica</option>
+                <option value="Krishpar Care Dominicana">Krishpar Care Dominicana</option>
               </select>
             </FormControl>
             <FormMessage />

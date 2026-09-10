@@ -104,7 +104,7 @@ export const processConduceExcel = async (
     }
 
     // Use different processing based on laboratorio
-    if (laboratorio === 'Fersuaz' || laboratorio === 'Taapharmaceutica' || laboratorio === 'Innovacion Quimica') {
+    if (laboratorio === 'Fersuaz' || laboratorio === 'Taapharmaceutica' || laboratorio === 'Innovacion Quimica' || laboratorio === 'Krishpar Care Dominicana' || laboratorio === 'Krishpar care dominicana') {
       return await processFersuazExcel(jsonData, fechaSalida, region, forceDuplicates, laboratorio);
     } else {
       return await processLAMExcel(jsonData, laboratorio, fechaCarga, fechaSalida, region, forceDuplicates);

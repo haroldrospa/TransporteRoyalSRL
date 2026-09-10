@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Home, Package, Truck, FileText, Users, Building, CheckSquare, FlaskConical, Pill, Beaker, ChevronDown, Activity, ShieldAlert, Settings } from 'lucide-react';
+import { Home, Package, Truck, FileText, Users, Building, CheckSquare, FlaskConical, Pill, Beaker, ChevronDown, Activity, ShieldAlert, Settings, Microscope } from 'lucide-react';
 import { User } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -33,6 +33,7 @@ export const getNavLinks = (user: User | null) => {
     { to: '/fersuaz', label: 'Fersuaz', icon: FlaskConical },
     { to: '/taapharmaceutica', label: 'Taapharma', icon: Pill },
     { to: '/innovacion-quimica', label: 'Innov. Quimica', icon: Beaker },
+    { to: '/krishpar', label: 'Krishpar', icon: Microscope },
     { to: '/entregas', label: 'Entregas', icon: Package },
     { to: '/control-bultos', label: 'Control Bultos', icon: Package },
     { to: '/cargar-camiones', label: 'Cargar Camiones', icon: Truck },
@@ -68,11 +69,14 @@ export const getNavLinks = (user: User | null) => {
     if (user?.laboratorio === 'Innovacion Quimica') {
       return [{ to: '/', label: 'Dashboard', icon: Home }, { to: '/innovacion-quimica', label: 'Laboratorio', icon: Beaker }];
     }
-    return baseLinks.filter(link => ['/', '/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica'].includes(link.to));
+    if (user?.laboratorio === 'Krishpar Care Dominicana' || user?.laboratorio === 'Krishpar care dominicana') {
+      return [{ to: '/', label: 'Dashboard', icon: Home }, { to: '/krishpar', label: 'Laboratorio', icon: Microscope }];
+    }
+    return baseLinks.filter(link => ['/', '/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/krishpar'].includes(link.to));
   }
 
   if (user?.nivel === 6) {
-    return baseLinks.filter(link => ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/entregas'].includes(link.to));
+    return baseLinks.filter(link => ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/krishpar', '/entregas'].includes(link.to));
   }
 
   return baseLinks;
@@ -87,6 +91,7 @@ const NavigationLinks = ({ links, mobile = false }: NavigationLinksProps) => {
     { to: '/fersuaz', label: 'Fersuaz', icon: FlaskConical },
     { to: '/taapharmaceutica', label: 'Taapharma', icon: Pill },
     { to: '/innovacion-quimica', label: 'Innov. Quimica', icon: Beaker },
+    { to: '/krishpar', label: 'Krishpar', icon: Microscope },
     { to: '/entregas', label: 'Entregas', icon: Package },
     { to: '/control-bultos', label: 'Control Bultos', icon: Package },
     { to: '/cargar-camiones', label: 'Cargar Camiones', icon: Truck },
@@ -128,7 +133,7 @@ const NavigationLinks = ({ links, mobile = false }: NavigationLinksProps) => {
 
   const dashboardLinks = linksToRender.filter(link => link.to === '/');
   
-  const labPaths = ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/demo-laboratorio'];
+  const labPaths = ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/krishpar', '/demo-laboratorio'];
   const labLinks = linksToRender.filter(link => labPaths.includes(link.to));
   const isLabActive = labPaths.includes(location.pathname);
   

@@ -32,7 +32,10 @@ export function useConduceFilters(conduces: Conduce[]) {
       ) && 
       (routeFilter === 'all' || c.ruta === routeFilter) &&
       (truckFilter === 'all' || c.encomendado === truckFilter) &&
-      (labFilter === 'all' || c.laboratorio === labFilter)
+      (labFilter === 'all' || 
+        (labFilter === 'Krishpar Care Dominicana' || labFilter === 'Krishpar care dominicana'
+          ? (c.laboratorio === 'Krishpar Care Dominicana' || c.laboratorio === 'Krishpar care dominicana')
+          : c.laboratorio === labFilter))
     );
   }, [conduces, searchTerm, filterField, routeFilter, truckFilter, labFilter]);
 
@@ -76,7 +79,9 @@ export function useConduceFilters(conduces: Conduce[]) {
   }, [conduces]);
 
   const uniqueLabs = useMemo(() => {
-    return Array.from(new Set(conduces.filter(c => c.laboratorio).map(c => c.laboratorio)));
+    const defaultLabs = ['LAM', 'Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'Krishpar Care Dominicana'];
+    const currentLabs = conduces.filter(c => c.laboratorio).map(c => c.laboratorio);
+    return Array.from(new Set([...defaultLabs, ...currentLabs]));
   }, [conduces]);
 
   const clearFilters = () => {

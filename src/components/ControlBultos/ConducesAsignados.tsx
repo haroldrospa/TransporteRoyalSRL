@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import ProcessingOverlay from '@/components/cargar-camiones/ProcessingOverlay';
+import { getRegionByTruck } from '@/utils/trucksByRegion';
+import { clearUltraCache } from '@/services/conduces/ultraFastFetchConduces';
 
 interface ConducesAsignadosProps {
   encomendadosList: string[];
@@ -103,14 +105,19 @@ const ConducesAsignados = ({
         
         // Solo actualizar si encontramos un encomendado válido
         if (encomendadoAsignado) {
+          const targetRegion = getRegionByTruck(encomendadoAsignado);
+          const updatePayload: any = { encomendado: encomendadoAsignado };
+          if (targetRegion) {
+            updatePayload.region = targetRegion;
+          }
           const { error } = await supabase
             .from('conduces')
-            .update({ encomendado: encomendadoAsignado })
+            .update(updatePayload)
             .eq('id', conduce.id);
           
           if (!error) {
             reasignados++;
-            console.log(`   ✅ Conduce ${conduce.numeroConduce} ASIGNADO a ${encomendadoAsignado}`);
+            console.log(`   ✅ Conduce ${conduce.numeroConduce} ASIGNADO a ${encomendadoAsignado}${targetRegion ? ` (Zona ${targetRegion})` : ''}`);
           } else {
             console.error(`   ❌ Error actualizando conduce:`, error);
           }
@@ -119,6 +126,8 @@ const ConducesAsignados = ({
           console.log(`   ⚠️ Conduce ${conduce.numeroConduce} quedará sin asignar (no se encontró encomendado)`);
         }
       }
+
+      clearUltraCache();
 
       // Refrescar los datos
       if (refreshData) {

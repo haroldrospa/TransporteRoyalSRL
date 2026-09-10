@@ -16,11 +16,12 @@ const LabBultosStats = ({ conduces, loading = false }: LabBultosStatsProps) => {
     const fersuazBultos = sumBy('Fersuaz');
     const taaBultos = sumBy('Taapharmaceutica');
     const innovBultos = sumBy('Innovacion Quimica');
-    return { lamBultos, fersuazBultos, taaBultos, innovBultos, total: lamBultos + fersuazBultos + taaBultos + innovBultos };
+    const krishparBultos = sumBy('Krishpar Care Dominicana') + sumBy('Krishpar care dominicana');
+    return { lamBultos, fersuazBultos, taaBultos, innovBultos, krishparBultos, total: lamBultos + fersuazBultos + taaBultos + innovBultos + krishparBultos };
   }, [conduces]);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
       {/* LAM */}
       <div className="flex items-center gap-3 rounded-lg border bg-purple-50 p-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-500 shrink-0">
@@ -77,6 +78,21 @@ const LabBultosStats = ({ conduces, loading = false }: LabBultosStatsProps) => {
             <div className="h-6 w-14 bg-green-200/70 dark:bg-green-900/50 animate-pulse rounded mt-1" />
           ) : (
             <p className="text-xl font-bold text-green-700">{stats.innovBultos}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Krishpar */}
+      <div className="flex items-center gap-3 rounded-lg border bg-rose-50 p-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-500 shrink-0">
+          <Package className="h-4 w-4 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground font-medium truncate">Krishpar en tránsito</p>
+          {loading ? (
+            <div className="h-6 w-14 bg-rose-200/70 dark:bg-rose-900/50 animate-pulse rounded mt-1" />
+          ) : (
+            <p className="text-xl font-bold text-rose-700">{stats.krishparBultos}</p>
           )}
         </div>
       </div>

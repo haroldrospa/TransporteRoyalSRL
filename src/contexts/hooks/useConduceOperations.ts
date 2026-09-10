@@ -5,6 +5,7 @@ import * as conduceService from '@/services/conduceService';
 import { calculateBusinessHours, calculateRegularHours, calculateTransitTime } from '@/utils/time';
 import { calculateDeliveryTime } from '@/utils/time/deliveryTime';
 import { supabase } from '@/integrations/supabase/client';
+import { getRegionByTruck } from '@/utils/trucksByRegion';
 
 export const useConduceOperations = (
   conduces: Conduce[], 
@@ -25,9 +26,15 @@ export const useConduceOperations = (
 
   const asignarEncomendado = async (conduceIds: string[], encomendado: string, prioridad: boolean = false) => {
     await conduceService.asignarEncomendado(conduceIds, encomendado, prioridad);
+    const targetRegion = getRegionByTruck(encomendado);
     
     setConduces(conduces.map(c => 
-      conduceIds.includes(c.id) ? { ...c, encomendado, prioridad: prioridad || c.prioridad } : c
+      conduceIds.includes(c.id) ? { 
+        ...c, 
+        encomendado, 
+        prioridad: prioridad || c.prioridad,
+        ...(targetRegion ? { region: targetRegion } : {})
+      } : c
     ));
   };
 

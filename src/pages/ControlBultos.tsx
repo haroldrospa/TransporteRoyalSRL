@@ -209,7 +209,7 @@ const ControlBultos = () => {
   // Reset selections after assignment completes
   const handleAssignComplete = () => {
     setSelectedConduces([]);
-    refreshData(false); // Silently refresh data to reflect changes
+    refreshData(true); // Force refresh data to reflect changes immediately
   };
   
   // Enrich conduces with route information from clientes
@@ -371,6 +371,7 @@ const ControlBultos = () => {
             conduces={conducesWithRouteInfo}
             asignarEncomendado={asignarEncomendado}
             onAssignComplete={handleAssignComplete}
+            regionActual={regionActual}
           />
           
           <ConducesAsignados 

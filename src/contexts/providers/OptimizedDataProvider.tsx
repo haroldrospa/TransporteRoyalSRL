@@ -6,7 +6,7 @@ import { fetchClientesOptimized, fetchConducesLazy, clearCache } from '@/service
 import { useToast } from '@/hooks/use-toast';
 import { DataContext } from '../DataContext';
 import { useAuth } from '../AuthContext';
-import { getTrucksByRegion } from '@/utils/trucksByRegion';
+import { getTrucksByRegion, getRegionByTruck } from '@/utils/trucksByRegion';
 
 // Provider optimizado que solo carga datos esenciales
 export const OptimizedDataProvider = ({ children }: { children: ReactNode }) => {
@@ -22,8 +22,7 @@ export const OptimizedDataProvider = ({ children }: { children: ReactNode }) => 
   // Determinar región inicial basada en el camión del usuario
   const getInitialRegion = (): Region => {
     if (!user?.camion) return 'Norte';
-    const surTrucks = getTrucksByRegion('Sur');
-    return surTrucks.includes(user.camion) ? 'Sur' : 'Norte';
+    return getRegionByTruck(user.camion) || 'Norte';
   };
   
   const [regionActual, setRegionActual] = useState<Region>(getInitialRegion());

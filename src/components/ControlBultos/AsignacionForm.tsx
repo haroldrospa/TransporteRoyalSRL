@@ -7,6 +7,7 @@ import { Loader2, Save } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Conduce, Region } from '@/types/conduces';
 import { cambiarRegionConduces } from '@/services/conduceService';
+import { getRegionByTruck, getAllValidTrucks } from '@/utils/trucksByRegion';
 
 interface AsignacionFormProps {
   encomendadosList: string[];
@@ -14,6 +15,7 @@ interface AsignacionFormProps {
   conduces: Conduce[];
   asignarEncomendado: (conduceIds: string[], encomendado: string, prioridad?: boolean) => Promise<void>;
   onAssignComplete: () => void;
+  regionActual?: Region;
 }
 
 const AsignacionForm = ({
@@ -21,12 +23,16 @@ const AsignacionForm = ({
   selectedConduces,
   conduces,
   asignarEncomendado,
-  onAssignComplete
+  onAssignComplete,
+  regionActual
 }: AsignacionFormProps) => {
   const [currentEncomendado, setCurrentEncomendado] = useState('');
   const [newRegion, setNewRegion] = useState<Region | ''>('');
   const [isPriority, setIsPriority] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const allValidTrucks = getAllValidTrucks();
+  const otherTrucks = allValidTrucks.filter(t => !encomendadosList.includes(t));
 
   // Get stats for selected conduces
   const selectedStats = {
@@ -63,10 +69,13 @@ const AsignacionForm = ({
     setIsSubmitting(true);
     try {
       await asignarEncomendado(selectedConduces, currentEncomendado, isPriority);
+      const targetRegion = getRegionByTruck(currentEncomendado);
       
       toast({
         title: "Operación exitosa",
-        description: `${selectedConduces.length} conduces asignados a ${currentEncomendado}`,
+        description: targetRegion
+          ? `${selectedConduces.length} conduces asignados a ${currentEncomendado} (Zona ${targetRegion})`
+          : `${selectedConduces.length} conduces asignados a ${currentEncomendado}`,
         variant: "default"
       });
       
@@ -175,9 +184,23 @@ const AsignacionForm = ({
             onChange={(e) => setCurrentEncomendado(e.target.value)}
           >
             <option value="">Seleccionar encomendado</option>
-            {encomendadosList.map(enc => (
-              <option key={enc} value={enc}>{enc}</option>
-            ))}
+            <optgroup label={`Región Actual (${regionActual || 'Zona'})`}>
+              {encomendadosList.map(enc => (
+                <option key={enc} value={enc}>{enc}</option>
+              ))}
+            </optgroup>
+            {otherTrucks.length > 0 && (
+              <optgroup label="Otras Regiones / Choferes">
+                {otherTrucks.map(enc => {
+                  const r = getRegionByTruck(enc);
+                  return (
+                    <option key={enc} value={enc}>
+                      {enc} {r ? `(Zona ${r})` : ''}
+                    </option>
+                  );
+                })}
+              </optgroup>
+            )}
           </select>
         </div>
         

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { isAdministrator } from '@/utils/userPermissions';
 
-const LABORATORIOS = ['Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'LAM'];
+const LABORATORIOS = ['Fersuaz', 'Taapharmaceutica', 'Innovacion Quimica', 'Krishpar Care Dominicana', 'LAM'];
 
 interface ConduceBasicInfoProps {
   numeroFactura: string;

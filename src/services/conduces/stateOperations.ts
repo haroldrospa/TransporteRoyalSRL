@@ -1,17 +1,26 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Region } from '@/types/conduces';
+import { getRegionByTruck } from '@/utils/trucksByRegion';
+import { clearUltraCache } from './ultraFastFetchConduces';
 
 export async function asignarEncomendado(conduceIds: string[], encomendado: string, prioridad: boolean = false): Promise<void> {
   try {
-    for (const id of conduceIds) {
-      const { error } = await supabase
-        .from('conduces')
-        .update({ encomendado, prioridad })
-        .eq('id', id);
-      
-      if (error) throw error;
+    const targetRegion = getRegionByTruck(encomendado);
+    const updates: { encomendado: string; prioridad: boolean; region?: Region } = { encomendado, prioridad };
+    if (targetRegion) {
+      updates.region = targetRegion;
     }
+
+    const { error } = await supabase
+      .from('conduces')
+      .update(updates)
+      .in('id', conduceIds);
+    
+    if (error) throw error;
+
+    // Invalidate ultra cache so delivery views get fresh data
+    clearUltraCache();
   } catch (error) {
     console.error('Error asignando encomendado:', error);
     toast({
@@ -92,14 +101,14 @@ export async function devolverConduce(id: string, nota: string): Promise<void> {
 
 export async function cambiarRegionConduces(conduceIds: string[], region: Region): Promise<void> {
   try {
-    for (const id of conduceIds) {
-      const { error } = await supabase
-        .from('conduces')
-        .update({ region })
-        .eq('id', id);
-      
-      if (error) throw error;
-    }
+    const { error } = await supabase
+      .from('conduces')
+      .update({ region })
+      .in('id', conduceIds);
+    
+    if (error) throw error;
+
+    clearUltraCache();
   } catch (error) {
     console.error('Error cambiando region de conduces:', error);
     toast({

@@ -5,6 +5,7 @@ import { lazyDataService, LazyDataFilters } from '@/services/lazy/lazyDataServic
 import { Conduce } from '@/types/conduces';
 import { Cliente } from '@/types/cliente';
 import { useAuth } from './AuthContext';
+import { getRegionByTruck } from '@/utils/trucksByRegion';
 
 interface LazyDataContextValue {
   // Conduces
@@ -69,10 +70,7 @@ export const LazyDataProvider = ({ children, autoInitialize = false }: LazyDataP
   // Initialize region based on user's truck
   useEffect(() => {
     if (user?.camion) {
-      // Logic to determine region from truck - adapt as needed
-      const region = user.camion.includes('R-03') || user.camion.includes('R-04') || user.camion.includes('R-05') 
-        ? 'Norte' 
-        : 'Sur';
+      const region = getRegionByTruck(user.camion) || 'Norte';
       setCurrentRegion(region);
     }
   }, [user?.camion]);
