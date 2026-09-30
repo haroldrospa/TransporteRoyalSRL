@@ -32,14 +32,12 @@ const ScanInput = ({ value, onChange, onScan, scanType, inputRef, isProcessing, 
   useEffect(() => {
     if (!isProcessing) {
       focusInput();
-      const timer1 = setTimeout(focusInput, 30);
-      const timer2 = setTimeout(focusInput, 100);
+      const timer1 = setTimeout(focusInput, 50);
       return () => {
         clearTimeout(timer1);
-        clearTimeout(timer2);
       };
     }
-  }, [isProcessing, scanType, keyboardEnabled, focusInput]);
+  }, [isProcessing, scanType, focusInput]);
 
   // Foco inicial garantizado
   useEffect(() => {
@@ -52,10 +50,13 @@ const ScanInput = ({ value, onChange, onScan, scanType, inputRef, isProcessing, 
     if (e.key === 'Enter') {
       e.preventDefault();
       onScan(value);
-      // Garantizar que el foco nunca se pierda tras presionar Enter o pistolear
-      requestAnimationFrame(focusInput);
-      setTimeout(focusInput, 50);
-      setTimeout(focusInput, 150);
+      // Mantener el foco tras presionar Enter o pistolear
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.inputMode = keyboardEnabled ? 'text' : 'none';
+          inputRef.current.focus({ preventScroll: true });
+        }
+      }, 50);
     }
   };
 
@@ -70,10 +71,53 @@ const ScanInput = ({ value, onChange, onScan, scanType, inputRef, isProcessing, 
     setTimeout(focusInput, 50);
   };
 
-  const toggleKeyboard = () => {
-    const nextState = !keyboardEnabled;
-    setKeyboardEnabled(nextState);
-    setTimeout(focusInput, 50);
+  const toggleKeyboard = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    const input = inputRef.current;
+    const willEnable = !keyboardEnabled;
+    setKeyboardEnabled(willEnable);
+
+    if (willEnable) {
+      // 1. MOSTRAR TECLADO VIRTUAL
+      if (input) {
+        input.inputMode = 'text';
+        // Forzar ciclo blur -> focus en el mismo gesto de usuario para que el OS abra el teclado
+        input.blur();
+        input.focus();
+
+        if ('virtualKeyboard' in navigator && (navigator as any).virtualKeyboard?.show) {
+          try {
+            (navigator as any).virtualKeyboard.show();
+          } catch (_) {}
+        }
+      }
+    } else {
+      // 2. OCULTAR TECLADO VIRTUAL
+      if (input) {
+        input.inputMode = 'none';
+        // Blur para replegar el teclado en pantalla del sistema operativo
+        input.blur();
+
+        if ('virtualKeyboard' in navigator && (navigator as any).virtualKeyboard?.hide) {
+          try {
+            (navigator as any).virtualKeyboard.hide();
+          } catch (_) {}
+        }
+
+        // Re-enfocar con inputMode='none' tras breve retardo para que la pistola/lector físico
+        // siga teniendo el cursor en el input sin reabrir el teclado virtual
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.inputMode = 'none';
+            inputRef.current.focus({ preventScroll: true });
+          }
+        }, 120);
+      }
+    }
   };
 
   const handleProcessScanClick = (e: React.MouseEvent) => {
@@ -91,7 +135,7 @@ const ScanInput = ({ value, onChange, onScan, scanType, inputRef, isProcessing, 
           <Input 
             ref={inputRef}
             type="text"
-            inputMode={isMobile && !keyboardEnabled ? 'none' : 'text'}
+            inputMode={keyboardEnabled ? 'text' : 'none'}
             placeholder={`Escanear ${scanType === 'conduce' ? 'número de conduce' : 'número de bulto'}...`}
             className="pr-10 h-11 text-sm bg-muted/20 border-border/70 rounded-xl focus-visible:ring-royal-blue/30 focus:border-royal-blue"
             value={value}
@@ -104,20 +148,21 @@ const ScanInput = ({ value, onChange, onScan, scanType, inputRef, isProcessing, 
             autoFocus
             readOnly={isProcessing}
           />
-          {isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 transition-colors ${
-                keyboardEnabled ? 'text-royal-blue bg-royal-blue/10' : 'text-muted-foreground'
-              }`}
-              onClick={toggleKeyboard}
-              disabled={isProcessing}
-              title={keyboardEnabled ? "Ocultar teclado" : "Escribir con teclado"}
-            >
-              {keyboardEnabled ? <KeyboardOff className="h-4 w-4" /> : <Keyboard className="h-4 w-4" />}
-            </Button>
-          )}
+          <Button
+            type="button"
+            tabIndex={-1}
+            variant="ghost"
+            size="icon"
+            className={`absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg transition-colors ${
+              keyboardEnabled ? 'text-royal-blue bg-royal-blue/15 hover:bg-royal-blue/25' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+            }`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={toggleKeyboard}
+            disabled={isProcessing}
+            title={keyboardEnabled ? "Ocultar teclado en pantalla" : "Mostrar teclado en pantalla"}
+          >
+            {keyboardEnabled ? <KeyboardOff className="h-4 w-4" /> : <Keyboard className="h-4 w-4" />}
+          </Button>
         </div>
         
         {/* Camera scan toggle button */}
