@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Keyboard, KeyboardOff, Loader2, Camera, CameraOff } from 'lucide-react';
@@ -21,52 +21,67 @@ const ScanInput = ({ value, onChange, onScan, scanType, inputRef, isProcessing, 
   const [keyboardEnabled, setKeyboardEnabled] = useState(false);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
 
-  // Only focus when keyboard is explicitly toggled ON by user or on desktop
-  useEffect(() => {
-    if (keyboardEnabled && isMobile && inputRef.current) {
-      inputRef.current.focus();
-    } else if (!isMobile && !isProcessing && inputRef.current) {
-      inputRef.current.focus();
+  // Helper para mantener el foco de forma segura sin saltos de scroll
+  const focusInput = useCallback(() => {
+    if (inputRef.current) {
+      inputRef.current.focus({ preventScroll: true });
     }
-  }, [keyboardEnabled, isMobile, isProcessing]);
+  }, [inputRef]);
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  // Mantener foco siempre: al montar, al cambiar scanType y al terminar cada escaneo
+  useEffect(() => {
+    if (!isProcessing) {
+      focusInput();
+      const timer1 = setTimeout(focusInput, 30);
+      const timer2 = setTimeout(focusInput, 100);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
+    }
+  }, [isProcessing, scanType, keyboardEnabled, focusInput]);
+
+  // Foco inicial garantizado
+  useEffect(() => {
+    focusInput();
+    const timer = setTimeout(focusInput, 150);
+    return () => clearTimeout(timer);
+  }, [focusInput]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      const scrollPosition = window.scrollY;
+      e.preventDefault();
       onScan(value);
-      if (isMobile && !keyboardEnabled) {
-        inputRef.current?.blur();
-      }
-      if (isMobile) {
-        setTimeout(() => window.scrollTo(0, scrollPosition), 50);
-      }
+      // Garantizar que el foco nunca se pierda tras presionar Enter o pistolear
+      requestAnimationFrame(focusInput);
+      setTimeout(focusInput, 50);
+      setTimeout(focusInput, 150);
     }
   };
 
   const handleCameraScan = (scannedValue: string) => {
-    if (isMobile) {
-      inputRef.current?.blur();
-    }
     onChange(scannedValue);
-    // Execute scan immediately with the scanned value!
     onScan(scannedValue);
+    setTimeout(focusInput, 50);
   };
 
   const toggleCameraScanner = () => {
-    if (isMobile) {
-      inputRef.current?.blur();
-    }
     setShowCameraScanner(!showCameraScanner);
+    setTimeout(focusInput, 50);
   };
 
   const toggleKeyboard = () => {
     const nextState = !keyboardEnabled;
     setKeyboardEnabled(nextState);
-    if (nextState) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    } else {
-      inputRef.current?.blur();
-    }
+    setTimeout(focusInput, 50);
+  };
+
+  const handleProcessScanClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onScan(value);
+    focusInput();
+    setTimeout(focusInput, 50);
+    setTimeout(focusInput, 150);
   };
 
   return (
@@ -78,16 +93,16 @@ const ScanInput = ({ value, onChange, onScan, scanType, inputRef, isProcessing, 
             type="text"
             inputMode={isMobile && !keyboardEnabled ? 'none' : 'text'}
             placeholder={`Escanear ${scanType === 'conduce' ? 'número de conduce' : 'número de bulto'}...`}
-            className="pr-10 h-11 text-sm bg-muted/20 border-border/70 rounded-xl focus-visible:ring-royal-blue/30"
+            className="pr-10 h-11 text-sm bg-muted/20 border-border/70 rounded-xl focus-visible:ring-royal-blue/30 focus:border-royal-blue"
             value={value}
             onChange={e => onChange(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             autoComplete="off"
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck="false"
-            autoFocus={!isMobile}
-            disabled={isProcessing}
+            autoFocus
+            readOnly={isProcessing}
           />
           {isMobile && (
             <Button
@@ -137,13 +152,7 @@ const ScanInput = ({ value, onChange, onScan, scanType, inputRef, isProcessing, 
             ? 'bg-muted text-muted-foreground cursor-not-allowed' 
             : 'bg-royal-blue hover:bg-royal-blue/90 text-white active:scale-[0.99]'
         }`}
-        onClick={() => {
-          const scrollPosition = window.scrollY;
-          onScan(value);
-          if (isMobile) {
-            setTimeout(() => window.scrollTo(0, scrollPosition), 50);
-          }
-        }}
+        onClick={handleProcessScanClick}
         disabled={isProcessing}
       >
         {isProcessing ? (
@@ -157,7 +166,7 @@ const ScanInput = ({ value, onChange, onScan, scanType, inputRef, isProcessing, 
       </Button>
       
       {isProcessing && (
-        <div className="absolute inset-0 bg-background/60 backdrop-blur-xs flex items-center justify-center rounded-xl z-30">
+        <div className="absolute inset-0 bg-background/60 backdrop-blur-xs flex items-center justify-center rounded-xl z-30 pointer-events-none">
           <div className="bg-card border border-border/80 p-3.5 shadow-lg rounded-xl flex items-center space-x-2.5">
             <Loader2 className="h-4 w-4 animate-spin text-royal-blue" />
             <span className="text-foreground text-xs font-semibold">Procesando escaneo...</span>

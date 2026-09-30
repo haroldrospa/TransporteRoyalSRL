@@ -53,15 +53,14 @@ export const useScanner = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [lastScrollPosition, setLastScrollPosition] = useState(0);
 
-  // Focus input after scan completion on desktop only (avoid opening mobile keyboard)
+  // Focus input after scan completion always
   useEffect(() => {
-    const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
-    if (!isProcessing && inputRef.current && !isMobileDevice) {
-      setTimeout(() => {
-        if (inputRef.current && !isMobileDevice) {
-          inputRef.current.focus();
-        }
-      }, 100);
+    if (!isProcessing && inputRef.current) {
+      inputRef.current.focus({ preventScroll: true });
+      const timer = setTimeout(() => {
+        inputRef.current?.focus({ preventScroll: true });
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [isProcessing]);
 
@@ -75,9 +74,8 @@ export const useScanner = ({
   const handleScanTypeChange = (type: 'conduce' | 'bulto') => {
     setScanType(type);
     onUpdateScanValue(scanValue, type);
-    const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
-    if (inputRef.current && !isMobileDevice) {
-      inputRef.current.focus();
+    if (inputRef.current) {
+      inputRef.current.focus({ preventScroll: true });
     }
   };
 
@@ -162,7 +160,9 @@ export const useScanner = ({
     }
     
     setScanValue('');
-    // Input will be auto-focused after processing completes due to the useEffect
+    if (inputRef.current) {
+      inputRef.current.focus({ preventScroll: true });
+    }
   };
 
   return {
