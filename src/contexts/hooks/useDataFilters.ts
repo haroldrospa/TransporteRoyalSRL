@@ -1,16 +1,22 @@
-
+import React, { useMemo, useCallback } from 'react';
 import { Cliente } from '@/types/cliente';
 import { Conduce, Region, EstadoBulto } from '@/types/conduces';
 
 export const useDataFilters = (conduces: Conduce[], clientes: Cliente[]) => {
-  
-  const getClienteByNumero = (numeroCliente: string) => {
-    const found = clientes.find(c => c.numeroCliente === numeroCliente);
-    if (!found) {
-      console.log(`Cliente with numero ${numeroCliente} not found among ${clientes.length} clientes`);
+  const clientesMap = useMemo(() => {
+    const map = new Map<string, Cliente>();
+    for (const c of clientes) {
+      if (c.numeroCliente) {
+        map.set(String(c.numeroCliente).trim(), c);
+      }
     }
-    return found;
-  };
+    return map;
+  }, [clientes]);
+
+  const getClienteByNumero = useCallback((numeroCliente: string) => {
+    if (!numeroCliente) return undefined;
+    return clientesMap.get(String(numeroCliente).trim());
+  }, [clientesMap]);
 
   const getConducesByEncomendado = (encomendado: string) => {
     return conduces.filter(c => c.encomendado === encomendado && c.estado === 'En tránsito');
@@ -21,6 +27,7 @@ export const useDataFilters = (conduces: Conduce[], clientes: Cliente[]) => {
   };
 
   const getConducesByRegion = (region: Region) => {
+    if (region === 'Todas') return conduces;
     return conduces.filter(c => c.region === region);
   };
 

@@ -121,6 +121,7 @@ export const OptimizedDataProvider = ({ children }: { children: ReactNode }) => 
   }, [conduces]);
 
   const getConducesByRegion = useCallback((region: Region) => {
+    if (region === 'Todas') return conduces;
     return conduces.filter(c => c.region === region);
   }, [conduces]);
 
@@ -168,6 +169,7 @@ export const OptimizedDataProvider = ({ children }: { children: ReactNode }) => 
           encomendado: item.encomendado || undefined,
           ruta: item.ruta || undefined,
           contacto: item.contacto || undefined,
+          direccion: item.direccion || undefined,
           ubicacion: item.ubicacion || undefined,
           grupo_cliente: item.grupo_cliente || undefined
         }));

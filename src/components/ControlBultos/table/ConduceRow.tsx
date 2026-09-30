@@ -2,18 +2,20 @@
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Package, Clock } from 'lucide-react';
+import { Package, Clock, MapPin } from 'lucide-react';
 import { Conduce } from '@/types/conduces';
 import { calculateTransitTime, getTransitTimeClasses } from '@/utils/time/transitTime';
+import EncomendadoCellSelector from './EncomendadoCellSelector';
 
 interface ConduceRowProps {
   conduce: Conduce;
   isSelected: boolean;
   onToggleSelection: () => void;
   getRowColorClass: (conduce: Conduce) => string;
+  onAssignComplete?: () => void;
 }
 
-const ConduceRow = ({ conduce, isSelected, onToggleSelection, getRowColorClass }: ConduceRowProps) => {
+const ConduceRow = ({ conduce, isSelected, onToggleSelection, getRowColorClass, onAssignComplete }: ConduceRowProps) => {
   const transitInfo = calculateTransitTime(conduce.fechaEntrega);
   const classes = getTransitTimeClasses(transitInfo.status);
 
@@ -41,6 +43,12 @@ const ConduceRow = ({ conduce, isSelected, onToggleSelection, getRowColorClass }
       <TableCell className="order-2 block md:table-cell flex-1 p-1.5 md:p-4 border-0 md:border-b">
         <div className="md:hidden text-[9px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">No. Conduce</div>
         <span className="font-mono font-bold text-xs md:text-sm text-gray-900">{conduce.numeroConduce}</span>
+        {conduce.ciudad && (
+          <div className="md:hidden flex items-center gap-1 text-[10px] text-slate-500 font-medium mt-0.5">
+            <MapPin className="h-2.5 w-2.5 text-rose-500 shrink-0" />
+            <span>{conduce.ciudad}</span>
+          </div>
+        )}
       </TableCell>
       
       <TableCell className="order-4 block md:table-cell w-1/2 md:w-auto p-1.5 md:p-4 border-0 md:border-b">
@@ -71,18 +79,22 @@ const ConduceRow = ({ conduce, isSelected, onToggleSelection, getRowColorClass }
           ) : <div />}
           <div className="md:hidden flex items-center gap-1">
             <span className="text-[9px] text-gray-400 uppercase font-bold">Encomendado:</span>
-            {conduce.encomendado ? (
-              <Badge className="bg-green-600 text-white text-[9px] h-4 px-1.5 font-bold">
-                {conduce.encomendado}
-              </Badge>
-            ) : (
-              <span className="text-[9px] text-orange-600 italic">Sin asignar</span>
-            )}
+            <EncomendadoCellSelector
+              conduceIds={[conduce.id]}
+              currentEncomendado={conduce.encomendado}
+              onAssigned={onAssignComplete}
+            />
           </div>
         </div>
       </TableCell>
       
-      <TableCell className="hidden md:table-cell"></TableCell>
+      <TableCell className="hidden md:table-cell">
+        <EncomendadoCellSelector
+          conduceIds={[conduce.id]}
+          currentEncomendado={conduce.encomendado}
+          onAssigned={onAssignComplete}
+        />
+      </TableCell>
       
       <TableCell className="order-3 block md:table-cell w-auto p-1.5 md:p-4 border-0 md:border-b ml-auto">
         <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] md:text-xs font-bold md:font-medium ${classes}`}>

@@ -1,12 +1,15 @@
 
+import React, { useMemo } from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronRight, Package, Clock } from 'lucide-react';
+import { ChevronDown, ChevronRight, Package, Clock, MapPin } from 'lucide-react';
 import { calculateTransitTime, getTransitTimeClasses } from '@/utils/time/transitTime';
 import GroupCheckbox from './GroupCheckbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAdministrator } from '@/utils/userPermissions';
+import EncomendadoCellSelector from './EncomendadoCellSelector';
+import EncomendadoPredeterminadoSelector from './EncomendadoPredeterminadoSelector';
 
 interface ClienteGroup {
   numeroCliente: string;
@@ -19,6 +22,7 @@ interface ClienteGroup {
   conduces: any[];
   ruta?: string;
   laboratorio: string;
+  encomendadoPredeterminado?: string;
 }
 
 interface ClienteGroupRowProps {
@@ -29,6 +33,7 @@ interface ClienteGroupRowProps {
   isGroupPartiallySelected: (group: ClienteGroup) => boolean;
   onToggleGroupSelection: (group: ClienteGroup) => void;
   getGroupRowColorClass: (group: ClienteGroup) => string;
+  onAssignComplete?: () => void;
 }
 
 const ClienteGroupRow = ({
@@ -38,7 +43,8 @@ const ClienteGroupRow = ({
   isGroupSelected,
   isGroupPartiallySelected,
   onToggleGroupSelection,
-  getGroupRowColorClass
+  getGroupRowColorClass,
+  onAssignComplete
 }: ClienteGroupRowProps) => {
   const { user } = useAuth();
   const isAdmin = isAdministrator(user);
@@ -51,6 +57,17 @@ const ClienteGroupRow = ({
     new Set(group.conduces.map(c => c.encomendado).filter(Boolean))
   ) as string[];
   const classes = getTransitTimeClasses(worstTime.status);
+
+  const ciudadesList = useMemo(() => {
+    const set = new Set<string>();
+    if (group.ciudad?.trim()) set.add(group.ciudad.trim());
+    if (Array.isArray(group.conduces)) {
+      group.conduces.forEach((c: any) => {
+        if (c?.ciudad?.trim()) set.add(c.ciudad.trim());
+      });
+    }
+    return Array.from(set);
+  }, [group.ciudad, group.conduces]);
 
   return (
     <TableRow 
@@ -105,22 +122,26 @@ const ClienteGroupRow = ({
             ) : <span className="text-[10px] md:text-sm break-all text-gray-500 md:text-gray-900 leading-tight">{group.numeroCliente}</span>}
           </div>
 
-          {/* Encomendado Asignado en Vista Móvil */}
-          <div className="md:hidden flex flex-col items-end">
-            <span className="text-[9px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Encomendado</span>
-            {encomendados.length > 0 ? (
-              <div className="flex flex-wrap justify-end gap-1">
-                {encomendados.map((enc, idx) => (
-                  <Badge key={idx} className="bg-green-600 hover:bg-green-700 text-white text-[10px] h-5 px-1.5 font-bold shadow-xs">
-                    {enc}
-                  </Badge>
-                ))}
-              </div>
-            ) : (
-              <Badge variant="outline" className="text-orange-600 border-orange-300 text-[10px] h-5 px-1.5 font-bold bg-orange-50/60">
-                Sin asignar
-              </Badge>
-            )}
+          {/* Encomendado Asignado y Predeterminado en Vista Móvil */}
+          <div className="md:hidden flex flex-col items-end gap-1.5">
+            <div className="flex flex-col items-end">
+              <span className="text-[9px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Asignado</span>
+              <EncomendadoCellSelector
+                conduceIds={group.conduces.map(c => c.id)}
+                currentEncomendado={group.conduces[0]?.encomendado}
+                predeterminado={group.encomendadoPredeterminado}
+                onAssigned={onAssignComplete}
+              />
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-[9px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Predeterminado</span>
+              <EncomendadoPredeterminadoSelector
+                numeroClientes={group.allNumeroClientes?.length > 0 ? group.allNumeroClientes : [group.numeroCliente]}
+                clienteNombre={group.razonSocial}
+                currentPredeterminado={group.encomendadoPredeterminado}
+                onUpdated={onAssignComplete}
+              />
+            </div>
           </div>
         </div>
       </TableCell>
@@ -168,9 +189,17 @@ const ClienteGroupRow = ({
         <span className="font-bold text-royal-blue md:text-foreground text-xs sm:text-sm md:text-base line-clamp-2 leading-tight">
           {group.razonSocial?.trim() || (group.numeroCliente && !group.numeroCliente.startsWith('__sin_asignar__') ? `Cliente #${group.numeroCliente}` : 'Sin Razón Social')}
         </span>
+        {ciudadesList.length > 0 && (
+          <div className="md:hidden flex items-center gap-1 text-[11px] font-semibold text-slate-600 mt-0.5">
+            <MapPin className="h-3 w-3 text-rose-500 shrink-0" />
+            <span className="truncate">{ciudadesList.join(' · ')}</span>
+          </div>
+        )}
       </TableCell>
       
-      <TableCell className="hidden md:table-cell">{group.ciudad}</TableCell>
+      <TableCell className="hidden md:table-cell font-medium text-slate-700">
+        {ciudadesList.length > 0 ? ciudadesList.join(' · ') : (group.ciudad || '-')}
+      </TableCell>
       
       <TableCell className="hidden md:table-cell text-center">
         <Badge variant="outline" className="font-medium bg-slate-50 md:bg-transparent">
@@ -194,25 +223,21 @@ const ClienteGroupRow = ({
       </TableCell>
       
       <TableCell className="hidden md:table-cell">
-        {group.conduces[0]?.encomendado ? (
-          <Badge className="bg-green-600">
-            {group.conduces[0].encomendado}
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="text-orange-600 border-orange-400">
-            Sin asignar
-          </Badge>
-        )}
+        <EncomendadoCellSelector
+          conduceIds={group.conduces.map(c => c.id)}
+          currentEncomendado={group.conduces[0]?.encomendado}
+          predeterminado={group.encomendadoPredeterminado}
+          onAssigned={onAssignComplete}
+        />
       </TableCell>
       
       <TableCell className="hidden md:table-cell">
-        {group.encomendadoPredeterminado ? (
-          <span className="text-sm text-slate-600 font-medium">
-            {group.encomendadoPredeterminado}
-          </span>
-        ) : (
-          <span className="text-sm text-slate-400 italic">No definido</span>
-        )}
+        <EncomendadoPredeterminadoSelector
+          numeroClientes={group.allNumeroClientes?.length > 0 ? group.allNumeroClientes : [group.numeroCliente]}
+          clienteNombre={group.razonSocial}
+          currentPredeterminado={group.encomendadoPredeterminado}
+          onUpdated={onAssignComplete}
+        />
       </TableCell>
       
       <TableCell className="order-3 block md:table-cell w-auto p-2 pb-0 md:p-4 border-0 md:border-b ml-auto">

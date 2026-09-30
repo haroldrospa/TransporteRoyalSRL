@@ -100,9 +100,17 @@ export const useFastControlBultos = (regionActual: Region | string) => {
     );
   }, []);
   
-  // Get conduces by encomendado
+  // Get conduces by encomendado (matching exact and normalized warehouse/truck names)
   const getConducesByEncomendado = useCallback((encomendado: string) => {
-    return conduces.filter(c => c.encomendado === encomendado);
+    const cleanEnc = (encomendado || '').trim().toUpperCase();
+    return conduces.filter(c => {
+      if (!c.encomendado) return false;
+      const cEnc = c.encomendado.trim().toUpperCase();
+      if (cEnc === cleanEnc) return true;
+      const normInput = cleanEnc.replace(/[-_]/g, '');
+      const normCE = cEnc.replace(/[-_]/g, '');
+      return normInput === normCE;
+    });
   }, [conduces]);
   
   // Load initial data on mount

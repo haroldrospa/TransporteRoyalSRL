@@ -1,5 +1,5 @@
 
-export type Region = 'Norte' | 'Sur' | 'Este';
+export type Region = 'Norte' | 'Sur' | 'Este' | 'Todas';
 
 export type EstadoBulto = 'En tránsito' | 'Entregado' | 'Devuelto';
 

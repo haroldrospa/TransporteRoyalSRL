@@ -25,6 +25,7 @@ import Entregas from "./pages/Entregas";
 import CrearConduces from "./pages/CrearConduces";
 import ChoferesDashboard from "./pages/ChoferesDashboard";
 import AdminConfiguracion from "./pages/AdminConfiguracion";
+import Monitoreo from "./pages/Monitoreo";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/choferes-dashboard" element={<ChoferesDashboard />} />
             <Route path="/admin-config" element={<AdminConfiguracion />} />
             <Route path="/crear-conduces" element={<CrearConduces />} />
+            <Route path="/monitoreo" element={<Monitoreo />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
             </Routes>

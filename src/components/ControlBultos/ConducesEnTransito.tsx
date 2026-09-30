@@ -17,6 +17,7 @@ interface ConducesEnTransitoProps {
   setSelectedConduces: (ids: string[]) => void;
   clientes?: Cliente[];
   holidaysCacheVersion?: number;
+  onAssignComplete?: () => void;
 }
 
 const ConducesEnTransito = ({
@@ -26,7 +27,8 @@ const ConducesEnTransito = ({
   toggleSelection,
   setSelectedConduces,
   clientes,
-  holidaysCacheVersion = 0
+  holidaysCacheVersion = 0,
+  onAssignComplete
 }: ConducesEnTransitoProps) => {
   // Debug logging
   console.log('ConducesEnTransito - Total conduces:', conduces.length);
@@ -122,6 +124,7 @@ const ConducesEnTransito = ({
             toggleSelection={toggleSelection}
             setSelectedConduces={setSelectedConduces}
             clientes={clientes}
+            onAssignComplete={onAssignComplete}
           />
         )}
       </CardContent>

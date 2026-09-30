@@ -79,20 +79,26 @@ export const FastLoadingEntregasMain = memo(() => {
   // Use ultra fast data hook
   const {
     pendingDeliveries,
+    warehouseDeliveries,
     completedDeliveries,
     returnedDeliveries,
     userConduces,
     loading,
+    loadingWarehouse,
     loadingCompleted,
     loadingReturned,
     stats,
     regionActual,
     hasCamion,
     isAdmin,
+    userCamion,
     searchTerm,
     setSearchTerm,
     handleRefreshData,
-    loadMorePending
+    loadMorePending,
+    handleUpdateConduceRoute,
+    handleMoveToTruck,
+    handleMoveToWarehouse
   } = useUltraFastEntregasData();
 
   // Use optimized filters hook
@@ -109,6 +115,22 @@ export const FastLoadingEntregasMain = memo(() => {
     selectedCity,
     selectedLab
   });
+
+  // Filtrar conduces de almacén según búsqueda, ciudad y laboratorio
+  const filteredWarehouse = useMemo(() => {
+    return warehouseDeliveries.filter(conduce => {
+      const q = searchTerm.toLowerCase();
+      const matchesSearch = !searchTerm || (
+        conduce.numeroConduce?.toLowerCase().includes(q) ||
+        conduce.razonSocial?.toLowerCase().includes(q) ||
+        conduce.numeroCliente?.toLowerCase().includes(q) ||
+        conduce.numeroFactura?.toLowerCase().includes(q)
+      );
+      const matchesCity = !selectedCity || conduce.ciudad === selectedCity;
+      const matchesLab = !selectedLab || conduce.laboratorio === selectedLab;
+      return matchesSearch && matchesCity && matchesLab;
+    });
+  }, [warehouseDeliveries, searchTerm, selectedCity, selectedLab]);
 
   const { renderStatusBadge } = useStatusBadgeRenderer();
   const { entregarConduce, devolverConduce, clientes, setRegionActual } = useData();
@@ -236,6 +258,8 @@ export const FastLoadingEntregasMain = memo(() => {
           <Suspense fallback={<TabsContentSkeleton />}>
             <LazyPendingOnlyTable
               filteredPending={filteredPending}
+              filteredWarehouse={filteredWarehouse}
+              loadingWarehouse={loadingWarehouse}
               handleDeliverySelection={handleDeliverySelection}
               handleReturnSelection={handleReturnSelection}
               openGoogleMaps={openGoogleMaps}
@@ -244,6 +268,9 @@ export const FastLoadingEntregasMain = memo(() => {
               isSubmitting={isSubmitting}
               clienteBultosStats={clienteBultosStats}
               isAdmin={isAdmin}
+              userCamion={userCamion}
+              onUpdateRoute={handleUpdateConduceRoute}
+              onMoveToTruck={handleMoveToTruck}
               searchBar={
                 <EntregasSearchBar
                   searchTerm={searchTerm}

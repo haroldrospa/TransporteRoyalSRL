@@ -2,7 +2,6 @@
 import { ClientInfo } from './ClientInfo';
 import { LocationSection } from './LocationSection';
 import { DeliveryFormSection } from './DeliveryFormSection';
-import { RequiredFormNotice } from './RequiredFormNotice';
 import { Conduce } from '@/types/conduces';
 import { Separator } from '@/components/ui/separator';
 
@@ -65,11 +64,6 @@ export const DeliveryDialogContent = ({
         onSignatureCapture={onSignatureCapture}
         onImageCapture={onImageCapture}
         imageData={imageData}
-      />
-      
-      <RequiredFormNotice 
-        isFormValid={isFormValid}
-        isSubmitting={isSubmitting}
       />
     </div>
   );

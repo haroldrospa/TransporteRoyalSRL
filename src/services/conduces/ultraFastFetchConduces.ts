@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { mapDbConduceToConduce } from '@/utils/mappers/conduceMappers';
 import { Conduce } from '@/types/conduces';
+import { getTruckWarehouse, getBaseTruck } from '@/utils/trucksByRegion';
 
 // Cache ultra agresivo con TTL corto para datos críticos
 const ultraCache = new Map<string, { data: any; timestamp: number }>();
@@ -40,8 +41,10 @@ export async function fetchBasicEntregasStats(region: string, userCamion?: strin
       query = query.eq('encomendado', userCamion);
       console.log(`🎯 UltraFast: Filtering by camion: ${userCamion}`);
     } else {
-      query = query.eq('region', region);
-      console.log(`🎯 UltraFast: Admin mode - showing all region data`);
+      if (region && region !== 'Todas' && region !== 'todas') {
+        query = query.eq('region', region);
+      }
+      console.log(`🎯 UltraFast: Admin mode - showing all ${region} region data`);
     }
 
     const { data, error } = await query;
@@ -131,8 +134,10 @@ export async function fetchPendingConducesOnly(region: string, userCamion?: stri
       query = query.eq('encomendado', userCamion);
       console.log(`👤 Filtering pending by camion: ${userCamion}`);
     } else {
-      query = query.eq('region', region);
-      console.log(`👑 Admin mode - showing all pending in region`);
+      if (region && region !== 'Todas' && region !== 'todas') {
+        query = query.eq('region', region);
+      }
+      console.log(`👑 Admin mode - showing all pending in region ${region}`);
     }
 
     const { data, error } = await query;
@@ -165,7 +170,7 @@ export async function fetchTodayCompletedConduces(region: string, userCamion?: s
 
     if (userCamion) {
       query = query.eq('encomendado', userCamion);
-    } else {
+    } else if (region && region !== 'Todas' && region !== 'todas') {
       query = query.eq('region', region);
     }
 
@@ -197,7 +202,7 @@ export async function fetchTodayReturnedConduces(region: string, userCamion?: st
 
     if (userCamion) {
       query = query.eq('encomendado', userCamion);
-    } else {
+    } else if (region && region !== 'Todas' && region !== 'todas') {
       query = query.eq('region', region);
     }
 
@@ -233,7 +238,7 @@ export async function preloadMoreConduces(region: string, userCamion?: string, o
 
     if (userCamion) {
       query = query.eq('encomendado', userCamion);
-    } else {
+    } else if (region && region !== 'Todas' && region !== 'todas') {
       query = query.eq('region', region);
     }
 
@@ -243,6 +248,50 @@ export async function preloadMoreConduces(region: string, userCamion?: string, o
     return data?.map((item: any) => mapDbConduceToConduce(item)) || [];
   } catch (error) {
     console.error('Error preloading conduces:', error);
+    return [];
+  }
+}
+
+// Fetch conduces en almacén para el camión o chofer
+export async function fetchWarehouseConducesForTruck(userCamion?: string, region?: string): Promise<Conduce[]> {
+  const cacheKey = `warehouse-conduces-${region || 'todas'}-${userCamion || 'admin'}`;
+  const cached = getUltraCache<Conduce[]>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    let query = supabase
+      .from('conduces')
+      .select('*')
+      .eq('estado', 'En tránsito');
+
+    if (userCamion) {
+      const baseTruck = getBaseTruck(userCamion);
+      const whName = getTruckWarehouse(userCamion); // ej. R03-Almacen
+      const cleanBase = baseTruck.replace('-', ''); // ej. R03
+      // Coincidir con los formatos comunes de almacén de chofer/camión
+      query = query.or(
+        `encomendado.eq.${whName},encomendado.eq.Almacen ${baseTruck},encomendado.eq.${baseTruck} Almacen,encomendado.eq.${baseTruck}-Almacen,encomendado.eq.${cleanBase}-Almacen,encomendado.ilike.%${cleanBase}%almacen%`
+      );
+    } else {
+      // Modo Administrador sin camión: buscar todos los de almacén
+      query = query.ilike('encomendado', '%almacen%');
+      if (region && region !== 'Todas' && region !== 'todas') {
+        query = query.eq('region', region);
+      }
+    }
+
+    query = query
+      .order('prioridad', { ascending: false })
+      .order('fecha_entrega', { ascending: true });
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const conduces = data?.map((item: any) => mapDbConduceToConduce(item)) || [];
+    setUltraCache(cacheKey, conduces);
+    return conduces;
+  } catch (error) {
+    console.error('Error fetching warehouse conduces for truck:', error);
     return [];
   }
 }

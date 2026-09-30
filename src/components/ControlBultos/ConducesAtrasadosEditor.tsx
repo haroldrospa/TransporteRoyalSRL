@@ -65,15 +65,18 @@ const ConducesAtrasadosEditor = () => {
   };
 
   return (
-    <Card className="w-full">
+    <Card className="w-full border-border/60 shadow-xs">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors pb-3">
-            <CardTitle className="flex items-center justify-between text-sm">
+          <CardHeader className="cursor-pointer hover:bg-muted/40 transition-colors py-2.5 px-3 sm:px-4">
+            <CardTitle className="flex items-center justify-between text-xs sm:text-sm font-semibold">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-destructive" />
                 <span>Modificar Horas Atrasados</span>
-                <Badge variant="destructive" className="text-xs">
+                <Badge 
+                  variant={atrasados.length > 0 ? "destructive" : "secondary"} 
+                  className={`text-xs px-1.5 py-0 h-4 sm:h-5 ${atrasados.length === 0 ? 'text-muted-foreground' : ''}`}
+                >
                   {atrasados.length}
                 </Badge>
               </div>
@@ -87,18 +90,18 @@ const ConducesAtrasadosEditor = () => {
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <CardContent className="pt-0 space-y-3">
+          <CardContent className="pt-0 px-3 sm:px-4 pb-3 space-y-2.5">
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar conduce o cliente..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 text-sm pl-7"
+                className="h-8 text-xs sm:text-sm pl-8 border-border/60"
               />
             </div>
 
-            <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
               {filtered.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">
                   {atrasados.length === 0 ? 'No hay conduces atrasados' : 'Sin resultados'}
@@ -109,30 +112,35 @@ const ConducesAtrasadosEditor = () => {
                   const value = edits[c.id] ?? current;
                   const dirty = value !== current;
                   return (
-                    <div key={c.id} className="p-2 bg-background border rounded-md space-y-2">
+                    <div key={c.id} className="p-2.5 bg-background border border-border/60 rounded-md space-y-2">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate">{c.numeroConduce}</p>
-                          <p className="text-xs text-muted-foreground truncate">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs sm:text-sm font-semibold truncate">{c.numeroConduce}</span>
+                            {c.encomendado && (
+                              <span className="text-[10px] text-muted-foreground font-medium">({c.encomendado})</span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground truncate">
                             {c.razonSocial || 'Sin cliente'}
                           </p>
                         </div>
-                        <Badge variant="outline" className="text-[10px] shrink-0">
+                        <Badge variant="outline" className="text-[10px] shrink-0 font-medium border-border/70">
                           {c.estado}
                         </Badge>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-2">
                         <Input
                           value={value}
                           onChange={(e) => setEdits(prev => ({ ...prev, [c.id]: e.target.value }))}
                           placeholder="Ej: 24h 15m"
-                          className="h-8 text-sm"
+                          className="h-8 text-xs sm:text-sm border-border/60 flex-1"
                         />
                         <Button
                           size="sm"
                           onClick={() => handleSave(c.id, current)}
                           disabled={!dirty || savingId === c.id}
-                          className="h-8 px-2"
+                          className="h-8 px-2.5 text-xs shrink-0"
                         >
                           <Save className="h-3.5 w-3.5 mr-1" />
                           {savingId === c.id ? '...' : 'Guardar'}
@@ -144,9 +152,9 @@ const ConducesAtrasadosEditor = () => {
               )}
             </div>
 
-            <div className="text-xs text-muted-foreground bg-info/10 p-2 rounded border-l-4 border-info">
-              <p className="font-medium mb-1">ℹ️ Información:</p>
-              <p>Edita el tiempo de entrega (ej: <code>24h 15m</code>) para corregir conduces marcados como atrasados.</p>
+            <div className="pt-0.5 text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <span>💡</span>
+              <span>Edita el tiempo (ej: <code className="px-1 py-0.2 bg-muted rounded font-mono text-[10px]">24h 15m</code>) para corregir el atraso.</span>
             </div>
           </CardContent>
         </CollapsibleContent>

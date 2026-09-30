@@ -19,6 +19,8 @@ import { useFastControlBultos } from '@/hooks/useFastControlBultos';
 import ImportExcelDialog from '@/components/lam/ImportExcelDialog';
 import { getDiasFestivos } from '@/services/diasFestivos';
 import { updateDiasFestivosCache } from '@/utils/time/transitTime';
+import ProgramacionRutasChoferes from '@/components/ControlBultos/ProgramacionRutasChoferes';
+import { ProgramacionSemanal, PROGRAMACION_PREDETERMINADA, fetchProgramacionSemanal } from '@/services/rutasProgramacionService';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -37,6 +39,7 @@ const ControlBultos = () => {
   // Use fast hook for conduces (cache-first, only "En tránsito")
   const [regionActual, setRegionActual] = useState<Region | string>('Todas');
   const [holidaysCacheVersion, setHolidaysCacheVersion] = useState(0);
+  const [programacionSemanal, setProgramacionSemanal] = useState<ProgramacionSemanal>(PROGRAMACION_PREDETERMINADA);
   const { 
     conduces, 
     allConduces,
@@ -92,6 +95,9 @@ const ControlBultos = () => {
     getDiasFestivos().then(dias => {
       updateDiasFestivosCache(dias);
       setHolidaysCacheVersion(v => v + 1);
+    });
+    fetchProgramacionSemanal().then(data => {
+      setProgramacionSemanal(data);
     });
   }, []);
 
@@ -364,6 +370,11 @@ const ControlBultos = () => {
           </Card>
         )}
 
+        {/* Vista Móvil: Ubicado arriba para visibilidad y acceso inmediato */}
+        <div className="md:hidden">
+          <ConducesAtrasadosEditor />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <AsignacionForm 
             encomendadosList={encomendadosList}
@@ -372,6 +383,8 @@ const ControlBultos = () => {
             asignarEncomendado={asignarEncomendado}
             onAssignComplete={handleAssignComplete}
             regionActual={regionActual}
+            programacion={programacionSemanal}
+            clientes={clientes}
           />
           
           <ConducesAsignados 
@@ -380,12 +393,18 @@ const ControlBultos = () => {
             getConducesByEncomendado={getConducesByEncomendado}
             clientes={clientes}
             refreshData={() => refreshData(false)}
+            programacion={programacionSemanal}
           />
         </div>
 
+        {/* Programación semanal de rutas de choferes (L - D) */}
+        <ProgramacionRutasChoferes onScheduleChanged={setProgramacionSemanal} />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <DiasFestivos onHolidaysChanged={onHolidaysChanged} />
-          <ConducesAtrasadosEditor />
+          <div className="hidden md:block">
+            <ConducesAtrasadosEditor />
+          </div>
         </div>
         
         <ConducesEnTransito 
@@ -396,6 +415,7 @@ const ControlBultos = () => {
           setSelectedConduces={setSelectedConduces}
           clientes={clientes}
           holidaysCacheVersion={holidaysCacheVersion}
+          onAssignComplete={() => refreshData(false)}
         />
         
       </div>

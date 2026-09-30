@@ -15,9 +15,10 @@ interface ConducesTableProps {
   toggleSelection: (conduceId: string) => void;
   setSelectedConduces: (ids: string[]) => void;
   clientes?: Cliente[];
+  onAssignComplete?: () => void;
 }
 
-const ConducesTable = ({ conduces, selectedConduces, toggleSelection, setSelectedConduces, clientes }: ConducesTableProps) => {
+const ConducesTable = ({ conduces, selectedConduces, toggleSelection, setSelectedConduces, clientes, onAssignComplete }: ConducesTableProps) => {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Create a map of numeroCliente -> rnc for efficient lookup
@@ -145,6 +146,7 @@ const ConducesTable = ({ conduces, selectedConduces, toggleSelection, setSelecte
                 isGroupPartiallySelected={isGroupPartiallySelected}
                 onToggleGroupSelection={toggleGroupSelection}
                 getGroupRowColorClass={getGroupRowColorClass}
+                onAssignComplete={onAssignComplete}
               />
               
               {expandedGroups.has(group.numeroCliente) && group.conduces
@@ -161,6 +163,7 @@ const ConducesTable = ({ conduces, selectedConduces, toggleSelection, setSelecte
                     isSelected={selectedConduces.includes(conduce.id)}
                     onToggleSelection={() => toggleSelection(conduce.id)}
                     getRowColorClass={getRowColorClass}
+                    onAssignComplete={onAssignComplete}
                   />
                 ))}
             </React.Fragment>

@@ -35,7 +35,7 @@ export const useEntregasData = () => {
     
     // If user is admin, show all conduces in the region (except Almacen)
     if (isAdmin) {
-      const adminConduces = filteredConduces.filter(c => c.region === regionActual);
+      const adminConduces = regionActual === 'Todas' ? filteredConduces : filteredConduces.filter(c => c.region === regionActual);
       console.log(`👑 Admin - Conduces en región ${regionActual}: ${adminConduces.length}`);
       return adminConduces;
     }

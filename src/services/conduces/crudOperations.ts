@@ -67,9 +67,27 @@ export async function updateConduce(id: string, conduce: Partial<Conduce>): Prom
     console.log("Updating conduce with ID:", id);
     console.log("Update data:", conduce);
     
+    // If route is updated and client number is known, update client table
+    if (conduce.ruta !== undefined && conduce.numeroCliente) {
+      try {
+        await supabase
+          .from('clientes')
+          .update({ ruta: conduce.ruta })
+          .eq('numero_cliente', conduce.numeroCliente);
+      } catch (clientErr) {
+        console.warn("Could not update client route:", clientErr);
+      }
+    }
+
     // Map the TypeScript interface to database fields using our mapper function
     const dbConduce = mapConduceToDbConduce(conduce);
+    // Strip undefined keys so we don't overwrite with undefined
+    Object.keys(dbConduce).forEach(key => (dbConduce as any)[key] === undefined && delete (dbConduce as any)[key]);
     console.log("Database conduce update:", dbConduce);
+
+    if (Object.keys(dbConduce).length === 0) {
+      return { id, ...conduce } as Conduce;
+    }
 
     const { data, error } = await supabase
       .from('conduces')
@@ -86,7 +104,10 @@ export async function updateConduce(id: string, conduce: Partial<Conduce>): Prom
     if (data) {
       console.log("Update successful, received data:", data);
       // Convert the database response back to our TypeScript interface
-      return mapDbConduceToConduce(data);
+      return {
+        ...mapDbConduceToConduce(data),
+        ruta: conduce.ruta !== undefined ? conduce.ruta : '0'
+      };
     }
     
     return null;

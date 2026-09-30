@@ -44,37 +44,16 @@ export function useConduceFilters(conduces: Conduce[]) {
   }, [conduces]);
 
   const uniqueTrucks = useMemo(() => {
-    // Get trucks from conduces and ensure Almacén is always included
+    // Get trucks from conduces and ensure Almacen is always included
     const trucksFromConduces = conduces.filter(c => c.encomendado).map(c => c.encomendado!);
-    const allTrucks = Array.from(new Set([...trucksFromConduces, 'Almacén']));
+    const allTrucks = Array.from(new Set([...trucksFromConduces, 'Almacen']));
     
-    // Sort trucks: first R-## trucks in numerical order, then other trucks, then Almacén
     return allTrucks.sort((a, b) => {
-      // Check if both are R-## format
-      const aMatch = a.match(/^R-(\d+)$/);
-      const bMatch = b.match(/^R-(\d+)$/);
-      
-      if (aMatch && bMatch) {
-        // Both are R-## format, sort numerically
-        return parseInt(aMatch[1]) - parseInt(bMatch[1]);
-      }
-      
-      if (aMatch && !bMatch) {
-        // a is R-##, b is not - a comes first unless b is Almacén
-        return b === 'Almacén' ? -1 : -1;
-      }
-      
-      if (!aMatch && bMatch) {
-        // b is R-##, a is not - b comes first unless a is Almacén
-        return a === 'Almacén' ? 1 : 1;
-      }
-      
-      // Neither are R-## format
-      if (a === 'Almacén' && b !== 'Almacén') return 1; // Almacén goes last
-      if (b === 'Almacén' && a !== 'Almacén') return -1; // Almacén goes last
-      
-      // Regular alphabetical sort for other cases
-      return a.localeCompare(b);
+      const aIsWh = a.toLowerCase().includes('almacen');
+      const bIsWh = b.toLowerCase().includes('almacen');
+      if (!aIsWh && bIsWh) return -1;
+      if (aIsWh && !bIsWh) return 1;
+      return a.localeCompare(b, undefined, { numeric: true });
     });
   }, [conduces]);
 

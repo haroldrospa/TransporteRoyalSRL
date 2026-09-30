@@ -60,6 +60,7 @@ export function mapDbConduceToConduce(dbConduce: DbConduce): Conduce {
     motivoExcepcion: dbConduce.motivo_excepcion,
     relacion: dbConduce.relacion,
     horaEntregaExacta: dbConduce.hora_entrega_exacta,
+    ruta: dbConduce.ruta,
   };
 }
 

@@ -69,6 +69,9 @@ export const groupConducesByClient = (
           existingGroup.razonSocial = razonSocial;
         }
       }
+      if (!existingGroup.ciudad?.trim() && conduce.ciudad?.trim()) {
+        existingGroup.ciudad = conduce.ciudad.trim();
+      }
       // Append lab info if different
       if (conduce.laboratorio && !existingGroup.laboratorio.includes(conduce.laboratorio)) {
         existingGroup.laboratorio += `, ${conduce.laboratorio}`;

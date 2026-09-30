@@ -50,7 +50,7 @@ export const useOptimizedEntregasData = () => {
     
     // If user is admin, show all conduces in the region (except Almacen)
     if (isAdmin) {
-      return filteredConduces.filter(c => c.region === regionActual);
+      return regionActual === 'Todas' ? filteredConduces : filteredConduces.filter(c => c.region === regionActual);
     }
     
     // If user is not admin, show only their assigned conduces (excluding Almacen)

@@ -51,7 +51,7 @@ export const useOptimizedEntregasDataFast = () => {
       // Check if conduce belongs to user
       let belongsToUser = false;
       if (isAdmin) {
-        belongsToUser = conduce.region === regionActual;
+        belongsToUser = regionActual === 'Todas' || conduce.region === regionActual;
       } else if (user?.camion) {
         belongsToUser = conduce.encomendado === user.camion;
       }

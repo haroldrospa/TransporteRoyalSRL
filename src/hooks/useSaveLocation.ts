@@ -42,6 +42,7 @@ export const useSaveLocation = (clientes: any[], refreshData: () => Promise<void
             encomendado: data.encomendado,
             ruta: data.ruta,
             contacto: data.contacto,
+            direccion: data.direccion,
             ubicacion: data.ubicacion
           };
         }

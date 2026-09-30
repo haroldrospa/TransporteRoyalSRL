@@ -56,6 +56,7 @@ export const useDeliveryDialog = (
             encomendado: data.encomendado || undefined,
             ruta: data.ruta || undefined,
             contacto: data.contacto || undefined,
+            direccion: data.direccion || undefined,
             ubicacion: data.ubicacion || undefined
           });
         }

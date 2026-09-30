@@ -79,10 +79,11 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
     return saved ? parseInt(saved, 10) : 0;
   });
   const [isOptimizing, setIsOptimizing] = useState(false);
-  // Estado para la vista de la ruta optimizada vs clientes (si ya hay una ruta creada, mostrarla por defecto)
+  // Estado para la vista de la ruta optimizada vs clientes (si ya hay una ruta iniciada, mostrarla por defecto)
   const [routeViewMode, setRouteViewMode] = useState<'clients' | 'optimized'>(() => {
     const saved = localStorage.getItem('active_optimized_route');
-    return saved && JSON.parse(saved).length > 0 ? 'optimized' : 'clients';
+    const isStarted = localStorage.getItem('active_route_started') === 'true';
+    return saved && JSON.parse(saved).length > 0 && isStarted ? 'optimized' : 'clients';
   });
   const [isNavigating, setIsNavigating] = useState(() => {
     const savedRoute = localStorage.getItem('active_optimized_route');
@@ -97,7 +98,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
       localStorage.removeItem('is_navigating');
       return false;
     }
-    return localStorage.getItem('is_navigating') === 'true' || localStorage.getItem('active_route_started') === 'true';
+    return localStorage.getItem('is_navigating') === 'true';
   });
 
   const [isActiveRouteSuspended, setIsActiveRouteSuspended] = useState(() => {
@@ -110,6 +111,9 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
     }
     return hasValidRoute && localStorage.getItem('active_route_started') === 'true';
   });
+
+  // La ruta solo se considera iniciada si está activamente en navegación o suspendida en curso
+  const isRouteStarted = Boolean(isNavigating || isActiveRouteSuspended);
   const [showNavChoiceDialog, setShowNavChoiceDialog] = useState(false);
   const [selectedRoutes, setSelectedRoutes] = useState<string[]>([]);
   const [hasInitializedRoutes, setHasInitializedRoutes] = useState(false);
@@ -275,12 +279,15 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
     setIsOptimizing(false);
     localStorage.setItem('active_optimized_route', JSON.stringify(routePoints));
     localStorage.setItem('nav_current_stop', '0');
+    localStorage.removeItem('active_route_started');
+    localStorage.removeItem('is_navigating');
     setSavedStopIndex(0);
     setIsActiveRouteSuspended(false);
+    setIsNavigating(false);
 
     toast({
       title: "Ruta optimizada creada",
-      description: `Ruta generada con ${routePoints.length} paradas, ordenada de más cercana a más lejana.`,
+      description: `Ruta generada con ${routePoints.length} destinos, ordenada de más cercana a más lejana. Lista para iniciar.`,
     });
   };
 
@@ -1093,7 +1100,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
     const clientsWithCoords = projectedClients.filter(c => c.lat && c.lon);
 
     // Identificador único para evitar destruir y recrear marcadores si no cambiaron
-    const currentMarkersKey = `${mapType}-${routeViewMode}-${clientsWithCoords.map(c => `${c.numeroCliente}-${c.lat.toFixed(5)}-${c.lon.toFixed(5)}`).join('|')}-${optimizedRoute.map(r => r.numeroCliente).join(',')}`;
+    const currentMarkersKey = `${mapType}-${routeViewMode}-${isRouteStarted}-${clientsWithCoords.map(c => `${c.numeroCliente}-${c.lat.toFixed(5)}-${c.lon.toFixed(5)}`).join('|')}-${optimizedRoute.map(r => r.numeroCliente).join(',')}`;
 
     if (currentMarkersKey !== lastRenderedMarkersKeyRef.current) {
       // Limpiar marcadores antiguos de forma segura
@@ -1108,10 +1115,10 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
       lastRenderedMarkersKeyRef.current = currentMarkersKey;
 
       if (clientsWithCoords.length > 0) {
-        // Agregar marcadores como farmacias miniaturas (con opción de número de secuencia de ruta)
+        // Agregar marcadores como farmacias miniaturas (con opción de número de secuencia de ruta solo si está iniciada)
         const newMarkers = clientsWithCoords.map(client => {
           const routeIndex = optimizedRoute.findIndex(r => r.numeroCliente === client.numeroCliente);
-          const isRouteActive = routeViewMode === 'optimized' && routeIndex !== -1;
+          const isRouteActive = isRouteStarted && routeIndex !== -1;
           
           const badgeHtml = isRouteActive ? `
             <div style="
@@ -1449,85 +1456,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
 
       {!isMapMinimized && (
         <CardContent className="pt-4">
-          {/* Banner de estado de ruta en la parte superior del mapa */}
-          {optimizedRoute.length > 0 ? (
-            <div className="mb-4 bg-gradient-to-r from-royal-blue via-blue-700 to-indigo-800 text-white rounded-xl p-3 sm:p-4 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3 border border-blue-400/30 animate-in fade-in">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className="w-10 h-10 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0 border border-white/20 shadow-inner">
-                  <Navigation className="h-5 w-5 text-royal-yellow animate-pulse" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-sm text-white tracking-wide">
-                      {isActiveRouteSuspended ? 'RUTA EN CURSO' : 'RUTA LISTA'}
-                    </span>
-                    <span className="bg-royal-yellow text-slate-900 font-extrabold text-[10px] px-2 py-0.5 rounded-full uppercase shadow-sm">
-                      {isActiveRouteSuspended ? `Parada ${savedStopIndex + 1} de ${optimizedRoute.length}` : `${optimizedRoute.length} paradas`}
-                    </span>
-                  </div>
-                  <p className="text-xs text-blue-100 truncate mt-0.5">
-                    {isActiveRouteSuspended ? (
-                      <>Cliente actual: <strong className="text-white">{optimizedRoute[savedStopIndex]?.razonSocial || 'Iniciando ruta'}</strong></>
-                    ) : (
-                      <>Primera parada: <strong className="text-white">{optimizedRoute[0]?.razonSocial || 'Primer cliente'}</strong></>
-                    )}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                {isActiveRouteSuspended ? (
-                  <Button
-                    onClick={handleResumeRoute}
-                    className="bg-royal-yellow hover:bg-yellow-400 text-royal-blue font-black h-10 px-5 flex-1 sm:flex-initial shadow text-xs rounded-lg active:scale-95 transition-transform"
-                  >
-                    <Navigation className="h-4 w-4 mr-1.5 fill-current" />
-                    Continuar Navegación
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => handleStartRoute('app')}
-                    disabled={isStartingRoute}
-                    className="bg-royal-yellow hover:bg-yellow-400 text-royal-blue font-black h-10 px-5 flex-1 sm:flex-initial shadow text-xs rounded-lg active:scale-95 transition-transform"
-                  >
-                    <Navigation className="h-4 w-4 mr-1.5 fill-current" />
-                    Iniciar Navegación
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  onClick={handleClearRoute}
-                  className="text-white/75 hover:text-white hover:bg-white/10 h-10 text-xs px-2.5"
-                  title="Reiniciar ruta"
-                >
-                  Reiniciar
-                </Button>
-              </div>
-            </div>
-          ) : clientsWithCoordinates.length > 0 ? (
-            <div className="mb-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow">
-                  <Navigation className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-foreground">
-                    Tienes {clientsWithCoordinates.length} clientes con entregas asignadas
-                  </h4>
-                  <p className="text-xs text-muted-foreground">
-                    Genera tu ruta optimizada para ver el orden de entrega en el mapa y comenzar a navegar.
-                  </p>
-                </div>
-              </div>
-              <Button
-                onClick={handleCreateRoute}
-                disabled={isOptimizing}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 px-5 shadow text-xs rounded-lg active:scale-95"
-              >
-                <Navigation className={`h-4 w-4 mr-1.5 ${isOptimizing ? 'animate-spin' : ''}`} />
-                {isOptimizing ? 'Optimizando...' : 'Generar Mi Ruta'}
-              </Button>
-            </div>
-          ) : null}
+
 
           {loadingMap ? (
             <div className="h-[350px] flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -1654,7 +1583,7 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
                       {/* Puntos de clientes ubicados en el mapa (Farmacias miniaturas SVG) */}
                       {projectedClients.map((client) => {
                         const routeIndex = optimizedRoute.findIndex(r => r.numeroCliente === client.numeroCliente);
-                        const isRouteActive = routeViewMode === 'optimized' && routeIndex !== -1;
+                        const isRouteActive = isRouteStarted && routeIndex !== -1;
                         
                         return (
                           <g 
@@ -1811,7 +1740,11 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
                       </span>
                     </div>
                     <Badge variant="secondary" className="bg-royal-blue text-white text-[10px] font-bold px-2 py-0.5 border border-royal-blue">
-                      {routeViewMode === 'clients' ? `${rankingClientes.length} Clientes` : `${optimizedRoute.length} Paradas`}
+                      {routeViewMode === 'clients' 
+                        ? `${rankingClientes.length} Clientes` 
+                        : isRouteStarted 
+                          ? `${optimizedRoute.length} Paradas` 
+                          : `${optimizedRoute.length} Destinos`}
                     </Badge>
                   </div>
                   
@@ -1935,23 +1868,6 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
                   </div>
                 ) : (
                   <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Resumen Métricas del Viaje: Solo mostrar antes de iniciar la ruta */}
-                    {optimizedRoute.length > 0 && !isActiveRouteSuspended && (
-                      <div className="bg-slate-50 dark:bg-slate-900/50 p-2 border-b border-border/40 grid grid-cols-2 gap-1.5 shrink-0">
-                        <div className="bg-card border border-border/20 rounded p-1.5 flex flex-col gap-0.5 shadow-sm">
-                          <span className="text-[9px] text-muted-foreground font-semibold leading-none">Distancia (Ida y Vuelta)</span>
-                          <span className="font-bold text-foreground text-xs font-mono">{tripSummary.totalDistance.toFixed(1)} km</span>
-                          <span className="text-[9px] text-muted-foreground mt-0.5">
-                            Ida: <span className="font-mono">{tripSummary.outboundDistance.toFixed(1)} km</span> | Vuelta: <span className="font-mono">{tripSummary.returnDistance.toFixed(1)} km</span>
-                          </span>
-                        </div>
-                        <div className="bg-card border border-border/20 rounded p-1.5 flex flex-col gap-0.5 shadow-sm">
-                          <span className="text-[9px] text-muted-foreground font-semibold leading-none">Tiempo Estimado</span>
-                          <span className="font-bold text-foreground text-xs font-mono">{tripSummary.totalTimeStr}</span>
-                        </div>
-                      </div>
-                    )}
-                    
                     {optimizedRoute.length > 0 && (
                       <div className="p-2 border-b border-border/40">
                         {isActiveRouteSuspended ? (
@@ -1966,13 +1882,13 @@ export const MapaChoferEntregas: React.FC<MapaChoferEntregasProps> = ({
                           <Button 
                             onClick={() => setShowNavChoiceDialog(true)} 
                             disabled={isStartingRoute}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                            className="w-full bg-royal-blue hover:bg-royal-blue/90 text-white font-bold h-10 shadow transition-all"
                             size="sm"
                           >
                             {isStartingRoute ? (
                               <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Procesando...</>
                             ) : (
-                              <><Navigation className="mr-2 h-4 w-4" /> Iniciar Ruta</>
+                              <><Navigation className="mr-2 h-4 w-4 fill-current" /> Iniciar Ruta</>
                             )}
                           </Button>
                         )}

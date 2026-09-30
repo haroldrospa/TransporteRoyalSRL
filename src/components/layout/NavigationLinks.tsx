@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Home, Package, Truck, FileText, Users, Building, CheckSquare, FlaskConical, Pill, Beaker, ChevronDown, Activity, ShieldAlert, Settings, Microscope } from 'lucide-react';
+import { Home, Package, Truck, FileText, Users, Building, CheckSquare, FlaskConical, Pill, Beaker, ChevronDown, Activity, ShieldAlert, Settings, Microscope, MapPin } from 'lucide-react';
 import { User } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -38,6 +38,7 @@ export const getNavLinks = (user: User | null) => {
     { to: '/control-bultos', label: 'Control Bultos', icon: Package },
     { to: '/cargar-camiones', label: 'Cargar Camiones', icon: Truck },
     { to: '/control-conduces', label: 'Control Conduces', icon: CheckSquare },
+    { to: '/monitoreo', label: 'Monitoreo', icon: MapPin },
     { to: '/clientes', label: 'Clientes', icon: Building },
     { to: '/usuarios', label: 'Usuarios', icon: Users },
     { to: '/choferes-dashboard', label: 'Dashboard Choferes', icon: Activity },
@@ -76,7 +77,7 @@ export const getNavLinks = (user: User | null) => {
   }
 
   if (user?.nivel === 6) {
-    return baseLinks.filter(link => ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/krishpar', '/entregas'].includes(link.to));
+    return baseLinks.filter(link => ['/lam', '/fersuaz', '/taapharmaceutica', '/innovacion-quimica', '/krishpar', '/entregas', '/monitoreo'].includes(link.to));
   }
 
   return baseLinks;
@@ -96,6 +97,7 @@ const NavigationLinks = ({ links, mobile = false }: NavigationLinksProps) => {
     { to: '/control-bultos', label: 'Control Bultos', icon: Package },
     { to: '/cargar-camiones', label: 'Cargar Camiones', icon: Truck },
     { to: '/control-conduces', label: 'Control Conduces', icon: CheckSquare },
+    { to: '/monitoreo', label: 'Monitoreo', icon: MapPin },
     { to: '/clientes', label: 'Clientes', icon: Building },
     { to: '/usuarios', label: 'Usuarios', icon: Users },
   ];
@@ -137,7 +139,7 @@ const NavigationLinks = ({ links, mobile = false }: NavigationLinksProps) => {
   const labLinks = linksToRender.filter(link => labPaths.includes(link.to));
   const isLabActive = labPaths.includes(location.pathname);
   
-  const opPaths = ['/entregas', '/control-bultos', '/cargar-camiones', '/control-conduces'];
+  const opPaths = ['/entregas', '/control-bultos', '/cargar-camiones', '/control-conduces', '/monitoreo'];
   const opLinks = linksToRender.filter(link => opPaths.includes(link.to));
   const isOpActive = opPaths.includes(location.pathname);
   

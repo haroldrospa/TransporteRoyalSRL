@@ -9,8 +9,8 @@ import { LazyTransitTimeDisplay } from './LazyTransitTimeDisplay';
 import { calculateTransitTime } from '@/utils/time/transitTime';
 import { MobileConduceCard } from './MobileConduceCard';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { formatDistance } from '@/utils/geo/distanceUtils';
 import { useData } from '@/contexts/DataContext';
-import { toast } from '@/hooks/use-toast';
 
 interface OptimizedConducesTableProps {
   conduces: Conduce[];
@@ -23,6 +23,8 @@ interface OptimizedConducesTableProps {
   type: 'pending' | 'completed' | 'returned';
   clienteBultosStats?: Record<string, { totalBultos: number; totalConduces: number }>;
   isAdmin?: boolean;
+  distancesMap?: Map<string, number>;
+  nearestClientConduceId?: string;
 }
 
 // Memoized row component for better performance
@@ -37,7 +39,10 @@ const ConduceRow = memo(({
   openGoogleMaps, 
   showDetails, 
   renderStatusBadge,
-  getRowColorClass 
+  getRowColorClass,
+  distanceKm,
+  isNearest,
+  getClienteByNumero
 }: {
   conduce: Conduce;
   type: 'pending' | 'completed' | 'returned';
@@ -50,9 +55,11 @@ const ConduceRow = memo(({
   showDetails?: (conduce: Conduce) => void;
   renderStatusBadge: (estado: string) => JSX.Element;
   getRowColorClass: (conduce: Conduce) => string;
+  distanceKm?: number | null;
+  isNearest?: boolean;
+  getClienteByNumero?: (numeroCliente: string) => any;
 }) => {
-  const { getClienteByNumero, updateConduce } = useData();
-  const clientCache = getClienteByNumero(conduce.numeroCliente);
+  const clientCache = getClienteByNumero ? getClienteByNumero(conduce.numeroCliente) : undefined;
   const resolvedUbicacion = clientCache?.ubicacion || conduce.ubicacion;
 
   const handleRowClick = useCallback((event: React.MouseEvent) => {
@@ -106,42 +113,36 @@ const ConduceRow = memo(({
       </TableCell>
 
       {isAdmin && (
-        <TableCell className="py-2.5" onClick={(e) => e.stopPropagation()}>
-          <Select
-            value={conduce.laboratorio || 'LAM'}
-            onValueChange={async (newLab) => {
-              try {
-                await updateConduce(conduce.id, { laboratorio: newLab });
-                toast({
-                  title: 'Laboratorio actualizado',
-                  description: `Conduce ${conduce.numeroConduce} cambiado a ${newLab}`,
-                });
-              } catch (error) {
-                toast({
-                  title: 'Error',
-                  description: 'No se pudo actualizar el laboratorio',
-                  variant: 'destructive',
-                });
-              }
-            }}
+        <TableCell className="py-2.5">
+          <Badge
+            variant={conduce.laboratorio === 'LAM' ? 'default' : 'secondary'}
+            className="text-xs font-semibold whitespace-nowrap"
           >
-            <SelectTrigger className="h-7 text-xs font-bold bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm px-2 py-0 min-w-[110px]">
-              <SelectValue placeholder="Laboratorio" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="LAM">LAM</SelectItem>
-              <SelectItem value="Fersuaz">Fersuaz</SelectItem>
-              <SelectItem value="Taapharmaceutica">Taapharmaceutica</SelectItem>
-              <SelectItem value="Innovacion Quimica">Innovacion Quimica</SelectItem>
-              <SelectItem value="Krishpar Care Dominicana">Krishpar Care Dominicana</SelectItem>
-            </SelectContent>
-          </Select>
+            {conduce.laboratorio || 'LAM'}
+          </Badge>
         </TableCell>
       )}
 
       <TableCell className="py-2.5">
         <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
           {conduce.numeroConduce}
+        </div>
+        <div className="flex items-center gap-1.5 mt-1" onClick={(e) => e.stopPropagation()}>
+          <Select
+            value={(conduce.ruta ?? '0').trim() || '0'}
+            onValueChange={async (newRuta) => {
+              await updateConduce(conduce.id, { ruta: newRuta });
+            }}
+          >
+            <SelectTrigger className="h-5 w-20 text-[10px] font-bold border-slate-300 dark:border-slate-700 bg-background px-1.5 py-0">
+              <SelectValue placeholder="Ruta" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0">Ruta 0</SelectItem>
+              <SelectItem value="1">Ruta 1</SelectItem>
+              <SelectItem value="2">Ruta 2</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         {type === 'pending' && conduce.prioridad && (
           <Badge className="mt-1 text-[10px] font-bold text-amber-700 border border-amber-200 bg-amber-50 rounded-md">
@@ -154,6 +155,20 @@ const ConduceRow = memo(({
         <div className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
           {conduce.razonSocial || '-'}
         </div>
+        {distanceKm !== undefined && distanceKm !== null && (
+          <div className="mt-0.5">
+            {isNearest ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {formatDistance(distanceKm)} · más cerca
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                📍 {formatDistance(distanceKm)}
+              </span>
+            )}
+          </div>
+        )}
       </TableCell>
 
       <TableCell className="py-2.5">
@@ -269,9 +284,12 @@ export const OptimizedConducesTable = memo(({
   isSubmitting,
   type,
   clienteBultosStats = {},
-  isAdmin = false
+  isAdmin = false,
+  distancesMap,
+  nearestClientConduceId
 }: OptimizedConducesTableProps) => {
   const isMobile = useIsMobile();
+  const { getClienteByNumero } = useData();
 
   // Memoize the color calculation function
   const getRowColorClass = useCallback((conduce: Conduce) => {
@@ -330,6 +348,8 @@ export const OptimizedConducesTable = memo(({
             openGoogleMaps={openGoogleMaps}
             showDetails={showDetails}
             renderStatusBadge={renderStatusBadge}
+            distanceKm={distancesMap?.get(conduce.id)}
+            isNearest={nearestClientConduceId === conduce.id}
           />
         ))}
       </div>
@@ -411,6 +431,9 @@ export const OptimizedConducesTable = memo(({
               showDetails={showDetails}
               renderStatusBadge={renderStatusBadge}
               getRowColorClass={getRowColorClass}
+              distanceKm={distancesMap?.get(conduce.id)}
+              isNearest={nearestClientConduceId === conduce.id}
+              getClienteByNumero={getClienteByNumero}
             />
           );
         })}

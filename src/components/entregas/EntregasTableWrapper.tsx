@@ -13,6 +13,8 @@ interface EntregasTableWrapperProps {
   type: 'pending' | 'completed' | 'returned';
   clienteBultosStats?: Record<string, { totalBultos: number; totalConduces: number }>;
   isAdmin?: boolean;
+  distancesMap?: Map<string, number>;
+  nearestClientConduceId?: string;
 }
 
 export const EntregasTableWrapper = ({
@@ -25,7 +27,9 @@ export const EntregasTableWrapper = ({
   isSubmitting,
   type,
   clienteBultosStats,
-  isAdmin = false
+  isAdmin = false,
+  distancesMap,
+  nearestClientConduceId
 }: EntregasTableWrapperProps) => {
   return (
     <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-x-auto w-full">
@@ -40,6 +44,8 @@ export const EntregasTableWrapper = ({
         type={type}
         clienteBultosStats={clienteBultosStats}
         isAdmin={isAdmin}
+        distancesMap={distancesMap}
+        nearestClientConduceId={nearestClientConduceId}
       />
     </div>
   );

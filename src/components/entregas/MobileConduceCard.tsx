@@ -8,6 +8,10 @@ import { LazyTransitTimeDisplay } from './LazyTransitTimeDisplay';
 import { calculateTransitTime } from '@/utils/time/transitTime';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAdministrator } from '@/utils/userPermissions';
+import { useData } from '@/contexts/DataContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+import { formatDistance } from '@/utils/geo/distanceUtils';
 
 interface MobileConduceCardProps {
   conduce: Conduce;
@@ -18,6 +22,9 @@ interface MobileConduceCardProps {
   openGoogleMaps: (ubicacion: string | undefined, clienteNombre?: string) => void;
   showDetails?: (conduce: Conduce) => void;
   renderStatusBadge: (estado: string) => JSX.Element;
+  onUpdateRoute?: (conduceId: string, newRoute: string) => Promise<boolean>;
+  distanceKm?: number | null;
+  isNearest?: boolean;
 }
 
 export const MobileConduceCard = memo(({
@@ -28,9 +35,13 @@ export const MobileConduceCard = memo(({
   onReturn,
   openGoogleMaps,
   showDetails,
-  renderStatusBadge
+  renderStatusBadge,
+  onUpdateRoute,
+  distanceKm,
+  isNearest = false
 }: MobileConduceCardProps) => {
   const { user } = useAuth();
+  const { updateConduce } = useData();
   const isAdmin = isAdministrator(user);
 
   const handleDeliveryClick = useCallback(() => {
@@ -106,20 +117,46 @@ export const MobileConduceCard = memo(({
         </div>
       </div>
 
-      {/* Info del cliente */}
+      {/* Info del cliente y Ruta */}
       <div className="mb-3 space-y-1">
         <div className="font-medium text-slate-700 text-sm truncate">
           {conduce.razonSocial || 'Sin razón social'}
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span>Cliente: {conduce.numeroCliente}</span>
-          <span>•</span>
-          <span>{conduce.ciudad || 'Sin ciudad'}</span>
+        <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+          <div className="flex items-center gap-1.5 truncate">
+            <span>Cliente: {conduce.numeroCliente}</span>
+            <span>•</span>
+            <span>{conduce.ciudad || 'Sin ciudad'}</span>
+          </div>
+
+          {/* Selector de Ruta editable por chofer */}
+          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <span className="text-[10px] font-semibold text-slate-400">Ruta:</span>
+            <Select
+              value={(conduce.ruta ?? '0').trim() || '0'}
+              onValueChange={async (val) => {
+                if (onUpdateRoute) {
+                  await onUpdateRoute(conduce.id, val);
+                } else {
+                  await updateConduce(conduce.id, { ruta: val });
+                }
+              }}
+            >
+              <SelectTrigger className="h-6 w-20 text-[11px] font-bold border-slate-300 bg-white px-2 py-0">
+                <SelectValue placeholder="Ruta" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Ruta 0</SelectItem>
+                <SelectItem value="1">Ruta 1</SelectItem>
+                <SelectItem value="2">Ruta 2</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      {/* Estado y tiempo */}
-      <div className="flex items-center gap-2 mb-4">
+      {/* Estado, tiempo y distancia */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
         {renderStatusBadge(conduce.estado)}
         <div className="flex-1">
           <LazyTransitTimeDisplay 
@@ -127,6 +164,19 @@ export const MobileConduceCard = memo(({
             estado={conduce.estado} 
           />
         </div>
+        {distanceKm !== undefined && distanceKm !== null && (
+          isNearest ? (
+            <Badge variant="outline" className="bg-emerald-50/90 text-emerald-800 border-emerald-300 font-medium text-xs py-0.5 px-2 flex items-center gap-1 shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{formatDistance(distanceKm)} · más cerca</span>
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 font-normal text-xs py-0.5 px-2 flex items-center gap-1 shrink-0">
+              <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+              <span>{formatDistance(distanceKm)}</span>
+            </Badge>
+          )
+        )}
       </div>
 
       {/* Botones de acción - MÁS GRANDES Y ACCESIBLES */}
@@ -155,13 +205,13 @@ export const MobileConduceCard = memo(({
           </div>
           
           {/* Botón de ubicación */}
-          {conduce.ubicacion && (
+          {(conduce.ubicacion || (distanceKm !== undefined && distanceKm !== null)) && (
             <Button 
               variant="outline"
-              className="w-full h-10 text-blue-600 border-blue-300 hover:bg-blue-50"
+              className="w-full h-9 text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900 font-normal text-xs"
               onClick={handleMapClick}
             >
-              <Navigation className="h-4 w-4 mr-2" />
+              <Navigation className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
               Ver ubicación en mapa
             </Button>
           )}

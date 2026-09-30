@@ -43,6 +43,14 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
   onCancel,
   isSubmitting = false,
 }) => {
+  const isGpsCoord = (str?: string | null): boolean => {
+    if (!str) return false;
+    return /^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(str.trim());
+  };
+
+  const initialDireccion = cliente?.direccion?.trim() || (!isGpsCoord(cliente?.ubicacion) ? (cliente?.ubicacion?.trim() || '') : '');
+  const initialUbicacion = isGpsCoord(cliente?.ubicacion) ? (cliente?.ubicacion?.trim() || '') : '';
+
   const form = useForm<ClienteFormSchema>({
     resolver: zodResolver(clienteSchema),
     defaultValues: {
@@ -51,10 +59,10 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
       razonSocial: cliente?.razonSocial || '',
       ciudad: cliente?.ciudad || '',
       encomendado: cliente?.encomendado || '',
-      ruta: cliente?.ruta || '',
+      ruta: cliente?.ruta || '0',
       contacto: cliente?.contacto || '',
-      direccion: cliente?.direccion || '',
-      ubicacion: cliente?.ubicacion || '',
+      direccion: initialDireccion,
+      ubicacion: initialUbicacion,
       zona: cliente?.zona || 'Norte',
     },
     mode: 'onChange',

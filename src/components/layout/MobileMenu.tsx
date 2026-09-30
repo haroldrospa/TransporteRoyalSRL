@@ -103,10 +103,10 @@ const MobileMenu = ({
               })()}
 
               {/* Operaciones */}
-              {navLinks.filter(link => ['/entregas', '/control-bultos', '/cargar-camiones', '/control-conduces'].includes(link.to)).length > 0 && (
+              {navLinks.filter(link => ['/entregas', '/control-bultos', '/cargar-camiones', '/control-conduces', '/monitoreo'].includes(link.to)).length > 0 && (
                 <div className="flex flex-col gap-1 w-full">
                   <h3 className="px-3 text-xs font-semibold text-white/50 uppercase tracking-wider mb-1 text-left">Operaciones</h3>
-                  {navLinks.filter(link => ['/entregas', '/control-bultos', '/cargar-camiones', '/control-conduces'].includes(link.to)).map(link => {
+                  {navLinks.filter(link => ['/entregas', '/control-bultos', '/cargar-camiones', '/control-conduces', '/monitoreo'].includes(link.to)).map(link => {
                     const Icon = link.icon;
                     return (
                       <Link 

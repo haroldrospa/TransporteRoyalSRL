@@ -54,6 +54,7 @@ export const EntregasHeader = ({
                     </span>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => onRegionChange('Todas')}>TODAS</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onRegionChange('Norte')}>NORTE</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onRegionChange('Sur')}>SUR</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onRegionChange('Este')}>ESTE</DropdownMenuItem>

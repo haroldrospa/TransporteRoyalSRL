@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -110,8 +110,10 @@ export const CrearConduces: React.FC = () => {
 
   // Determine current textual address (filtering out coordinates)
   const currentTextAddress = useMemo(() => {
-    if (!selectedClient || !selectedClient.ubicacion) return '';
-    return isCoordinate(selectedClient.ubicacion) ? '' : selectedClient.ubicacion;
+    if (!selectedClient) return '';
+    if (selectedClient.direccion?.trim()) return selectedClient.direccion.trim();
+    if (selectedClient.ubicacion && !isCoordinate(selectedClient.ubicacion)) return selectedClient.ubicacion.trim();
+    return '';
   }, [selectedClient]);
 
   // Sync written address when client selection changes
@@ -131,7 +133,7 @@ export const CrearConduces: React.FC = () => {
       const { error } = await supabase
         .from('clientes')
         .update({ 
-          ubicacion: newAddress,
+          direccion: newAddress,
           updated_at: new Date().toISOString() 
         })
         .eq('id', selectedClient.id);
@@ -139,8 +141,8 @@ export const CrearConduces: React.FC = () => {
       if (error) throw error;
       
       // Update local client states
-      setSelectedClient(prev => prev ? { ...prev, ubicacion: newAddress } : null);
-      setClientes(prev => prev.map(c => c.id === selectedClient.id ? { ...c, ubicacion: newAddress } : c));
+      setSelectedClient(prev => prev ? { ...prev, direccion: newAddress } : null);
+      setClientes(prev => prev.map(c => c.id === selectedClient.id ? { ...c, direccion: newAddress } : c));
       
       toast({
         title: "Dirección guardada",
@@ -158,6 +160,40 @@ export const CrearConduces: React.FC = () => {
     }
   };
 
+  // Helper to compute the next sequential numeric client number (e.g. 200336 -> 200337)
+  const getNextClientNumber = useCallback((): string => {
+    let maxNum = 200336; // Baseline starting number
+    const checkNumber = (raw?: string | number | null) => {
+      if (raw === null || raw === undefined) return;
+      const clean = String(raw).trim();
+      if (/^\d+$/.test(clean)) {
+        const val = parseInt(clean, 10);
+        if (!isNaN(val) && val > maxNum) {
+          maxNum = val;
+        }
+      }
+    };
+
+    if (Array.isArray(clientes)) {
+      clientes.forEach(c => {
+        if (c) {
+          checkNumber(c.numeroCliente);
+          checkNumber(c.rnc);
+        }
+      });
+    }
+
+    if (Array.isArray(conducesCreados)) {
+      conducesCreados.forEach(c => {
+        if (c) {
+          checkNumber(c.numeroCliente);
+        }
+      });
+    }
+
+    return String(maxNum + 1);
+  }, [clientes, conducesCreados]);
+
   // Create Client Handler
   const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,7 +201,7 @@ export const CrearConduces: React.FC = () => {
     if (!newClientCode.trim()) {
       toast({
         title: "Campo requerido",
-        description: "El RNC del cliente es obligatorio.",
+        description: "El número de cliente es obligatorio.",
         variant: "destructive"
       });
       return;
@@ -197,11 +233,11 @@ export const CrearConduces: React.FC = () => {
 
     setIsCreatingClient(true);
     try {
-      const rncUpper = newClientCode.trim().toUpperCase();
-      if (clientes.some(c => c.rnc && c.rnc.toUpperCase() === rncUpper)) {
+      const clientCodeTrim = newClientCode.trim().toUpperCase();
+      if (clientes.some(c => (c.numeroCliente && c.numeroCliente.trim().toUpperCase() === clientCodeTrim) || (c.rnc && c.rnc.trim().toUpperCase() === clientCodeTrim))) {
         toast({
-          title: "RNC duplicado",
-          description: "Ya existe un cliente con este RNC en el sistema.",
+          title: "Número de cliente duplicado",
+          description: `Ya existe un cliente con el código ${clientCodeTrim} en el sistema.`,
           variant: "destructive"
         });
         setIsCreatingClient(false);
@@ -209,14 +245,15 @@ export const CrearConduces: React.FC = () => {
       }
 
       const newClientObj = {
-        rnc: rncUpper,
-        numero_cliente: rncUpper,
+        rnc: clientCodeTrim,
+        numero_cliente: clientCodeTrim,
         razon_social: newClientSocial.trim(),
         ciudad: newClientCity.trim().toUpperCase(),
-        ubicacion: newClientAddress.trim(),
+        direccion: newClientAddress.trim(),
+        ubicacion: null,
         zona: newClientZone,
         encomendado: '',
-        ruta: '',
+        ruta: '0', // Ruta por defecto en 0
         contacto: ''
       };
 
@@ -240,7 +277,7 @@ export const CrearConduces: React.FC = () => {
         
         toast({
           title: "Cliente creado",
-          description: `El cliente "${createdClient.razonSocial}" se ha registrado con éxito.`,
+          description: `El cliente "${createdClient.razonSocial}" (Código: ${createdClient.numeroCliente}) se ha registrado con éxito con Ruta 0.`,
         });
 
         // Reset dialog states
@@ -294,25 +331,25 @@ export const CrearConduces: React.FC = () => {
 
   // Filter clients based on name/searchQuery/RNC
   const filteredClientes = useMemo(() => {
-    if (!searchQuery.trim()) return [];
+    if (!searchQuery.trim() || !Array.isArray(clientes)) return [];
     
     const query = searchQuery.toLowerCase().trim();
     return clientes.filter(c => 
-      c.razonSocial.toLowerCase().includes(query) || 
-      c.numeroCliente.toLowerCase().includes(query) ||
-      (c.rnc && c.rnc.toLowerCase().includes(query))
+      (c?.razonSocial && String(c.razonSocial).toLowerCase().includes(query)) || 
+      (c?.numeroCliente && String(c.numeroCliente).toLowerCase().includes(query)) ||
+      (c?.rnc && String(c.rnc).toLowerCase().includes(query))
     ).slice(0, 10); // Limit to top 10 results for performance
   }, [clientes, searchQuery]);
 
   // Filter clients for edit modal based on editSearchQuery
   const filteredEditClientes = useMemo(() => {
-    if (!editSearchQuery.trim()) return [];
+    if (!editSearchQuery.trim() || !Array.isArray(clientes)) return [];
     
     const query = editSearchQuery.toLowerCase().trim();
     return clientes.filter(c => 
-      c.razonSocial.toLowerCase().includes(query) || 
-      c.numeroCliente.toLowerCase().includes(query) ||
-      (c.rnc && c.rnc.toLowerCase().includes(query))
+      (c?.razonSocial && String(c.razonSocial).toLowerCase().includes(query)) || 
+      (c?.numeroCliente && String(c.numeroCliente).toLowerCase().includes(query)) ||
+      (c?.rnc && String(c.rnc).toLowerCase().includes(query))
     ).slice(0, 10);
   }, [clientes, editSearchQuery]);
 
@@ -379,7 +416,7 @@ export const CrearConduces: React.FC = () => {
       supabase
         .from('clientes')
         .update({ 
-          ubicacion: cleanedAddress,
+          direccion: cleanedAddress,
           updated_at: new Date().toISOString() 
         })
         .eq('id', clientId)
@@ -388,7 +425,7 @@ export const CrearConduces: React.FC = () => {
             console.error('Error auto-updating client address:', error);
           } else {
             console.log(`Address auto-updated successfully for client ${clientId} to: ${cleanedAddress}`);
-            setClientes(prev => prev.map(c => c.id === clientId ? { ...c, ubicacion: cleanedAddress } : c));
+            setClientes(prev => prev.map(c => c.id === clientId ? { ...c, direccion: cleanedAddress } : c));
           }
         });
     }
@@ -407,6 +444,7 @@ export const CrearConduces: React.FC = () => {
       estado: 'Pendiente',
       fechaCarga: fechaCarga,
       fechaEntrega: fechaCarga, // Placeholder delivery date, equal to load date
+      ruta: selectedClient.ruta || '0',
     };
 
     setConducesCreados(prev => [newConduce, ...prev]);
@@ -441,7 +479,7 @@ export const CrearConduces: React.FC = () => {
       const { error } = await supabase
         .from('clientes')
         .update({ 
-          ubicacion: newAddress,
+          direccion: newAddress,
           updated_at: new Date().toISOString() 
         })
         .eq('id', editSelectedClient.id);
@@ -449,8 +487,8 @@ export const CrearConduces: React.FC = () => {
       if (error) throw error;
       
       // Update local client states
-      setEditSelectedClient(prev => prev ? { ...prev, ubicacion: newAddress } : null);
-      setClientes(prev => prev.map(c => c.id === editSelectedClient.id ? { ...c, ubicacion: newAddress } : c));
+      setEditSelectedClient(prev => prev ? { ...prev, direccion: newAddress } : null);
+      setClientes(prev => prev.map(c => c.id === editSelectedClient.id ? { ...c, direccion: newAddress } : c));
       
       toast({
         title: "Dirección guardada",
@@ -504,7 +542,7 @@ export const CrearConduces: React.FC = () => {
     if (client) {
       setEditSelectedClient(client);
       setEditSearchQuery(client.razonSocial);
-      setEditDireccionEscrita(conduce.ubicacion || client.ubicacion || '');
+      setEditDireccionEscrita(conduce.ubicacion || client.direccion || (!isCoordinate(client.ubicacion || '') ? client.ubicacion : '') || '');
     } else {
       // Fallback
       const tempClient: Cliente = {
@@ -512,7 +550,8 @@ export const CrearConduces: React.FC = () => {
         numeroCliente: conduce.numeroCliente,
         razonSocial: conduce.razonSocial || '',
         ciudad: conduce.ciudad || '',
-        ubicacion: conduce.ubicacion || '',
+        direccion: conduce.ubicacion || '',
+        ubicacion: '',
         zona: conduce.region === 'Sur' ? 'Sur' : 'Norte'
       };
       setEditSelectedClient(tempClient);
@@ -577,13 +616,13 @@ export const CrearConduces: React.FC = () => {
     }
 
     // Auto-save the written address to the database if it changed
-    const currentAddress = editSelectedClient.ubicacion || '';
+    const currentAddress = editSelectedClient.direccion || (!isCoordinate(editSelectedClient.ubicacion || '') ? editSelectedClient.ubicacion : '') || '';
     if (cleanedAddress !== currentAddress && editSelectedClient.id) {
       const clientId = editSelectedClient.id;
       supabase
         .from('clientes')
         .update({ 
-          ubicacion: cleanedAddress,
+          direccion: cleanedAddress,
           updated_at: new Date().toISOString() 
         })
         .eq('id', clientId)
@@ -591,7 +630,7 @@ export const CrearConduces: React.FC = () => {
           if (error) {
             console.error('Error auto-updating client address during edit:', error);
           } else {
-            setClientes(prev => prev.map(c => c.id === clientId ? { ...c, ubicacion: cleanedAddress } : c));
+            setClientes(prev => prev.map(c => c.id === clientId ? { ...c, direccion: cleanedAddress } : c));
           }
         });
     }
@@ -610,6 +649,7 @@ export const CrearConduces: React.FC = () => {
       fechaCarga: editFechaCarga || c.fechaCarga || fechaCarga,
       fechaEntrega: editFechaCarga || c.fechaEntrega || fechaCarga,
       region: editSelectedClient.zona === 'Sur' ? 'Sur' : (editSelectedClient.zona === 'Este' ? 'Este' : 'Norte'),
+      ruta: editSelectedClient.ruta || c.ruta || '0',
     } : c));
 
     setIsEditConduceOpen(false);
@@ -641,6 +681,10 @@ export const CrearConduces: React.FC = () => {
         const mapped = mapConduceToDbConduce(conduce);
         // Delete temporary client-side ID so database generates a proper UUID
         delete mapped.id;
+        // Ensure non-existent columns like ruta are never sent to conduces table
+        delete (mapped as any).ruta;
+        // Strip any undefined keys
+        Object.keys(mapped).forEach(key => (mapped as any)[key] === undefined && delete (mapped as any)[key]);
         return mapped;
       });
 
@@ -756,6 +800,8 @@ export const CrearConduces: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={() => {
+                          const nextNum = getNextClientNumber();
+                          setNewClientCode(nextNum);
                           setNewClientSocial(searchQuery);
                           setIsCreateClientOpen(true);
                         }}
@@ -1095,10 +1141,10 @@ export const CrearConduces: React.FC = () => {
             <form onSubmit={handleCreateClient} className="space-y-4 pt-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="new-client-rnc" className="text-xs font-semibold">RNC del Cliente</Label>
+                  <Label htmlFor="new-client-code" className="text-xs font-semibold">Número de Cliente</Label>
                   <Input 
-                    id="new-client-rnc" 
-                    placeholder="Ej: 131-12345-6" 
+                    id="new-client-code" 
+                    placeholder="Ej: 200337" 
                     value={newClientCode}
                     onChange={(e) => setNewClientCode(e.target.value)}
                     required

@@ -1,15 +1,52 @@
 import { Region } from '@/types/conduces';
 
+// Normalize a truck code to standard format (e.g. 'R03' -> 'R-03')
+export const normalizeTruckCode = (truck: string): string => {
+  const clean = truck.trim().toUpperCase().replace(/[-_ ]?ALMAC[EÉ]N$/i, '');
+  const rMatch = clean.match(/^R-?0?(\d+)$/);
+  if (rMatch) {
+    const num = parseInt(rMatch[1], 10);
+    return `R-${num < 10 ? '0' + num : num}`;
+  }
+  const cMatch = clean.match(/^C-?0?(\d+)$/);
+  if (cMatch) {
+    const num = parseInt(cMatch[1], 10);
+    return `C-${num < 10 ? '0' + num : num}`;
+  }
+  return clean;
+};
+
+// Returns standard warehouse name for a truck (e.g. 'R-03' -> 'R03-Almacen')
+export const getTruckWarehouse = (truck: string): string => {
+  const norm = normalizeTruckCode(truck);
+  const code = norm.replace('-', '');
+  return `${code}-Almacen`;
+};
+
+// Check if an encomendado string is a truck warehouse
+export const isTruckWarehouse = (encomendado?: string | null): boolean => {
+  if (!encomendado) return false;
+  return /[-_ ]?ALMAC[EÉ]N$/i.test(encomendado.trim()) && encomendado.trim().toLowerCase() !== 'almacen';
+};
+
+// Returns the base truck for an encomendado or warehouse (e.g. 'R03-Almacen' -> 'R-03')
+export const getBaseTruck = (encomendado?: string | null): string => {
+  if (!encomendado) return '';
+  return normalizeTruckCode(encomendado);
+};
+
 export const getRegionByTruck = (truck?: string | null): Region | null => {
   if (!truck) return null;
   const clean = truck.trim().toUpperCase();
-  if (clean === 'R-01' || clean === 'R-02' || clean === 'R-1' || clean === 'R-2') {
+  const base = normalizeTruckCode(clean);
+  
+  if (base === 'R-01' || base === 'R-02') {
     return 'Sur';
   }
-  if (clean === 'R-08' || clean === 'R-09' || clean === 'R-8' || clean === 'R-9') {
+  if (base === 'R-08' || base === 'R-09') {
     return 'Este';
   }
-  if (['R-03', 'R-04', 'R-05', 'R-06', 'R-07', 'C-01', 'R-3', 'R-4', 'R-5', 'R-6', 'R-7'].includes(clean)) {
+  if (['R-03', 'R-04', 'R-05', 'R-06', 'R-07', 'C-01'].includes(base)) {
     return 'Norte';
   }
   return null;
