@@ -13,7 +13,8 @@ import {
   CheckSquare,
   Square,
   Filter,
-  Search
+  Search,
+  ChevronDown
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +22,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  DropdownMenu, 
+  DropdownMenuTrigger, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator,
+  DropdownMenuLabel 
+} from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import ProcessingOverlay from '@/components/cargar-camiones/ProcessingOverlay';
@@ -32,7 +41,8 @@ import {
   coincideRutaConProgramacion, 
   transferirConducesAAlmacen, 
   transferirConducesACamion,
-  asignarConducesConDivisionRuta 
+  asignarConducesConDivisionRuta,
+  CAMIONES_DEFECTO
 } from '@/services/rutasProgramacionService';
 
 interface ConducesAsignadosProps {
@@ -140,6 +150,120 @@ const ConducesAsignados = ({
           description: `${res.count} conduces asignados a ${base}.`,
         });
         setSelectedInTab([]);
+        if (refreshData) refreshData();
+      }
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
+  // Reasignar conduces seleccionados en almacén al camión específico elegido
+  const handleAsignarSeleccionadosACamion = async (camion: string) => {
+    if (selectedInTab.length === 0) return;
+    setIsTransferring(true);
+    try {
+      const base = getBaseTruck(camion);
+      const res = await transferirConducesACamion(selectedInTab, base);
+      if (res.success) {
+        toast({
+          title: "Conduces asignados",
+          description: `${res.count} conduces asignados exitosamente a Camión ${base}.`,
+        });
+        setSelectedInTab([]);
+        if (refreshData) refreshData();
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudieron asignar los conduces al camión.",
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Error al reasignar los conduces.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
+  // Reasignar automáticamente los conduces seleccionados a sus respectivos camiones base
+  const handleReasignarSeleccionadosACamionesBase = async (conducesPool: Conduce[]) => {
+    if (selectedInTab.length === 0) return;
+    setIsTransferring(true);
+    try {
+      const selectedConduces = conducesPool.filter(c => selectedInTab.includes(c.id));
+      const grupos: Record<string, string[]> = {};
+      const sinCamion: string[] = [];
+
+      selectedConduces.forEach(c => {
+        let base = getBaseTruck(c.encomendado);
+        if (!base || base.toLowerCase() === 'almacen') {
+          // Buscar predeterminado del cliente
+          const cl = clientes.find(item => item.numeroCliente === c.numeroCliente);
+          if (cl?.encomendado) {
+            base = getBaseTruck(cl.encomendado);
+          }
+        }
+
+        if (base && base.toLowerCase() !== 'almacen') {
+          if (!grupos[base]) grupos[base] = [];
+          grupos[base].push(c.id);
+        } else {
+          sinCamion.push(c.id);
+        }
+      });
+
+      const updatePromises = Object.entries(grupos).map(([camion, ids]) =>
+        transferirConducesACamion(ids, camion)
+      );
+
+      const results = await Promise.all(updatePromises);
+      const totalMoved = results.reduce((sum, r) => sum + (r.success ? r.count : 0), 0);
+
+      if (totalMoved > 0) {
+        const detalles = Object.entries(grupos).map(([cam, ids]) => `${ids.length} a ${cam}`).join(', ');
+        toast({
+          title: "Conduces reasignados",
+          description: `${totalMoved} conduces devueltos a sus camiones base (${detalles}).`,
+        });
+        setSelectedInTab([]);
+        if (refreshData) refreshData();
+      } else if (sinCamion.length > 0) {
+        toast({
+          title: "Sin camión base definido",
+          description: "Los conduces seleccionados están en Almacén General y sus clientes no tienen camión predeterminado. Por favor use la opción 'Asignar a Camión...' para elegir el camión.",
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Error al reasignar los conduces a sus camiones.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
+  // Reasignar un conduce individual a un camión
+  const handleReasignarIndividual = async (conduceId: string, camion: string) => {
+    if (!conduceId || !camion) return;
+    setIsTransferring(true);
+    try {
+      const base = getBaseTruck(camion);
+      const res = await transferirConducesACamion([conduceId], base);
+      if (res.success) {
+        toast({
+          title: "Conduce asignado",
+          description: `Conduce asignado a Camión ${base}.`,
+        });
+        setSelectedInTab(prev => prev.filter(id => id !== conduceId));
         if (refreshData) refreshData();
       }
     } finally {
@@ -618,11 +742,11 @@ const ConducesAsignados = ({
 
                       {/* Bulk actions for selected rows in tab */}
                       {selectedInTab.length > 0 && (
-                        <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded flex items-center justify-between text-xs animate-fade-in">
+                        <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded flex flex-wrap items-center justify-between gap-2 text-xs animate-fade-in">
                           <span className="font-semibold text-indigo-900 dark:text-indigo-200">
                             {selectedInTab.length} conduc(es) seleccionado(s)
                           </span>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             {!isGeneralAlmacen && viewFilter !== 'almacen' && (
                               <Button
                                 size="sm"
@@ -650,14 +774,62 @@ const ConducesAsignados = ({
                             )}
 
                             {isGeneralAlmacen && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs"
-                                onClick={() => setSelectedInTab([])}
-                              >
-                                Deseleccionar
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
+                                  onClick={() => handleReasignarSeleccionadosACamionesBase(baseConduces)}
+                                  disabled={isTransferring}
+                                  title="Devuelve cada conduce a su camión original (R03-Almacen -> R-03, R05-Almacen -> R-05, etc.)"
+                                >
+                                  <Truck className="h-3.5 w-3.5 mr-1" />
+                                  Cargar a Camiones Base ({selectedInTab.length})
+                                </Button>
+
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs border-blue-400 text-blue-700 hover:bg-blue-50 font-semibold"
+                                      disabled={isTransferring}
+                                    >
+                                      <Truck className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                                      Asignar a Camión...
+                                      <ChevronDown className="h-3 w-3 ml-1 opacity-70" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-y-auto text-xs">
+                                    <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase font-bold py-1">
+                                      Asignar {selectedInTab.length} conduc(es) a:
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {CAMIONES_DEFECTO.map(t => (
+                                      <DropdownMenuItem
+                                        key={t.camion}
+                                        onClick={() => handleAsignarSeleccionadosACamion(t.camion)}
+                                        className="cursor-pointer text-xs flex items-center justify-between py-1.5"
+                                      >
+                                        <div className="flex items-center gap-2 truncate">
+                                          <Truck className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                          <span className="font-bold">{t.camion}</span>
+                                          <span className="text-[11px] text-muted-foreground truncate">{t.chofer}</span>
+                                        </div>
+                                        <span className="text-[9px] px-1 py-0 rounded bg-muted text-muted-foreground shrink-0">{t.region}</span>
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                                  onClick={() => setSelectedInTab([])}
+                                >
+                                  Deseleccionar
+                                </Button>
+                              </>
                             )}
                           </div>
                         </div>
@@ -690,6 +862,7 @@ const ConducesAsignados = ({
                                 <TableHead className="font-bold text-right">Bultos</TableHead>
                                 <TableHead className="font-bold">Fecha Salida</TableHead>
                                 <TableHead className="font-bold text-center">Prioridad</TableHead>
+                                <TableHead className="font-bold text-center">Acción</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody className="text-xs">
@@ -756,6 +929,81 @@ const ConducesAsignados = ({
                                     <TableCell className="text-center">
                                       {conduce.prioridad && (
                                         <Badge className="bg-red-500 text-white text-[10px]">Prioridad</Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                                      {isWh ? (
+                                        <div className="flex items-center justify-center gap-1">
+                                          {(() => {
+                                            const base = getBaseTruck(conduce.encomendado);
+                                            const hasSpecificBase = base && base.toLowerCase() !== 'almacen';
+                                            return (
+                                              <>
+                                                {hasSpecificBase && (
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-6 px-1.5 text-[10px] border-emerald-400 text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100 flex items-center gap-1 font-semibold"
+                                                    onClick={() => handleReasignarIndividual(conduce.id, base)}
+                                                    disabled={isTransferring}
+                                                    title={`Cargar directamente al camión ${base}`}
+                                                  >
+                                                    <Truck className="h-2.5 w-2.5 text-emerald-600" />
+                                                    Cargar a {base}
+                                                  </Button>
+                                                )}
+
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                      size="sm"
+                                                      variant="outline"
+                                                      className="h-6 px-1.5 text-[10px] text-slate-700 hover:text-blue-700 flex items-center gap-0.5"
+                                                      disabled={isTransferring}
+                                                      title="Asignar a otro camión..."
+                                                    >
+                                                      <Truck className="h-2.5 w-2.5 text-blue-600" />
+                                                      {!hasSpecificBase ? 'Asignar' : ''}
+                                                      <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                                                    </Button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end" className="w-52 max-h-60 overflow-y-auto text-xs">
+                                                    <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase font-bold py-1">
+                                                      Asignar Conduce a:
+                                                    </DropdownMenuLabel>
+                                                    <DropdownMenuSeparator />
+                                                    {CAMIONES_DEFECTO.map(t => (
+                                                      <DropdownMenuItem
+                                                        key={t.camion}
+                                                        onClick={() => handleReasignarIndividual(conduce.id, t.camion)}
+                                                        className="cursor-pointer text-xs py-1.5 flex items-center justify-between"
+                                                      >
+                                                        <div className="flex items-center gap-1.5 truncate">
+                                                          <Truck className="h-3 w-3 text-blue-600 shrink-0" />
+                                                          <span className="font-bold">{t.camion}</span>
+                                                          <span className="text-[10px] text-muted-foreground truncate">{t.chofer}</span>
+                                                        </div>
+                                                        <span className="text-[9px] px-1 rounded bg-muted text-muted-foreground">{t.region}</span>
+                                                      </DropdownMenuItem>
+                                                    ))}
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
+                                              </>
+                                            );
+                                          })()}
+                                        </div>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 px-1.5 text-[10px] text-amber-700 hover:bg-amber-50 flex items-center gap-1 mx-auto"
+                                          onClick={() => handleMoverRutasNoHoy(enc, [conduce], whName, rutaHoy)}
+                                          disabled={isTransferring}
+                                          title={`Mover a ${whName}`}
+                                        >
+                                          <Warehouse className="h-2.5 w-2.5" />
+                                          Almacén
+                                        </Button>
                                       )}
                                     </TableCell>
                                   </TableRow>
