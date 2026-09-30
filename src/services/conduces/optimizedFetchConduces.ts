@@ -38,10 +38,12 @@ export async function fetchConducesOptimized(limit?: number): Promise<Conduce[]>
   // Clave de cache diferente según si hay límite
   const cacheKey = limit ? `conduces-optimized-${limit}` : 'conduces-optimized-all';
   
-  // FORZAR RECARGA SIN CACHE para obtener datos frescos
-  cache.delete(cacheKey);
-  
-  console.log(`🚀 FORCING fresh data load - bypassing all cache${limit ? ` (limit: ${limit})` : ''}`);
+  // Verificar si hay datos en caché válidos para evitar peticiones duplicadas
+  const cached = cache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+    console.log(`⚡ [OptimizedConduces] Returning ${cached.data.length} conduces from memory cache`);
+    return cached.data;
+  }
 
   // Limpiar cache si es necesario
   cleanOldCache();
@@ -167,12 +169,13 @@ export async function fetchConducesOptimized(limit?: number): Promise<Conduce[]>
     
     console.log(`📊 Total conduces in DB: ${totalCount}`);
     
-    // Si hay más de 1000, hacer múltiples queries
+    // Si hay más de 1000, hacer múltiples queries (tope de seguridad de 5 páginas = 5,000 registros para evitar colapso de memoria)
     const allConduces: any[] = [];
     const pageSize = 1000; // Máximo permitido por Supabase
-    const totalPages = Math.ceil((totalCount || 0) / pageSize);
+    const maxPages = limit ? Math.ceil(limit / pageSize) : 5;
+    const totalPages = Math.min(Math.ceil((totalCount || 0) / pageSize), maxPages);
     
-    console.log(`🔄 Will fetch ${totalPages} pages of ${pageSize} conduces each`);
+    console.log(`🔄 Will fetch ${totalPages} pages of ${pageSize} conduces each (capped at ${maxPages * pageSize} conduces)`);
     
     // Fetch pages in batches of 2 for parallelism with retry logic
     const batchSize = 2;

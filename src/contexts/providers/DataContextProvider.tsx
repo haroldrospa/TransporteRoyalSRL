@@ -86,7 +86,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     getConducesByRegion 
   } = useDataFilters(conduces, clientes);
 
+  const isRefreshingRef = useRef(false);
+
   const refreshData = useCallback(async (force: boolean = false) => {
+    if (isRefreshingRef.current) {
+      console.log('⏳ Skipping fetch, already in progress');
+      return;
+    }
+
     const now = Date.now();
     const minTimeBetweenFetches = 1000;
     
@@ -94,6 +101,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       console.log('⏳ Skipping fetch, too soon since last fetch');
       return;
     }
+
+    isRefreshingRef.current = true;
     
     // Solo mostrar loading si es después de la carga inicial
     if (initialLoadComplete) {
@@ -103,9 +112,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log(`🚀 [DataProvider] Starting data refresh... ${force ? '(FORCE REFRESH)' : ''}`);
       
-      // Cargar datos en paralelo para máxima velocidad
+      // Cargar datos en paralelo para máxima velocidad (limitado a los 3,000 más recientes para rendimiento óptimo)
       const [conducesData, clientesData] = await Promise.all([
-        fetchConducesOptimized().catch(error => {
+        fetchConducesOptimized(3000).catch(error => {
           console.error('❌ [DataProvider] Error fetching optimized conduces:', error);
           return [];
         }),
@@ -187,6 +196,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       });
     } finally {
       setLoading(false);
+      isRefreshingRef.current = false;
     }
   }, [lastFetchTime, toast, loading, initialLoadComplete]);
 

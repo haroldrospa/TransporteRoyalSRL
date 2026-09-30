@@ -19,17 +19,18 @@ import { TruckDeliveryGrid } from './TruckDeliveryGrid';
 import { useTruckDeliveryStats } from '@/hooks/useTruckDeliveryStats';
 import { useSaveLocation } from '@/hooks/useSaveLocation';
 import { MapChooserDialog } from './dialog/MapChooserDialog';
+import { lazyWithRetry } from '@/utils/lazyWithRetry';
 
-// Lazy load components for better performance
-const LazyPendingOnlyTable = lazy(() => 
+// Lazy load components with auto-retry on new version deployments
+const LazyPendingOnlyTable = lazyWithRetry(() => 
   import('./PendingOnlyTable').then(module => ({ default: module.PendingOnlyTable }))
 );
 
-const LazyAutoDeliveryDialog = lazy(() => 
+const LazyAutoDeliveryDialog = lazyWithRetry(() => 
   import('./AutoDeliveryDialog').then(module => ({ default: module.AutoDeliveryDialog }))
 );
 
-const LazyEntregaLAMDialog = lazy(() =>
+const LazyEntregaLAMDialog = lazyWithRetry(() =>
   import('./EntregaLAMDialog').then(module => ({ default: module.EntregaLAMDialog }))
 );
 

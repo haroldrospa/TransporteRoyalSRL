@@ -22,7 +22,27 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+    console.error('Uncaught error in ErrorBoundary:', error, errorInfo);
+
+    const msg = error?.message || error?.toString() || '';
+    const isChunkError =
+      msg.includes('Failed to fetch dynamically imported module') ||
+      msg.includes('Expected a JavaScript-or-Wasm module script') ||
+      msg.includes('error loading dynamically imported module') ||
+      msg.includes('Importing a module script failed') ||
+      error?.name === 'ChunkLoadError';
+
+    if (isChunkError) {
+      console.warn('⚠️ Chunk load error detectado (nueva versión desplegada). Recargando automáticamente...');
+      const reloadKey = 'last_chunk_reload_ts';
+      const lastReload = sessionStorage.getItem(reloadKey);
+      const now = Date.now();
+      
+      if (!lastReload || now - parseInt(lastReload, 10) > 15000) {
+        sessionStorage.setItem(reloadKey, now.toString());
+        window.location.reload();
+      }
+    }
   }
 
   public render() {
