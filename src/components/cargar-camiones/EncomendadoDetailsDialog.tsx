@@ -18,9 +18,11 @@ import {
   Microscope,
   Search,
   XCircle,
-  Truck
+  Truck,
+  Clock
 } from 'lucide-react';
 import { Conduce } from '@/types/conduces';
+import { calculateTransitTime, getTransitTimeClasses } from '@/utils/time/transitTime';
 
 interface EncomendadoDetailsDialogProps {
   open: boolean;
@@ -405,6 +407,18 @@ const EncomendadoDetailsDialog = ({
                         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                           {conduce.ciudad && <span>📍 {conduce.ciudad}</span>}
                           {conduce.fechaCarga && <span>📅 Cargado: {conduce.fechaCarga}</span>}
+                          {(() => {
+                            const dateStr = conduce.fechaEntrega || conduce.fechaCarga;
+                            if (!dateStr) return null;
+                            const info = calculateTransitTime(dateStr, conduce.numeroCliente);
+                            const colorClass = getTransitTimeClasses(info.status);
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${colorClass}`} title="Tiempo transcurrido en tránsito">
+                                <Clock className="h-3 w-3 opacity-80" />
+                                <span>{info.displayText} en tránsito</span>
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
 

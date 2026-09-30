@@ -1,9 +1,10 @@
 import { Conduce } from '@/types/conduces';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Truck, AlertTriangle, Maximize, Minimize, FileText, CheckCircle2, Search } from 'lucide-react';
+import { Package, Truck, AlertTriangle, Maximize, Minimize, FileText, CheckCircle2, Search, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useMemo, useState } from 'react';
+import { calculateTransitTime, getTransitTimeClasses } from '@/utils/time/transitTime';
 
 interface MissingItemsDisplayProps {
   conduces: Conduce[];
@@ -125,6 +126,22 @@ const MissingItemsDisplay = ({
       return true;
     });
   }, [allPendingBultos, selectedTruck, searchTerm]);
+
+  const renderTransitBadge = (fechaEntrega?: string, fechaCarga?: string, numeroCliente?: string) => {
+    const dateStr = fechaEntrega || fechaCarga;
+    if (!dateStr) return null;
+    const info = calculateTransitTime(dateStr, numeroCliente);
+    const colorClasses = getTransitTimeClasses(info.status);
+    return (
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${colorClasses} shrink-0`}
+        title="Tiempo transcurrido en tránsito"
+      >
+        <Clock className="h-3 w-3 shrink-0 opacity-80" />
+        <span>{info.displayText}</span>
+      </span>
+    );
+  };
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
@@ -282,6 +299,7 @@ const MissingItemsDisplay = ({
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
+                              {renderTransitBadge(conduce.fechaEntrega, conduce.fechaCarga, conduce.numeroCliente)}
                               {conduce.fechaCarga && (
                                 <span className="text-slate-400 text-[11px] whitespace-nowrap hidden sm:inline">
                                   📅 {conduce.fechaCarga}
@@ -339,6 +357,7 @@ const MissingItemsDisplay = ({
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
+                              {renderTransitBadge(conduce.fechaEntrega, conduce.fechaCarga, conduce.numeroCliente)}
                               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300">
                                 {scannedBultos}/{totalBultos} <span className="text-rose-600 dark:text-rose-400 font-bold">• Falta {missingBultos}</span>
                               </span>
