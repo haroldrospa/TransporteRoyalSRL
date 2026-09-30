@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Package } from 'lucide-react';
+import { Package, Layers } from 'lucide-react';
 import { Conduce } from '@/types/conduces';
 
 interface LabBultosStatsProps {
@@ -17,83 +17,54 @@ const LabBultosStats = ({ conduces, loading = false }: LabBultosStatsProps) => {
     const taaBultos = sumBy('Taapharmaceutica');
     const innovBultos = sumBy('Innovacion Quimica');
     const krishparBultos = sumBy('Krishpar Care Dominicana') + sumBy('Krishpar care dominicana');
-    return { lamBultos, fersuazBultos, taaBultos, innovBultos, krishparBultos, total: lamBultos + fersuazBultos + taaBultos + innovBultos + krishparBultos };
+    const total = lamBultos + fersuazBultos + taaBultos + innovBultos + krishparBultos;
+    return { lamBultos, fersuazBultos, taaBultos, innovBultos, krishparBultos, total };
   }, [conduces]);
 
+  const labs = [
+    { name: 'LAM', count: stats.lamBultos, dotColor: 'bg-purple-500', textColor: 'text-purple-700 dark:text-purple-300', borderColor: 'border-purple-200/80 dark:border-purple-900/60' },
+    { name: 'Fersuaz', count: stats.fersuazBultos, dotColor: 'bg-teal-500', textColor: 'text-teal-700 dark:text-teal-300', borderColor: 'border-teal-200/80 dark:border-teal-900/60' },
+    { name: 'Taapharma', count: stats.taaBultos, dotColor: 'bg-amber-500', textColor: 'text-amber-700 dark:text-amber-300', borderColor: 'border-amber-200/80 dark:border-amber-900/60' },
+    { name: 'Innov. Química', count: stats.innovBultos, dotColor: 'bg-emerald-500', textColor: 'text-emerald-700 dark:text-emerald-300', borderColor: 'border-emerald-200/80 dark:border-emerald-900/60' },
+    { name: 'Krishpar', count: stats.krishparBultos, dotColor: 'bg-rose-500', textColor: 'text-rose-700 dark:text-rose-300', borderColor: 'border-rose-200/80 dark:border-rose-900/60' },
+  ];
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      {/* LAM */}
-      <div className="flex items-center gap-3 rounded-lg border bg-purple-50 p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-500 shrink-0">
-          <Package className="h-4 w-4 text-white" />
+    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2.5 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        {/* Título minimalista */}
+        <div className="flex items-center gap-2 px-2 py-1 text-slate-500 dark:text-slate-400">
+          <Package className="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0" />
+          <span className="text-xs font-semibold tracking-wide uppercase">En tránsito</span>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-muted-foreground font-medium truncate">LAM en tránsito</p>
-          {loading ? (
-            <div className="h-6 w-14 bg-purple-200/70 dark:bg-purple-900/50 animate-pulse rounded mt-1" />
-          ) : (
-            <p className="text-xl font-bold text-purple-700">{stats.lamBultos}</p>
-          )}
-        </div>
-      </div>
 
-      {/* Fersuaz */}
-      <div className="flex items-center gap-3 rounded-lg border bg-teal-50 p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-500 shrink-0">
-          <Package className="h-4 w-4 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-muted-foreground font-medium truncate">Fersuaz en tránsito</p>
-          {loading ? (
-            <div className="h-6 w-14 bg-teal-200/70 dark:bg-teal-900/50 animate-pulse rounded mt-1" />
-          ) : (
-            <p className="text-xl font-bold text-teal-700">{stats.fersuazBultos}</p>
-          )}
-        </div>
-      </div>
+        {/* Chips de laboratorios */}
+        <div className="flex flex-wrap items-center gap-2">
+          {labs.map(lab => (
+            <div
+              key={lab.name}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800/80 border ${lab.borderColor} text-xs transition-colors`}
+            >
+              <span className={`w-2 h-2 rounded-full ${lab.dotColor} shrink-0`} />
+              <span className="font-medium text-slate-600 dark:text-slate-300">{lab.name}:</span>
+              {loading ? (
+                <div className="h-4 w-6 bg-slate-200 dark:bg-slate-700 animate-pulse rounded-full" />
+              ) : (
+                <span className={`font-bold ${lab.textColor}`}>{lab.count}</span>
+              )}
+            </div>
+          ))}
 
-      {/* Taapharma */}
-      <div className="flex items-center gap-3 rounded-lg border bg-amber-50 p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 shrink-0">
-          <Package className="h-4 w-4 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-muted-foreground font-medium truncate">Taapharma en tránsito</p>
-          {loading ? (
-            <div className="h-6 w-14 bg-amber-200/70 dark:bg-amber-900/50 animate-pulse rounded mt-1" />
-          ) : (
-            <p className="text-xl font-bold text-amber-700">{stats.taaBultos}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Innov. Quimica */}
-      <div className="flex items-center gap-3 rounded-lg border bg-green-50 p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-500 shrink-0">
-          <Package className="h-4 w-4 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-muted-foreground font-medium truncate">Innov. Química en tránsito</p>
-          {loading ? (
-            <div className="h-6 w-14 bg-green-200/70 dark:bg-green-900/50 animate-pulse rounded mt-1" />
-          ) : (
-            <p className="text-xl font-bold text-green-700">{stats.innovBultos}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Krishpar */}
-      <div className="flex items-center gap-3 rounded-lg border bg-rose-50 p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-500 shrink-0">
-          <Package className="h-4 w-4 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-muted-foreground font-medium truncate">Krishpar en tránsito</p>
-          {loading ? (
-            <div className="h-6 w-14 bg-rose-200/70 dark:bg-rose-900/50 animate-pulse rounded mt-1" />
-          ) : (
-            <p className="text-xl font-bold text-rose-700">{stats.krishparBultos}</p>
-          )}
+          {/* Total Bultos */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs shadow-xs font-medium">
+            <Layers className="h-3.5 w-3.5 opacity-80" />
+            <span className="opacity-90">Total:</span>
+            {loading ? (
+              <div className="h-4 w-8 bg-slate-700 dark:bg-slate-300 animate-pulse rounded-full" />
+            ) : (
+              <span className="font-bold tracking-tight">{stats.total} bultos</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

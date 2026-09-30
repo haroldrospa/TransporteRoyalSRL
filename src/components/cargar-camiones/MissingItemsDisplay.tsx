@@ -1,6 +1,6 @@
 import { Conduce } from '@/types/conduces';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Truck, AlertTriangle, Maximize, Minimize, FileText } from 'lucide-react';
+import { Package, Truck, AlertTriangle, Maximize, Minimize, FileText, CheckCircle2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useMemo, useState } from 'react';
@@ -13,6 +13,8 @@ interface MissingItemsDisplayProps {
   loading?: boolean;
 }
 
+type FilterType = 'all' | 'conduces' | 'bultos';
+
 const MissingItemsDisplay = ({
   conduces,
   scannedConduces,
@@ -21,8 +23,11 @@ const MissingItemsDisplay = ({
   loading = false
 }: MissingItemsDisplayProps) => {
   const [isOpen, setIsOpen] = useState(true);
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [selectedTruck, setSelectedTruck] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Global scanned sets (do NOT depend on encomendado key; assignments can change)
+  // Global scanned sets
   const scannedConduceSet = useMemo(() => {
     return new Set(Object.values(scannedConduces).flat());
   }, [scannedConduces]);
@@ -41,213 +46,392 @@ const MissingItemsDisplay = ({
   }, [scannedBultoIds]);
 
   // Filter assigned conduces (those with an encomendado and status "En tránsito")
-  const assignedConduces = conduces.filter(c => c.encomendado && c.estado === 'En tránsito');
+  const assignedConduces = useMemo(() => {
+    return conduces.filter(c => c.encomendado && c.estado === 'En tránsito');
+  }, [conduces]);
 
-  // Group conduces by encomendado
-  const groupedByEncomendado: Record<string, Conduce[]> = {};
-  assignedConduces.forEach(conduce => {
-    const { encomendado } = conduce;
-    if (encomendado) {
-      if (!groupedByEncomendado[encomendado]) {
-        groupedByEncomendado[encomendado] = [];
+  // Group conduces by encomendado with pending calculations
+  const groupedData = useMemo(() => {
+    const groups: Record<string, {
+      encomendado: string;
+      items: Array<{
+        conduce: Conduce;
+        isConduceMissing: boolean;
+        scannedBultos: number;
+        totalBultos: number;
+        missingBultos: number;
+      }>;
+      missingConducesCount: number;
+      missingBultosCount: number;
+    }> = {};
+
+    assignedConduces.forEach(conduce => {
+      const truck = conduce.encomendado || 'Sin Asignar';
+      if (!groups[truck]) {
+        groups[truck] = {
+          encomendado: truck,
+          items: [],
+          missingConducesCount: 0,
+          missingBultosCount: 0
+        };
       }
-      groupedByEncomendado[encomendado].push(conduce);
-    }
-  });
 
-  // Find missing conduces and missing bultos for each encomendado
-  const missingItems: Record<string, {
-    missingConduces: Conduce[];
-    allPendingBultos: {
-      conduce: Conduce;
-      scanned: number;
-      total: number;
-    }[];
-  }> = {};
+      const isConduceMissing = !scannedConduceSet.has(conduce.numeroConduce);
+      const scannedCount = scannedBultosByConduce[conduce.numeroConduce] || 0;
+      const totalCount = conduce.cantidadBultos || 0;
+      const missingBultos = Math.max(0, totalCount - scannedCount);
 
-  Object.entries(groupedByEncomendado).forEach(([encomendado, conduces]) => {
-    const missingConduces = conduces.filter(c => !scannedConduceSet.has(c.numeroConduce));
+      if (isConduceMissing || missingBultos > 0) {
+        groups[truck].items.push({
+          conduce,
+          isConduceMissing,
+          scannedBultos: scannedCount,
+          totalBultos: totalCount,
+          missingBultos
+        });
 
-    // Verificar TODOS los conduces para ver si tienen bultos pendientes
-    const allConducesWithBultos = conduces.map(conduce => {
-      const scannedBultosForConduce = scannedBultosByConduce[conduce.numeroConduce] || 0;
-
-      return {
-        conduce,
-        scanned: scannedBultosForConduce,
-        total: conduce.cantidadBultos
-      };
+        if (isConduceMissing) {
+          groups[truck].missingConducesCount += 1;
+        }
+        groups[truck].missingBultosCount += missingBultos;
+      }
     });
-    
-    const allPendingBultos = allConducesWithBultos.filter(item => item.scanned < item.total);
-    
-    if (missingConduces.length > 0 || allPendingBultos.length > 0) {
-      missingItems[encomendado] = {
-        missingConduces,
-        allPendingBultos
-      };
-    }
-  });
-  
-  const hasMissingItems = Object.keys(missingItems).length > 0;
-  const hasMissingConduces = Object.values(missingItems).some(item => item.missingConduces.length > 0);
-  const hasMissingBultos = Object.values(missingItems).some(item => item.allPendingBultos.length > 0);
 
-  // Contar totales
-  const totalMissingConduces = Object.values(missingItems).reduce((acc, item) => acc + item.missingConduces.length, 0);
-  const totalMissingBultos = Object.values(missingItems).reduce((acc, item) => {
-    return acc + item.allPendingBultos.reduce((sum, b) => sum + (b.total - b.scanned), 0);
-  }, 0);
+    return groups;
+  }, [assignedConduces, scannedConduceSet, scannedBultosByConduce]);
+
+  // Totales generales
+  const { totalMissingConduces, totalMissingBultos, availableTrucks } = useMemo(() => {
+    let condCount = 0;
+    let bultCount = 0;
+    const trucks: Array<{ name: string; conducesCount: number; bultosCount: number }> = [];
+
+    Object.values(groupedData).forEach(group => {
+      if (group.items.length > 0) {
+        condCount += group.missingConducesCount;
+        bultCount += group.missingBultosCount;
+        trucks.push({
+          name: group.encomendado,
+          conducesCount: group.missingConducesCount,
+          bultosCount: group.missingBultosCount
+        });
+      }
+    });
+
+    return {
+      totalMissingConduces: condCount,
+      totalMissingBultos: bultCount,
+      availableTrucks: trucks
+    };
+  }, [groupedData]);
+
+  const hasMissingItems = totalMissingConduces > 0 || totalMissingBultos > 0;
+
+  // Filtrado final según chips y búsqueda
+  const filteredGroups = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+
+    return Object.values(groupedData)
+      .filter(group => selectedTruck === 'all' || group.encomendado === selectedTruck)
+      .map(group => {
+        const filteredItems = group.items.filter(item => {
+          // Filtro por tipo
+          if (filterType === 'conduces' && !item.isConduceMissing) return false;
+          if (filterType === 'bultos' && item.missingBultos <= 0) return false;
+
+          // Filtro por término de búsqueda
+          if (search) {
+            const matchNumber = item.conduce.numeroConduce?.toLowerCase().includes(search);
+            const matchClient = item.conduce.razonSocial?.toLowerCase().includes(search);
+            const matchLab = item.conduce.laboratorio?.toLowerCase().includes(search);
+            if (!matchNumber && !matchClient && !matchLab) return false;
+          }
+
+          return true;
+        });
+
+        return {
+          ...group,
+          items: filteredItems
+        };
+      })
+      .filter(group => group.items.length > 0);
+  }, [groupedData, selectedTruck, filterType, searchTerm]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
-      <Card className={`shadow-md ${!isOpen ? 'bg-gray-50' : 'bg-white'}`}>
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-xl flex items-center gap-2">
-            <AlertTriangle size={20} className="text-amber-500" />
-            <span>Items pendientes por escanear</span>
-          </CardTitle>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              {isOpen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-              <span className="sr-only">
-                {isOpen ? 'Minimizar panel' : 'Maximizar panel'}
-              </span>
-            </Button>
-          </CollapsibleTrigger>
+      <Card className="border border-slate-200/80 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
+        {/* Header Minimalista */}
+        <CardHeader className="p-4 sm:p-5 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Título e ícono sutil */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 text-amber-600 dark:text-amber-400 shrink-0">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  Items pendientes por escanear
+                </CardTitle>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+                  Control en tiempo real de conduces y bultos asignados en tránsito
+                </p>
+              </div>
+            </div>
+
+            {/* Badges de resumen en píldora y botón colapsar */}
+            <div className="flex items-center gap-2">
+              {hasMissingItems && (
+                <div className="hidden sm:flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60">
+                    <FileText className="h-3 w-3" />
+                    {totalMissingConduces} conduces
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
+                    <Package className="h-3 w-3" />
+                    {totalMissingBultos} bultos
+                  </span>
+                </div>
+              )}
+
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100">
+                  {isOpen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                  <span className="sr-only">{isOpen ? 'Minimizar' : 'Maximizar'}</span>
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          </div>
         </CardHeader>
+
+        {/* Contenido Desplegable */}
         <CollapsibleContent>
-          <CardContent>
+          <CardContent className="p-4 sm:p-5">
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
-                <div className="border rounded-lg p-4 bg-muted/20 animate-pulse space-y-3">
-                  <div className="h-5 bg-muted/60 rounded w-1/3" />
-                  <div className="h-10 bg-muted/40 rounded" />
-                  <div className="h-10 bg-muted/40 rounded" />
-                </div>
-                <div className="border rounded-lg p-4 bg-muted/20 animate-pulse space-y-3">
-                  <div className="h-5 bg-muted/60 rounded w-1/3" />
-                  <div className="h-10 bg-muted/40 rounded" />
-                  <div className="h-10 bg-muted/40 rounded" />
-                </div>
+              <div className="space-y-3 py-2">
+                <div className="h-8 w-64 bg-slate-100 dark:bg-slate-800 rounded-full animate-pulse" />
+                <div className="h-16 bg-slate-50 dark:bg-slate-800/50 rounded-xl animate-pulse" />
+                <div className="h-16 bg-slate-50 dark:bg-slate-800/50 rounded-xl animate-pulse" />
               </div>
             ) : !hasMissingItems ? (
-              <div className="flex items-center justify-center gap-2 text-green-600 py-6">
-                <Package className="h-6 w-6" />
-                <span className="text-lg font-medium">Todos los conduces y bultos han sido escaneados</span>
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+                <h4 className="text-base font-semibold text-slate-800 dark:text-slate-100">¡Todo al día!</h4>
+                <p className="text-sm text-slate-500 max-w-sm mt-1">
+                  Todos los conduces y bultos asignados en tránsito han sido verificados y escaneados correctamente.
+                </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Columna de Conduces Pendientes */}
-                <div className="border rounded-lg p-4 bg-blue-50/50">
-                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-blue-200">
-                    <FileText size={20} className="text-blue-600" />
-                    <h3 className="font-semibold text-blue-800">Conduces Pendientes</h3>
-                    <span className="ml-auto bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">
-                      {totalMissingConduces}
-                    </span>
+              <div className="space-y-4">
+                {/* Barra de Filtros Minimalistas (Píldoras) */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  {/* Chips por tipo */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFilterType('all')}
+                      className={`!inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        filterType === 'all'
+                          ? 'bg-slate-900 text-white shadow-xs dark:bg-slate-100 dark:text-slate-900'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      Todos
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                        filterType === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                      }`}>
+                        {totalMissingConduces + totalMissingBultos}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFilterType('conduces')}
+                      className={`!inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        filterType === 'conduces'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/50 hover:bg-blue-100'
+                      }`}
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Solo Conduces
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                        filterType === 'conduces' ? 'bg-white/20 text-white' : 'bg-blue-200/70 text-blue-800'
+                      }`}>
+                        {totalMissingConduces}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFilterType('bultos')}
+                      className={`!inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        filterType === 'bultos'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/50 hover:bg-amber-100'
+                      }`}
+                    >
+                      <Package className="h-3.5 w-3.5" />
+                      Solo Bultos
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                        filterType === 'bultos' ? 'bg-white/20 text-white' : 'bg-amber-200/70 text-amber-800'
+                      }`}>
+                        {totalMissingBultos}
+                      </span>
+                    </button>
                   </div>
-                  
-                  {!hasMissingConduces ? (
-                    <p className="text-center text-gray-500 py-4">
-                      ✓ Todos los conduces escaneados
-                    </p>
-                  ) : (
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                      {Object.entries(missingItems).map(([encomendado, { missingConduces }]) => 
-                        missingConduces.length > 0 && (
-                          <div key={`conduces-${encomendado}`} className="bg-white rounded-md p-3 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2 pb-1 border-b">
-                              <Truck size={16} className="text-blue-600" />
-                              <span className="font-medium text-sm">{encomendado}</span>
-                              <span className="ml-auto text-xs text-gray-500">{missingConduces.length} conduces</span>
-                            </div>
-                            <div className="space-y-1.5">
-                              {missingConduces.map(conduce => (
-                                <div key={conduce.id} className="flex items-center gap-2 bg-gray-50 p-2 rounded text-sm">
-                                  <span className="font-mono font-medium text-blue-700">{conduce.numeroConduce}</span>
-                                  <span className="text-gray-400">•</span>
-                                  <span className="text-gray-600 truncate flex-1">{conduce.razonSocial || 'Sin nombre'}</span>
-                                  {conduce.fechaCarga && (
-                                    <span className="text-[10px] text-gray-500 whitespace-nowrap">📅 {conduce.fechaCarga}</span>
-                                  )}
-                                  <span className="text-gray-500 text-xs">{conduce.cantidadBultos}B</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  )}
+
+                  {/* Búsqueda rápida */}
+                  <div className="relative min-w-[200px] flex-1 sm:flex-initial">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Buscar por conduce, cliente..."
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    />
+                  </div>
                 </div>
 
-                {/* Columna de Bultos Pendientes */}
-                <div className="border rounded-lg p-4 bg-amber-50/50">
-                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-amber-200">
-                    <Package size={20} className="text-amber-600" />
-                    <h3 className="font-semibold text-amber-800">Bultos Pendientes</h3>
-                    <span className="ml-auto bg-amber-600 text-white text-xs font-bold px-2 py-1 rounded-full">
-                      {totalMissingBultos}
-                    </span>
+                {/* Filtro por camión si hay más de 1 */}
+                {availableTrucks.length > 1 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-slate-400 font-medium mr-1">Camión:</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTruck('all')}
+                      className={`!inline-flex items-center px-2.5 py-1 rounded-full text-xs transition-colors ${
+                        selectedTruck === 'all'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      Todos ({availableTrucks.length})
+                    </button>
+                    {availableTrucks.map(truck => (
+                      <button
+                        key={truck.name}
+                        type="button"
+                        onClick={() => setSelectedTruck(truck.name)}
+                        className={`!inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-colors ${
+                          selectedTruck === truck.name
+                            ? 'bg-slate-800 text-white font-medium'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        <Truck className="h-3 w-3 opacity-70" />
+                        <span>{truck.name}</span>
+                        <span className="opacity-70 text-[10px]">({truck.conducesCount})</span>
+                      </button>
+                    ))}
                   </div>
-                  
-                  {!hasMissingBultos ? (
-                    <p className="text-center text-gray-500 py-4">
-                      ✓ Todos los bultos escaneados
-                    </p>
-                  ) : (
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                      {Object.entries(missingItems).map(([encomendado, { allPendingBultos }]) => 
-                        allPendingBultos.length > 0 && (
-                          <div key={`bultos-${encomendado}`} className="bg-white rounded-md p-3 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2 pb-1 border-b">
-                              <Truck size={16} className="text-amber-600" />
-                              <span className="font-medium text-sm">{encomendado}</span>
-                              <span className="ml-auto text-xs text-gray-500">
-                                {allPendingBultos.reduce((sum, b) => sum + (b.total - b.scanned), 0)} pendientes
-                              </span>
-                            </div>
-                            <div className="space-y-1.5">
-                              {allPendingBultos.map(({ conduce, scanned, total }) => (
-                                <div key={conduce.id} className="bg-gray-50 p-2 rounded text-sm">
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-mono font-medium text-amber-700">{conduce.numeroConduce}</span>
-                                    <span className="text-amber-600 font-medium">
-                                      {scanned}/{total}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between mt-1">
-                                    <span className="text-gray-600 text-xs truncate">{conduce.razonSocial || 'Sin nombre'}</span>
-                                    <span className="text-xs text-red-500 font-medium">
-                                      Faltan {total - scanned}
-                                    </span>
-                                  </div>
-                                  {conduce.fechaCarga && (
-                                    <p className="text-[10px] text-gray-500 mt-0.5">📅 Cargado: {conduce.fechaCarga}</p>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )
-                      )}
+                )}
+
+                {/* Listado limpio y espacioso de items agrupados por camión */}
+                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+                  {filteredGroups.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-slate-500">
+                      No se encontraron items pendientes que coincidan con el filtro.
                     </div>
+                  ) : (
+                    filteredGroups.map(group => (
+                      <div key={group.encomendado} className="border border-slate-200/70 dark:border-slate-800 rounded-xl bg-slate-50/40 dark:bg-slate-800/20 overflow-hidden">
+                        {/* Cabecera del camión */}
+                        <div className="px-3.5 py-2 bg-slate-100/70 dark:bg-slate-800/60 border-b border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-200">
+                            <Truck className="h-3.5 w-3.5 text-slate-500" />
+                            <span>{group.encomendado}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-slate-500">
+                            {group.missingConducesCount > 0 && (
+                              <span className="font-medium text-blue-600 dark:text-blue-400">
+                                {group.missingConducesCount} conduces pendientes
+                              </span>
+                            )}
+                            {group.missingBultosCount > 0 && (
+                              <span className="font-medium text-amber-600 dark:text-amber-400">
+                                • {group.missingBultosCount} bultos pendientes
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Filas de Conduces */}
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                          {group.items.map(({ conduce, isConduceMissing, scannedBultos, totalBultos, missingBultos }) => (
+                            <div
+                              key={conduce.id}
+                              className="px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors text-xs"
+                            >
+                              {/* Izquierda: Conduce, Laboratorio, Cliente */}
+                              <div className="flex items-center gap-2.5 flex-1 min-w-[240px]">
+                                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                                  {conduce.numeroConduce}
+                                </span>
+
+                                {conduce.laboratorio && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                    {conduce.laboratorio}
+                                  </span>
+                                )}
+
+                                <span className="text-slate-700 dark:text-slate-300 truncate max-w-[280px]">
+                                  {conduce.razonSocial || 'Sin nombre'}
+                                </span>
+
+                                {conduce.fechaCarga && (
+                                  <span className="text-slate-400 text-[11px] whitespace-nowrap hidden sm:inline">
+                                    📅 {conduce.fechaCarga}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Derecha: Píldoras de Estado */}
+                              <div className="flex items-center gap-2">
+                                {isConduceMissing && (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/80 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800">
+                                    <FileText className="h-3 w-3" />
+                                    Conduce pendiente
+                                  </span>
+                                )}
+
+                                {missingBultos > 0 ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
+                                    <Package className="h-3 w-3" />
+                                    <span>{scannedBultos}/{totalBultos} bultos</span>
+                                    <span className="text-rose-600 dark:text-rose-400 font-bold">• Falta {missingBultos}</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+                                    ✓ Bultos completos ({totalBultos})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
             )}
           </CardContent>
         </CollapsibleContent>
-        
+
         {/* Resumen cuando está colapsado */}
         {!isOpen && hasMissingItems && (
-          <div className="px-4 pb-3 flex gap-4">
-            <span className="text-sm text-blue-600 font-medium">
-              {totalMissingConduces} conduces pendientes
+          <div className="px-5 py-2.5 bg-slate-50/80 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3 text-xs">
+            <span className="text-slate-400 font-medium">Pendientes:</span>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">
+              {totalMissingConduces} conduces
             </span>
-            <span className="text-sm text-amber-600 font-medium">
-              {totalMissingBultos} bultos pendientes
+            <span className="text-slate-300">•</span>
+            <span className="font-semibold text-amber-600 dark:text-amber-400">
+              {totalMissingBultos} bultos
             </span>
           </div>
         )}
