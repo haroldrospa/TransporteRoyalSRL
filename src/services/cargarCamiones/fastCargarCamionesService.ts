@@ -157,43 +157,18 @@ export async function fetchCargarCamionesConduces(): Promise<Conduce[]> {
 }
 
 /**
- * Fetch verified shipments
+ * Fetch verified shipments (optimized: single fast query with latest 1,000 shipments)
  */
 export async function fetchVerifiedShipments(): Promise<VerifiedShipment[]> {
   console.log('🚀 [FastCargarCamiones] Fetching verified shipments...');
   const startTime = performance.now();
   
   try {
-    // Supabase tiene un límite por defecto de 1000, por lo que hay que usar paginación
-    // para obtener más registros
-    const allShipments: any[] = [];
-    const pageSize = 1000;
-    const maxRecords = 5000;
-    let currentPage = 0;
-    
-    while (allShipments.length < maxRecords) {
-      const from = currentPage * pageSize;
-      const to = from + pageSize - 1;
-      
-      const { data: pageData, error: pageError } = await supabase
-        .from('verified_shipments')
-        .select('*, conduces(ciudad, cantidad_bultos, region)')
-        .order('verified_at', { ascending: false })
-        .range(from, to);
-      
-      if (pageError) throw pageError;
-      
-      if (!pageData || pageData.length === 0) break;
-      
-      allShipments.push(...pageData);
-      currentPage++;
-      
-      // Si obtenemos menos de pageSize, ya no hay más datos
-      if (pageData.length < pageSize) break;
-    }
-    
-    const data = allShipments;
-    const error = null;
+    const { data, error } = await supabase
+      .from('verified_shipments')
+      .select('*, conduces(ciudad, cantidad_bultos, region)')
+      .order('verified_at', { ascending: false })
+      .limit(1000);
     
     if (error) throw error;
     

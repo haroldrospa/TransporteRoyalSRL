@@ -165,16 +165,40 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
     scannedBultosByConduceRef.current = bultosByConduce;
   }, []);
   
-  // Load initial data - with offline fallback
+  // Load initial data - with Cache-First / Stale-While-Revalidate strategy for instant loading
   const loadInitialData = useCallback(async () => {
     console.log('🔄 [useFastCargarCamiones] Loading initial data... Online:', isOnline);
-    setLoading(true);
     
+    // 1. Instant Cache-First: try to load local data immediately (0ms UI block)
+    let hasLoadedFromCache = false;
+    try {
+      const [offlineConduces, offlineShipments] = await Promise.all([
+        getConducesOffline(),
+        getShipmentsOffline()
+      ]);
+
+      if (offlineConduces && offlineConduces.length > 0) {
+        setConduces(offlineConduces);
+        setVerifiedShipments(offlineShipments || []);
+        processShipments(offlineShipments || []);
+        setLoading(false); // Unblock UI immediately!
+        hasLoadedFromCache = true;
+        console.log(`⚡ [useFastCargarCamiones] Instant load from cache: ${offlineConduces.length} conduces, ${offlineShipments?.length || 0} shipments`);
+      }
+    } catch (cacheError) {
+      console.warn('⚠️ Could not read offline cache:', cacheError);
+    }
+
+    if (!hasLoadedFromCache) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+
     try {
       if (isOnline) {
-        // Online: fetch fresh data
+        // Online: fetch fresh data from server
         console.log('🌐 Fetching fresh data from server...');
-        clearCargarCamionesCache();
         
         const [freshConduces, freshShipments] = await Promise.all([
           fetchCargarCamionesConduces(),
@@ -187,52 +211,52 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
         setVerifiedShipments(freshShipments);
         processShipments(freshShipments);
         
-        // Save to offline storage for future use
-        await Promise.all([
+        // Save to offline storage for future instant loads
+        Promise.all([
           saveConducesOffline(freshConduces),
           saveShipmentsOffline(freshShipments)
-        ]);
+        ]).catch(err => console.warn('Error saving offline cache:', err));
         
         // Sync any pending offline scans
         if (await hasOfflineData()) {
           syncOfflineData();
         }
       } else {
-        // Offline: load from IndexedDB
-        console.log('📴 Loading from offline storage...');
-        
-        const [offlineConduces, offlineShipments] = await Promise.all([
-          getConducesOffline(),
-          getShipmentsOffline()
-        ]);
-        
-        if (offlineConduces.length > 0) {
-          console.log(`✅ Offline data loaded: ${offlineConduces.length} conduces, ${offlineShipments.length} shipments`);
-          setConduces(offlineConduces);
-          setVerifiedShipments(offlineShipments);
-          processShipments(offlineShipments);
+        // Offline:
+        if (!hasLoadedFromCache) {
+          const [offlineConduces, offlineShipments] = await Promise.all([
+            getConducesOffline(),
+            getShipmentsOffline()
+          ]);
           
+          if (offlineConduces.length > 0) {
+            setConduces(offlineConduces);
+            setVerifiedShipments(offlineShipments);
+            processShipments(offlineShipments);
+            toast({
+              title: "Modo Offline",
+              description: `Usando ${offlineConduces.length} conduces guardados localmente`,
+            });
+          } else {
+            console.warn('⚠️ No offline data available');
+            toast({
+              title: "Sin conexión",
+              description: "No hay datos guardados para modo offline. Conecta a internet para cargar datos.",
+              variant: "destructive"
+            });
+          }
+        } else {
           toast({
             title: "Modo Offline",
-            description: `Usando ${offlineConduces.length} conduces guardados localmente`,
-          });
-        } else {
-          console.warn('⚠️ No offline data available');
-          toast({
-            title: "Sin conexión",
-            description: "No hay datos guardados para modo offline. Conecta a internet para cargar datos.",
-            variant: "destructive"
+            description: "Trabajando con datos guardados localmente.",
           });
         }
       }
-      
-      setLoading(false);
     } catch (error) {
-      console.error('❌ Error loading data:', error);
+      console.error('❌ Error fetching fresh data:', error);
       
-      // Try offline fallback even if online fetch fails
-      if (isOnline) {
-        console.log('🔄 Trying offline fallback...');
+      // If we didn't have cache, try offline fallback
+      if (!hasLoadedFromCache) {
         try {
           const [offlineConduces, offlineShipments] = await Promise.all([
             getConducesOffline(),
@@ -247,18 +271,25 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
               title: "Usando datos offline",
               description: "Error de conexión. Usando datos guardados localmente.",
             });
+          } else {
+            toast({
+              title: "Error",
+              description: "No se pudieron cargar los datos",
+              variant: "destructive"
+            });
           }
         } catch (offlineError) {
           console.error('❌ Offline fallback failed:', offlineError);
+          toast({
+            title: "Error",
+            description: "No se pudieron cargar los datos",
+            variant: "destructive"
+          });
         }
       }
-      
+    } finally {
       setLoading(false);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los datos",
-        variant: "destructive"
-      });
+      setRefreshing(false);
     }
   }, [isOnline, processShipments, syncOfflineData]);
   
