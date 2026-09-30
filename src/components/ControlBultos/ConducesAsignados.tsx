@@ -33,7 +33,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import ProcessingOverlay from '@/components/cargar-camiones/ProcessingOverlay';
-import { getRegionByTruck, getTruckWarehouse, getBaseTruck } from '@/utils/trucksByRegion';
+import { getRegionByTruck, getTruckWarehouse, getBaseTruck, isTruckWarehouse } from '@/utils/trucksByRegion';
 import { clearUltraCache } from '@/services/conduces/ultraFastFetchConduces';
 import { 
   ProgramacionSemanal, 
