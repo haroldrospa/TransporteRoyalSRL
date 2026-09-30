@@ -239,119 +239,82 @@ const EncomendadoDetailsDialog = ({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-          {/* Tarjetas de Laboratorios (Filtros interactivos limpios) */}
+          {/* Filtros de Laboratorios Minimalistas en Chips */}
           {labStats.length > 0 && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Laboratorios en esta ruta
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setLabFilter(null)}
+                className={`!inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border outline-none ${
+                  !labFilter
+                    ? 'bg-royal-blue text-white border-royal-blue shadow-xs'
+                    : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'
+                }`}
+              >
+                <span>Todos</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${!labFilter ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                  {truckConduces.length}
                 </span>
-                {labFilter && (
+              </button>
+
+              {labStats.map(lab => {
+                const Icon = lab.icon;
+                const isSelected = labFilter === lab.key;
+                const isLabComplete = 
+                  lab.scannedConducesCount === lab.totalConduces && 
+                  lab.scannedBultos === lab.totalBultos;
+
+                return (
                   <button
+                    key={lab.key}
                     type="button"
-                    onClick={() => setLabFilter(null)}
-                    className="text-xs text-royal-blue hover:underline font-medium"
+                    onClick={() => setLabFilter(isSelected ? null : lab.key)}
+                    className={`!inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs transition-all border outline-none ${
+                      isSelected
+                        ? 'bg-blue-50 text-royal-blue border-royal-blue ring-1 ring-royal-blue/30 font-bold'
+                        : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200 font-medium'
+                    }`}
                   >
-                    Mostrar todos
+                    <Icon className={`h-3.5 w-3.5 shrink-0 ${isSelected ? 'text-royal-blue' : 'text-slate-500'}`} />
+                    <span className="font-semibold">{lab.label}</span>
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      {lab.scannedConducesCount}/{lab.totalConduces} cond
+                    </span>
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      • {lab.scannedBultos}/{lab.totalBultos} bult
+                    </span>
+                    {isLabComplete && (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    )}
                   </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                {labStats.map(lab => {
-                  const Icon = lab.icon;
-                  const isSelected = labFilter === lab.key;
-                  const isLabComplete = 
-                    lab.scannedConducesCount === lab.totalConduces && 
-                    lab.scannedBultos === lab.totalBultos;
-
-                  return (
-                    <button
-                      key={lab.key}
-                      type="button"
-                      onClick={() => setLabFilter(isSelected ? null : lab.key)}
-                      className={`w-full text-left rounded-xl p-3 transition-all border outline-none ${
-                        isSelected
-                          ? 'bg-blue-50/80 border-royal-blue shadow-xs ring-2 ring-royal-blue/20'
-                          : 'bg-white hover:bg-slate-50/90 border-slate-200 hover:border-slate-300 shadow-xs'
-                      }`}
-                    >
-                      {/* Cabecera: Ícono + Nombre + Estado */}
-                      <div className="flex items-center justify-between gap-2 mb-2.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-royal-blue text-white' : 'bg-slate-100 text-slate-700'}`}>
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <span className="font-bold text-sm text-foreground truncate">
-                            {lab.label}
-                          </span>
-                        </div>
-
-                        {isLabComplete ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                            Listo
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 shrink-0">
-                            Pendiente
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Cajitas de estadísticas ordenadas */}
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-slate-50/80 rounded-lg p-2 border border-slate-100/90">
-                          <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Conduces</p>
-                          <p className={`font-bold text-sm mt-0.5 ${lab.scannedConducesCount === lab.totalConduces ? 'text-emerald-700' : 'text-foreground'}`}>
-                            {lab.scannedConducesCount} <span className="text-muted-foreground font-normal text-xs">/ {lab.totalConduces}</span>
-                          </p>
-                        </div>
-
-                        <div className="bg-slate-50/80 rounded-lg p-2 border border-slate-100/90">
-                          <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Bultos</p>
-                          <p className={`font-bold text-sm mt-0.5 ${lab.scannedBultos === lab.totalBultos ? 'text-emerald-700' : 'text-foreground'}`}>
-                            {lab.scannedBultos} <span className="text-muted-foreground font-normal text-xs">/ {lab.totalBultos}</span>
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                );
+              })}
             </div>
           )}
 
-          {/* Resumen Total General */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          {/* Resumen Total General Minimalista */}
+          <div className="flex flex-wrap items-center justify-between gap-2 py-2 px-3 bg-slate-50 border border-slate-200/90 rounded-lg text-xs">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-royal-blue shrink-0" />
-              <span className="font-bold text-xs sm:text-sm text-foreground">
-                Total General
+              <span className="font-bold text-foreground">Total:</span>
+              <span className="text-muted-foreground font-mono font-medium">
+                {grandScannedConduces}/{truckConduces.length} conduces ({conducesPercent}%)
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-muted-foreground font-mono font-medium">
+                {grandScannedBultos}/{grandTotalBultos} bultos ({bultosPercent}%)
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-              <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded border border-slate-200">
-                <span className="text-muted-foreground">Conduces:</span>
-                <span className="font-bold text-foreground">
-                  {grandScannedConduces} / {truckConduces.length}
-                </span>
-                <span className={`text-[10px] font-semibold px-1 rounded ${conducesPercent === 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}`}>
-                  {conducesPercent}%
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded border border-slate-200">
-                <span className="text-muted-foreground">Bultos:</span>
-                <span className="font-bold text-foreground">
-                  {grandScannedBultos} / {grandTotalBultos}
-                </span>
-                <span className={`text-[10px] font-semibold px-1 rounded ${bultosPercent === 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}`}>
-                  {bultosPercent}%
-                </span>
-              </div>
-            </div>
+            {conducesPercent === 100 && bultosPercent === 100 ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+                <CheckCircle2 className="h-3 w-3" /> Todo completado
+              </span>
+            ) : (
+              <span className="text-[11px] font-medium text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full">
+                {pendingCount} pendiente{pendingCount !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
 
           {/* Selector de pestañas + Buscador */}
