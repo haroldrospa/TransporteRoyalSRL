@@ -204,11 +204,6 @@ const ScanResultDisplay = ({
                    <p className={`text-3xl font-bold text-center ${encomendadoName.toLowerCase().includes('almacen') ? 'text-amber-800' : 'text-[#0A1D3F]'}`}>
                      {encomendadoName}
                    </p>
-                   {encomendadoName.toLowerCase().includes('almacen') && (
-                     <span className="inline-block mt-1 text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
-                       🏢 Ubicación: Almacén
-                     </span>
-                   )}
                 </div>
               )}
             </div>
@@ -297,11 +292,6 @@ const ScanResultDisplay = ({
                      <p className={`text-3xl font-bold text-center ${encomendadoName.toLowerCase().includes('almacen') ? 'text-amber-800' : 'text-[#0A1D3F]'}`}>
                        {encomendadoName}
                      </p>
-                     {encomendadoName.toLowerCase().includes('almacen') && (
-                       <span className="inline-block mt-1 text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
-                         🏢 Ubicación: Almacén
-                       </span>
-                     )}
                   </div>
                 )}
                 
