@@ -47,6 +47,7 @@ import {
 
 interface ConducesAsignadosProps {
   encomendadosList: string[];
+  conduces?: Conduce[];
   loading: boolean;
   getConducesByEncomendado: (encomendado: string) => Conduce[];
   clientes: any[];
@@ -56,6 +57,7 @@ interface ConducesAsignadosProps {
 
 const ConducesAsignados = ({
   encomendadosList,
+  conduces = [],
   loading,
   getConducesByEncomendado,
   clientes,
@@ -474,12 +476,15 @@ const ConducesAsignados = ({
                   ? getConducesByEncomendado('Almacen')
                   : getConducesByEncomendado(whName);
 
-                // For the general warehouse tab: also gather all specific warehouse conduces
+                // Para la pestaña general de almacén: recopilar TODOS los conduces que están en almacén
                 const allWarehouseConduces = isGeneralAlmacen
-                  ? encomendadosList
-                      .filter(t => t !== 'Almacen')
-                      .flatMap(t => getConducesByEncomendado(getTruckWarehouse(t)))
-                      .concat(whConduces)
+                  ? (conduces && conduces.length > 0
+                      ? conduces.filter(c => c.encomendado && (c.encomendado.toLowerCase().includes('almacen') || isTruckWarehouse(c.encomendado)))
+                      : encomendadosList
+                          .filter(t => t !== 'Almacen')
+                          .flatMap(t => getConducesByEncomendado(getTruckWarehouse(t)))
+                          .concat(whConduces)
+                    )
                   : [];
 
                 // Scheduled route today for this truck
@@ -497,9 +502,13 @@ const ConducesAsignados = ({
                   if (almacenTruckFilter === 'todos') {
                     baseConduces = allWarehouseConduces;
                   } else if (almacenTruckFilter === 'general') {
-                    baseConduces = whConduces;
+                    baseConduces = allWarehouseConduces.filter(c => (c.encomendado || '').trim().toLowerCase() === 'almacen');
                   } else {
-                    baseConduces = getConducesByEncomendado(almacenTruckFilter);
+                    const cleanFilter = almacenTruckFilter.trim().toUpperCase().replace(/[-_]/g, '');
+                    baseConduces = allWarehouseConduces.filter(c => {
+                      const cleanC = (c.encomendado || '').trim().toUpperCase().replace(/[-_]/g, '');
+                      return cleanC === cleanFilter;
+                    });
                   }
                 } else {
                   if (viewFilter === 'camion') baseConduces = camConduces;
@@ -628,13 +637,22 @@ const ConducesAsignados = ({
                               onChange={(e) => { setAlmacenTruckFilter(e.target.value); setSelectedInTab([]); }}
                             >
                               <option value="todos">Todos los almacenes ({allWarehouseConduces.length})</option>
-                              <option value="general">Almacén General ({whConduces.length})</option>
-                              {encomendadosList.filter(t => t !== 'Almacen').map(t => {
-                                const tWh = getTruckWarehouse(t);
-                                const count = getConducesByEncomendado(tWh).length;
+                              <option value="general">
+                                Almacén General ({allWarehouseConduces.filter(c => (c.encomendado || '').trim().toLowerCase() === 'almacen').length})
+                              </option>
+                              {Array.from(new Set([
+                                ...allWarehouseConduces.map(c => c.encomendado!).filter(Boolean),
+                                ...encomendadosList.filter(t => t !== 'Almacen').map(t => getTruckWarehouse(t))
+                              ])).filter(w => w.toLowerCase() !== 'almacen').sort().map(tWh => {
+                                const cleanTarget = tWh.trim().toUpperCase().replace(/[-_]/g, '');
+                                const count = allWarehouseConduces.filter(c => {
+                                  const cleanC = (c.encomendado || '').trim().toUpperCase().replace(/[-_]/g, '');
+                                  return cleanC === cleanTarget;
+                                }).length;
+                                const base = getBaseTruck(tWh);
                                 return (
                                   <option key={tWh} value={tWh}>
-                                    {tWh} - Almacén {t} ({count})
+                                    {tWh} - Almacén {base || tWh} ({count})
                                   </option>
                                 );
                               })}

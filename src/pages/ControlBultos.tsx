@@ -399,6 +399,7 @@ const ControlBultos = () => {
           
           <ConducesAsignados 
             encomendadosList={encomendadosList}
+            conduces={conducesWithRouteInfo}
             loading={loading || refreshing}
             getConducesByEncomendado={getConducesByEncomendado}
             clientes={clientes}

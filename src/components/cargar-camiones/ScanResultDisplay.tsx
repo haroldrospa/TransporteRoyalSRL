@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
-import { Package, CheckCircle2, Truck, AlertTriangle, XCircle, PackageX, Ban, User, Building2 } from 'lucide-react';
+import { Package, CheckCircle2, Truck, Warehouse, AlertTriangle, XCircle, PackageX, Ban, User, Building2 } from 'lucide-react';
 import { Conduce } from '@/types/conduces';
 import { isVisitador } from '@/components/clientes/utils/clienteTypeUtils';
 
@@ -196,8 +196,19 @@ const ScanResultDisplay = ({
                <p className="text-2xl text-[#0A1D3F] font-bold mb-3">{scanValue}</p>
               {encomendadoName && (
                  <div className="mb-3">
-                   <Truck className="h-10 w-10 mx-auto mb-1 text-[#0A1D3F]" />
-                   <p className="text-3xl font-bold text-center text-[#0A1D3F]">{encomendadoName}</p>
+                   {encomendadoName.toLowerCase().includes('almacen') ? (
+                     <Warehouse className="h-10 w-10 mx-auto mb-1 text-amber-600" />
+                   ) : (
+                     <Truck className="h-10 w-10 mx-auto mb-1 text-[#0A1D3F]" />
+                   )}
+                   <p className={`text-3xl font-bold text-center ${encomendadoName.toLowerCase().includes('almacen') ? 'text-amber-800' : 'text-[#0A1D3F]'}`}>
+                     {encomendadoName}
+                   </p>
+                   {encomendadoName.toLowerCase().includes('almacen') && (
+                     <span className="inline-block mt-1 text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                       🏢 Ubicación: Almacén
+                     </span>
+                   )}
                 </div>
               )}
             </div>
@@ -278,10 +289,19 @@ const ScanResultDisplay = ({
                 {/* Encomendado (only show if has value) */}
                 {encomendadoName && !displayUnassigned && (
                    <div className="mb-3">
-                     <Truck className="h-10 w-10 mx-auto mb-1 text-[#0A1D3F]" />
-                     <p className="text-3xl font-bold text-center text-[#0A1D3F]">
+                     {encomendadoName.toLowerCase().includes('almacen') ? (
+                       <Warehouse className="h-10 w-10 mx-auto mb-1 text-amber-600" />
+                     ) : (
+                       <Truck className="h-10 w-10 mx-auto mb-1 text-[#0A1D3F]" />
+                     )}
+                     <p className={`text-3xl font-bold text-center ${encomendadoName.toLowerCase().includes('almacen') ? 'text-amber-800' : 'text-[#0A1D3F]'}`}>
                        {encomendadoName}
                      </p>
+                     {encomendadoName.toLowerCase().includes('almacen') && (
+                       <span className="inline-block mt-1 text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                         🏢 Ubicación: Almacén
+                       </span>
+                     )}
                   </div>
                 )}
                 

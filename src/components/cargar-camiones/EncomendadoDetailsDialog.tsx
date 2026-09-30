@@ -32,15 +32,21 @@ const EncomendadoDetailsDialog = ({
 
   if (!encomendado) return null;
 
-  // Filtrar conduces para este encomendado
-  const truckConduces = assignedConduces.filter(
-    c => c.encomendado === encomendado
-  );
+  const cleanTarget = (encomendado || '').trim().toUpperCase().replace(/[-_]/g, '');
 
-  // Obtener shipments verificados para este camión
-  const truckShipments = verifiedShipments.filter(
-    s => s.encomendado === encomendado
-  );
+  // Filtrar conduces para este encomendado (insensible a guiones y mayúsculas)
+  const truckConduces = assignedConduces.filter(c => {
+    if (!c.encomendado) return false;
+    const cleanC = c.encomendado.trim().toUpperCase().replace(/[-_]/g, '');
+    return cleanC === cleanTarget;
+  });
+
+  // Obtener shipments verificados para este camión/almacén
+  const truckShipments = verifiedShipments.filter(s => {
+    if (!s.encomendado) return false;
+    const cleanS = s.encomendado.trim().toUpperCase().replace(/[-_]/g, '');
+    return cleanS === cleanTarget;
+  });
 
   // Obtener conduces escaneados y bultos escaneados por separado
   const scannedConduceNumbers = truckShipments

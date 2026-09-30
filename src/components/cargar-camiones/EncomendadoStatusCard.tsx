@@ -1,5 +1,5 @@
 
-import { Package, Truck, FileText, Users, AlertTriangle } from 'lucide-react';
+import { Package, Truck, Warehouse, FileText, Users, AlertTriangle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Conduce } from '@/types/conduces';
@@ -24,19 +24,33 @@ const EncomendadoStatusCard = ({ encomendado, stats, onClick }: EncomendadoStatu
   const conduceProgress = stats.conduces > 0 ? (stats.scannedConduces / stats.conduces) * 100 : 0;
   const bultoProgress = stats.bultos > 0 ? (stats.scannedBultos / stats.bultos) * 100 : 0;
   const hasPriority = (stats.priorityConduces || 0) > 0;
+  const isWh = encomendado.toLowerCase().includes('almacen');
   
   return (
     <div 
-      className="relative overflow-hidden rounded-lg shadow-md transition-all hover:shadow-lg cursor-pointer border-l-4 border-l-green-500"
+      className={`relative overflow-hidden rounded-lg shadow-md transition-all hover:shadow-lg cursor-pointer border-l-4 ${
+        isWh ? 'border-l-amber-500' : 'border-l-green-500'
+      }`}
       onClick={onClick}
     >
-      <div className={`p-5 ${isComplete ? 'bg-green-50' : inProgress ? 'bg-blue-50' : 'bg-gray-50'}`}>
+      <div className={`p-5 ${isComplete ? 'bg-green-50' : inProgress ? 'bg-blue-50' : isWh ? 'bg-amber-50/30' : 'bg-gray-50'}`}>
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-full ${isComplete ? 'bg-green-100' : 'bg-blue-100'}`}>
-              <Truck className={`h-6 w-6 ${isComplete ? 'text-green-600' : 'text-blue-600'}`} />
+            <div className={`p-2 rounded-full ${isComplete ? 'bg-green-100' : isWh ? 'bg-amber-100' : 'bg-blue-100'}`}>
+              {isWh ? (
+                <Warehouse className={`h-6 w-6 ${isComplete ? 'text-green-600' : 'text-amber-600'}`} />
+              ) : (
+                <Truck className={`h-6 w-6 ${isComplete ? 'text-green-600' : 'text-blue-600'}`} />
+              )}
             </div>
-            <h3 className="text-xl font-bold">{encomendado}</h3>
+            <div>
+              <h3 className="text-xl font-bold flex items-center gap-1.5">{encomendado}</h3>
+              {isWh && (
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded uppercase">
+                  Almacén
+                </span>
+              )}
+            </div>
           </div>
           
           <div className="flex gap-2">

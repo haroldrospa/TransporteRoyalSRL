@@ -1,7 +1,7 @@
 
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTrucksByRegion } from '@/utils/trucksByRegion';
+import { getTrucksByRegion, getBaseTruck } from '@/utils/trucksByRegion';
 import EncomendadoStatusCard from './EncomendadoStatusCard';
 
 interface EncomendadoStatusGridProps {
@@ -29,16 +29,23 @@ const EncomendadoStatusGrid = ({ encomendadoStats, onEncomendadoClick }: Encomen
     validTrucks = validTrucks.filter(truck => truck !== 'Almacen');
   }
   
-  // Crear estadísticas filtradas, excluyendo los camiones no válidos y los que tienen 0 conduces y 0 bultos
+  // Crear estadísticas filtradas, incluyendo camiones válidos y cualquier almacén activo para la región
   const filteredStats: typeof encomendadoStats = {};
   
   Object.entries(encomendadoStats).forEach(([truck, stats]) => {
-    if (validTrucks.includes(truck) && (stats.conduces > 0 || stats.bultos > 0)) {
+    const isWh = truck.toLowerCase().includes('almacen');
+    const base = getBaseTruck(truck);
+    
+    // Es válido si es un camión de la región, o un almacén asociado a un camión de la región, o si la región es 'Todas'
+    const isAllowedForRegion = validTrucks.includes(truck) || 
+      (isWh && user?.puesto !== 'LAM' && (validTrucks.includes(base) || !base || regionActual === 'Todas'));
+
+    if (isAllowedForRegion && (stats.conduces > 0 || stats.bultos > 0)) {
       filteredStats[truck] = stats;
     }
   });
   
-  // Solo agregar camiones válidos que tienen conduces o bultos asignados
+  // Agregar camiones válidos configurados que tengan actividad
   validTrucks.forEach(truck => {
     if (!filteredStats[truck] && encomendadoStats[truck]) {
       const stats = encomendadoStats[truck];
