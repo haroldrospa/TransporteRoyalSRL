@@ -41,27 +41,27 @@ const EncomendadoDetailsDialog = ({
   const [labFilter, setLabFilter] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  if (!encomendado) return null;
-
   const cleanTarget = (encomendado || '').trim().toUpperCase().replace(/[-_]/g, '');
 
   // Filtrar conduces para este encomendado (insensible a guiones y mayúsculas)
   const truckConduces = useMemo(() => {
+    if (!encomendado) return [];
     return assignedConduces.filter(c => {
       if (!c.encomendado) return false;
       const cleanC = c.encomendado.trim().toUpperCase().replace(/[-_]/g, '');
       return cleanC === cleanTarget;
     });
-  }, [assignedConduces, cleanTarget]);
+  }, [assignedConduces, cleanTarget, encomendado]);
 
   // Obtener shipments verificados para este camión/almacén
   const truckShipments = useMemo(() => {
+    if (!encomendado) return [];
     return verifiedShipments.filter(s => {
       if (!s.encomendado) return false;
       const cleanS = s.encomendado.trim().toUpperCase().replace(/[-_]/g, '');
       return cleanS === cleanTarget;
     });
-  }, [verifiedShipments, cleanTarget]);
+  }, [verifiedShipments, cleanTarget, encomendado]);
 
   // Obtener conduces escaneados y bultos escaneados por separado
   const { scannedConduceNumbers, scannedBultosByConduce } = useMemo(() => {
@@ -205,6 +205,8 @@ const EncomendadoDetailsDialog = ({
   const bultosPercent = grandTotalBultos > 0 
     ? Math.round((grandScannedBultos / grandTotalBultos) * 100) 
     : 0;
+
+  if (!open || !encomendado) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
