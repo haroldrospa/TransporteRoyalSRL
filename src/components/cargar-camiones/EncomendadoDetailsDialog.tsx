@@ -257,7 +257,7 @@ const EncomendadoDetailsDialog = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                 {labStats.map(lab => {
                   const Icon = lab.icon;
                   const isSelected = labFilter === lab.key;
@@ -270,36 +270,49 @@ const EncomendadoDetailsDialog = ({
                       key={lab.key}
                       type="button"
                       onClick={() => setLabFilter(isSelected ? null : lab.key)}
-                      className={`text-left rounded-lg p-2.5 transition-all border ${
+                      className={`w-full text-left rounded-xl p-3 transition-all border outline-none ${
                         isSelected
-                          ? 'bg-blue-50/80 border-royal-blue shadow-sm ring-1 ring-royal-blue/30'
-                          : 'bg-white hover:bg-slate-50 border-slate-200 shadow-xs'
+                          ? 'bg-blue-50/80 border-royal-blue shadow-xs ring-2 ring-royal-blue/20'
+                          : 'bg-white hover:bg-slate-50/90 border-slate-200 hover:border-slate-300 shadow-xs'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Icon className={`h-4 w-4 shrink-0 ${isSelected ? 'text-royal-blue' : 'text-slate-600'}`} />
-                          <span className="font-bold text-xs truncate text-foreground">
+                      {/* Cabecera: Ícono + Nombre + Estado */}
+                      <div className="flex items-center justify-between gap-2 mb-2.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-royal-blue text-white' : 'bg-slate-100 text-slate-700'}`}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <span className="font-bold text-sm text-foreground truncate">
                             {lab.label}
                           </span>
                         </div>
+
                         {isLabComplete ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                        ) : null}
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                            Listo
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 shrink-0">
+                            Pendiente
+                          </span>
+                        )}
                       </div>
 
-                      <div className="space-y-0.5 text-[11px]">
-                        <div className="flex justify-between items-center text-muted-foreground">
-                          <span>Conduces:</span>
-                          <span className={`font-semibold ${lab.scannedConducesCount === lab.totalConduces ? 'text-emerald-700' : 'text-foreground'}`}>
-                            {lab.scannedConducesCount}/{lab.totalConduces}
-                          </span>
+                      {/* Cajitas de estadísticas ordenadas */}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-slate-50/80 rounded-lg p-2 border border-slate-100/90">
+                          <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Conduces</p>
+                          <p className={`font-bold text-sm mt-0.5 ${lab.scannedConducesCount === lab.totalConduces ? 'text-emerald-700' : 'text-foreground'}`}>
+                            {lab.scannedConducesCount} <span className="text-muted-foreground font-normal text-xs">/ {lab.totalConduces}</span>
+                          </p>
                         </div>
-                        <div className="flex justify-between items-center text-muted-foreground">
-                          <span>Bultos:</span>
-                          <span className={`font-semibold ${lab.scannedBultos === lab.totalBultos ? 'text-emerald-700' : 'text-foreground'}`}>
-                            {lab.scannedBultos}/{lab.totalBultos}
-                          </span>
+
+                        <div className="bg-slate-50/80 rounded-lg p-2 border border-slate-100/90">
+                          <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Bultos</p>
+                          <p className={`font-bold text-sm mt-0.5 ${lab.scannedBultos === lab.totalBultos ? 'text-emerald-700' : 'text-foreground'}`}>
+                            {lab.scannedBultos} <span className="text-muted-foreground font-normal text-xs">/ {lab.totalBultos}</span>
+                          </p>
                         </div>
                       </div>
                     </button>
