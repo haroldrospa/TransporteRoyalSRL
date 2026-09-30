@@ -25,8 +25,8 @@ const ConducesTable = ({ conduces, selectedConduces, toggleSelection, setSelecte
   const clientesRncMap = useMemo(() => {
     const map = new Map<string, string>();
     clientes?.forEach(cliente => {
-      if (cliente.rnc) {
-        map.set(cliente.numeroCliente, cliente.rnc);
+      if (cliente.rnc && cliente.numeroCliente) {
+        map.set(String(cliente.numeroCliente).trim(), String(cliente.rnc).trim());
       }
     });
     return map;
@@ -36,19 +36,25 @@ const ConducesTable = ({ conduces, selectedConduces, toggleSelection, setSelecte
   const clienteGrupoMap = useMemo(() => {
     const map = new Map<string, string>();
     clientes?.forEach(cliente => {
-      if (cliente.grupo_cliente) {
-        map.set(cliente.numeroCliente, cliente.grupo_cliente);
+      if (cliente.grupo_cliente && cliente.numeroCliente) {
+        map.set(String(cliente.numeroCliente).trim(), String(cliente.grupo_cliente).trim());
       }
     });
     return map;
   }, [clientes]);
 
-  // Create a map of numeroCliente -> encomendado para el predeterminado
+  // Create a map of numeroCliente and razonSocial -> encomendado para el predeterminado
   const clienteEncomendadoMap = useMemo(() => {
     const map = new Map<string, string>();
     clientes?.forEach(cliente => {
-      if (cliente.encomendado) {
-        map.set(cliente.numeroCliente, cliente.encomendado);
+      if (cliente.encomendado && cliente.encomendado.trim()) {
+        const enc = cliente.encomendado.trim();
+        if (cliente.numeroCliente) {
+          map.set(String(cliente.numeroCliente).trim(), enc);
+        }
+        if (cliente.razonSocial) {
+          map.set(`name:${cliente.razonSocial.trim().toLowerCase()}`, enc);
+        }
       }
     });
     return map;
@@ -58,8 +64,8 @@ const ConducesTable = ({ conduces, selectedConduces, toggleSelection, setSelecte
   const clienteRazonSocialMap = useMemo(() => {
     const map = new Map<string, string>();
     clientes?.forEach(cliente => {
-      if (cliente.razonSocial) {
-        map.set(cliente.numeroCliente, cliente.razonSocial);
+      if (cliente.razonSocial && cliente.numeroCliente) {
+        map.set(String(cliente.numeroCliente).trim(), cliente.razonSocial.trim());
       }
     });
     return map;
@@ -128,8 +134,8 @@ const ConducesTable = ({ conduces, selectedConduces, toggleSelection, setSelecte
   }
 
   return (
-    <div className="border rounded-md">
-      <Table>
+    <div className="border rounded-md overflow-x-auto w-full">
+      <Table className="min-w-full">
         <ConducesTableHeader 
           selectedConduces={selectedConduces}
           totalConduces={conduces.length}

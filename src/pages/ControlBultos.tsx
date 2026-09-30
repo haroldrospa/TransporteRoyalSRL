@@ -32,7 +32,7 @@ import { fetchPendingConduces, approvePendingBatch, rejectPendingBatch } from '@
 
 const ControlBultos = () => {
   // Use general context for clientes and assignment operations
-  const { clientes, asignarEncomendado } = useData();
+  const { clientes, asignarEncomendado, loadClientesByNumeros } = useData();
   const { user } = useAuth();
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   
@@ -51,6 +51,16 @@ const ControlBultos = () => {
   } = useFastControlBultos(regionActual);
   
   const [selectedConduces, setSelectedConduces] = useState<string[]>([]);
+  
+  // Immediate fast sync of client predeterminados for all visible conduces
+  useEffect(() => {
+    if (conduces.length > 0 && loadClientesByNumeros) {
+      const activeNums = Array.from(new Set(conduces.map(c => c.numeroCliente).filter(Boolean))) as string[];
+      if (activeNums.length > 0) {
+        loadClientesByNumeros(activeNums);
+      }
+    }
+  }, [conduces, loadClientesByNumeros]);
   
   // Pending approvals states
   const [pendingConduces, setPendingConduces] = useState<Conduce[]>([]);

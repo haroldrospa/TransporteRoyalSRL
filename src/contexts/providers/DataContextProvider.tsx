@@ -19,7 +19,10 @@ import { getTrucksByRegion, getRegionByTruck } from '@/utils/trucksByRegion';
 export const DataProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [conduces, setConduces] = useState<Conduce[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>(() => {
+    const cached = clienteService.getCachedClientes();
+    return cached && cached.length > 0 ? cached : [];
+  });
   
   const clientesRef = useRef<Cliente[]>(clientes);
   useEffect(() => {
@@ -210,11 +213,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   const loadClientesByNumeros = useCallback(async (numeros: string[]) => {
     if (!numeros || numeros.length === 0) return;
-    const uniqueNums = Array.from(new Set(numeros.filter(Boolean)));
+    const uniqueNums = Array.from(new Set(numeros.filter(Boolean).map(n => String(n).trim())));
     if (uniqueNums.length === 0) return;
 
-    const existingNums = new Set(clientesRef.current.map(c => c.numeroCliente));
-    const missingNums = uniqueNums.filter(num => !existingNums.has(num));
+    // Check which ones either don't exist OR exist but have missing encomendado/ruta
+    const existingMap = new Map(clientesRef.current.map(c => [String(c.numeroCliente).trim(), c]));
+    const missingNums = uniqueNums.filter(num => {
+      const existing = existingMap.get(num);
+      return !existing || !existing.encomendado;
+    });
     
     if (missingNums.length === 0) return;
     
@@ -245,15 +252,54 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         }));
         
         setClientes(prev => {
-          const currentNums = new Set(prev.map(c => c.numeroCliente));
-          const newClients = mapped.filter(c => !currentNums.has(c.numeroCliente));
-          if (newClients.length === 0) return prev;
-          console.log(`✅ [DataProvider] Agregados ${newClients.length} clientes a la caché global`);
-          return [...prev, ...newClients];
+          const map = new Map(prev.map(c => [String(c.numeroCliente).trim(), c]));
+          mapped.forEach(c => {
+            map.set(String(c.numeroCliente).trim(), c);
+          });
+          const updated = Array.from(map.values());
+          clienteService.saveClientesToCache(updated);
+          return updated;
         });
       }
     } catch (err) {
       console.error('Exception in loadClientesByNumeros:', err);
+    }
+  }, []);
+
+  const updateClienteEncomendado = useCallback(async (numeroClientes: string[], encomendado: string | null) => {
+    if (!numeroClientes || numeroClientes.length === 0) return;
+    const validNumbers = numeroClientes.filter(n => n && !n.startsWith('__sin_asignar__'));
+    if (validNumbers.length === 0) return;
+
+    const cleanEnc = (encomendado || '').trim() || null;
+    const numSet = new Set(validNumbers.map(n => String(n).trim()));
+
+    console.log(`🚚 [DataProvider] Asignando predeterminado "${cleanEnc}" a ${validNumbers.length} clientes`);
+
+    // 1. Inmediatamente actualizar estado React en memoria
+    setClientes(prev => {
+      const updated = prev.map(c => {
+        if (numSet.has(String(c.numeroCliente).trim())) {
+          return { ...c, encomendado: cleanEnc };
+        }
+        return c;
+      });
+      clienteService.saveClientesToCache(updated);
+      return updated;
+    });
+
+    // 2. Inmediatamente guardar en caché de localStorage
+    clienteService.updateClienteInCache(validNumbers, cleanEnc);
+
+    // 3. Persistir en la base de datos Supabase
+    const { error } = await supabase
+      .from('clientes')
+      .update({ encomendado: cleanEnc })
+      .in('numero_cliente', validNumbers);
+
+    if (error) {
+      console.error('Error actualizando encomendado en Supabase:', error);
+      throw error;
     }
   }, []);
 
@@ -281,7 +327,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       devolverConduce,
       refreshData,
       importMockData,
-      loadClientesByNumeros
+      loadClientesByNumeros,
+      updateClienteEncomendado
     };
   }, [
     conduces, 
@@ -303,7 +350,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     devolverConduce,
     refreshData,
     importMockData,
-    loadClientesByNumeros
+    loadClientesByNumeros,
+    updateClienteEncomendado
   ]);
 
   // Suscripción en tiempo real DESACTIVADA para evitar recargas masivas de 25k+ registros

@@ -3,8 +3,63 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { mapDbClienteToCliente } from '@/utils/mappers/clienteMappers';
 
+const CLIENTES_CACHE_KEY = 'clientes-data-cache-v2';
+const CLIENTES_CACHE_TIMESTAMP = 'clientes-data-cache-timestamp-v2';
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutos
+
 // Constants for pagination
 const PAGE_SIZE = 1000;
+
+/**
+ * Get cached clientes from localStorage if available
+ */
+export function getCachedClientes(): Cliente[] | null {
+  try {
+    const cached = localStorage.getItem(CLIENTES_CACHE_KEY);
+    const ts = localStorage.getItem(CLIENTES_CACHE_TIMESTAMP);
+    if (!cached || !ts) return null;
+    const data = JSON.parse(cached);
+    if (Array.isArray(data) && data.length > 0) {
+      return data;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Save clientes to localStorage cache
+ */
+export function saveClientesToCache(clientes: Cliente[]) {
+  try {
+    if (!clientes || clientes.length === 0) return;
+    localStorage.setItem(CLIENTES_CACHE_KEY, JSON.stringify(clientes));
+    localStorage.setItem(CLIENTES_CACHE_TIMESTAMP, Date.now().toString());
+  } catch (e) {
+    console.warn('⚠️ [fetchClientes] No se pudo guardar clientes en localStorage:', e);
+  }
+}
+
+/**
+ * Update client's encomendado in the localStorage cache immediately
+ */
+export function updateClienteInCache(numeroClientes: string[], encomendado: string | null) {
+  try {
+    const cached = getCachedClientes();
+    if (!cached) return;
+    const cleanNums = new Set(numeroClientes.map(n => String(n).trim()));
+    const updated = cached.map(c => {
+      if (cleanNums.has(String(c.numeroCliente).trim())) {
+        return { ...c, encomendado: encomendado || null };
+      }
+      return c;
+    });
+    saveClientesToCache(updated);
+  } catch (e) {
+    console.warn('⚠️ [fetchClientes] Error actualizando cache de cliente:', e);
+  }
+}
 
 export async function fetchClientes(): Promise<Cliente[]> {
   try {
@@ -17,7 +72,7 @@ export async function fetchClientes(): Promise<Cliente[]> {
     
     if (count === null) {
       console.error('Error getting client count');
-      return [];
+      return getCachedClientes() || [];
     }
     
     console.log(`Total clients in database: ${count}`);
@@ -58,11 +113,20 @@ export async function fetchClientes(): Promise<Cliente[]> {
     
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    console.log(`Successfully fetched ${allClientes.length} clients out of ${count} total in ${duration}ms`);
+    console.log(`Successfully fetched ${allClientes.length} clients out of ${count} total in ${duration}s`);
+    
+    if (allClientes.length > 0) {
+      saveClientesToCache(allClientes);
+    }
     
     return allClientes;
   } catch (error) {
     console.error('Error fetching clientes:', error);
+    const cached = getCachedClientes();
+    if (cached && cached.length > 0) {
+      console.log(`✅ [fetchClientes] Usando ${cached.length} clientes desde caché tras error`);
+      return cached;
+    }
     toast({
       title: "Error",
       description: "No se pudieron cargar los clientes",

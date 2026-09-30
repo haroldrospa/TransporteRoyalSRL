@@ -24,4 +24,6 @@ export interface DataContextType {
   refreshData: (force?: boolean) => Promise<void>;
   importMockData: () => Promise<void>;
   loadClientesByNumeros?: (numeros: string[]) => Promise<void>;
+  updateClienteEncomendado?: (numeroClientes: string[], encomendado: string | null) => Promise<void>;
 }
+

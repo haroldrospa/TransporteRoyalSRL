@@ -14,6 +14,8 @@ import { CAMIONES_DEFECTO } from '@/services/rutasProgramacionService';
 import { supabase } from '@/integrations/supabase/client';
 import { getTruckWarehouse, isTruckWarehouse } from '@/utils/trucksByRegion';
 
+import { useData } from '@/contexts/DataContext';
+
 interface EncomendadoPredeterminadoSelectorProps {
   numeroClientes: string[];
   clienteNombre?: string;
@@ -29,13 +31,16 @@ export const EncomendadoPredeterminadoSelector: React.FC<EncomendadoPredetermina
   onUpdated,
   disabled = false
 }) => {
+  const { updateClienteEncomendado } = useData();
   const [selectedTruck, setSelectedTruck] = useState<string>(currentPredeterminado || '');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    setSelectedTruck(currentPredeterminado || '');
-  }, [currentPredeterminado]);
+    if (!isUpdating && currentPredeterminado !== undefined) {
+      setSelectedTruck(currentPredeterminado || '');
+    }
+  }, [currentPredeterminado, isUpdating]);
 
   const cleanCurrent = (selectedTruck || '').trim();
   const isAssigned = cleanCurrent !== '';
@@ -47,6 +52,7 @@ export const EncomendadoPredeterminadoSelector: React.FC<EncomendadoPredetermina
 
     setIsUpdating(true);
     setIsOpen(false);
+    setSelectedTruck(cleanNew); // Optimistic UI update immediately
 
     try {
       const validNumbers = numeroClientes.filter(
@@ -54,15 +60,17 @@ export const EncomendadoPredeterminadoSelector: React.FC<EncomendadoPredetermina
       );
 
       if (validNumbers.length > 0) {
-        const { error } = await supabase
-          .from('clientes')
-          .update({ encomendado: cleanNew || null })
-          .in('numero_cliente', validNumbers);
+        if (updateClienteEncomendado) {
+          await updateClienteEncomendado(validNumbers, cleanNew || null);
+        } else {
+          const { error } = await supabase
+            .from('clientes')
+            .update({ encomendado: cleanNew || null })
+            .in('numero_cliente', validNumbers);
 
-        if (error) throw error;
+          if (error) throw error;
+        }
       }
-
-      setSelectedTruck(cleanNew);
 
       toast({
         title: cleanNew ? "Predeterminado actualizado" : "Predeterminado removido",
@@ -76,6 +84,7 @@ export const EncomendadoPredeterminadoSelector: React.FC<EncomendadoPredetermina
       }
     } catch (err) {
       console.error('Error actualizando encomendado predeterminado:', err);
+      setSelectedTruck(cleanCurrent); // Revert on failure
       toast({
         title: "Error",
         description: "No se pudo actualizar el encomendado predeterminado",

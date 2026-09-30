@@ -72,12 +72,29 @@ export const groupConducesByClient = (
       if (!existingGroup.ciudad?.trim() && conduce.ciudad?.trim()) {
         existingGroup.ciudad = conduce.ciudad.trim();
       }
+      // If encomendadoPredeterminado is not yet set, try to resolve it from this conduce's client number or name
+      if (!existingGroup.encomendadoPredeterminado && clienteEncomendadoMap) {
+        const cleanNum = String(conduce.numeroCliente || '').trim();
+        const cleanName = (conduce.razonSocial || existingGroup.razonSocial || '').trim().toLowerCase();
+        const match = clienteEncomendadoMap.get(cleanNum) || clienteEncomendadoMap.get(`name:${cleanName}`);
+        if (match) {
+          existingGroup.encomendadoPredeterminado = match;
+        }
+      }
       // Append lab info if different
       if (conduce.laboratorio && !existingGroup.laboratorio.includes(conduce.laboratorio)) {
         existingGroup.laboratorio += `, ${conduce.laboratorio}`;
       }
     } else {
+      const cleanNum = String(conduce.numeroCliente || '').trim();
+      const cleanName = (conduce.razonSocial || '').trim().toLowerCase();
       const razonSocial = conduce.razonSocial?.trim() || clienteRazonSocialMap?.get(conduce.numeroCliente)?.trim() || '';
+      
+      const predeterminado = 
+        clienteEncomendadoMap?.get(cleanNum) || 
+        clienteEncomendadoMap?.get(`name:${cleanName}`) || 
+        '';
+
       groups.push({
         numeroCliente: conduce.numeroCliente,
         allNumeroClientes: [conduce.numeroCliente],
@@ -89,12 +106,30 @@ export const groupConducesByClient = (
         conduces: [conduce],
         ruta: conduce.ruta,
         laboratorio: conduce.laboratorio,
-        encomendadoPredeterminado: clienteEncomendadoMap?.get(conduce.numeroCliente) || ''
+        encomendadoPredeterminado: predeterminado
       });
     }
 
     return groups;
-  }, []).sort((a, b) => {
+  }, []).map((group) => {
+    // Secondary sweep: ensure allNumeroClientes and name are thoroughly checked against clienteEncomendadoMap
+    if (!group.encomendadoPredeterminado && clienteEncomendadoMap) {
+      for (const num of group.allNumeroClientes) {
+        const match = clienteEncomendadoMap.get(String(num || '').trim());
+        if (match) {
+          group.encomendadoPredeterminado = match;
+          break;
+        }
+      }
+      if (!group.encomendadoPredeterminado && group.razonSocial) {
+        const matchByName = clienteEncomendadoMap.get(`name:${group.razonSocial.trim().toLowerCase()}`);
+        if (matchByName) {
+          group.encomendadoPredeterminado = matchByName;
+        }
+      }
+    }
+    return group;
+  }).sort((a, b) => {
     const getWorstTransitTime = (group: ClienteGroup) => {
       return group.conduces.reduce((worst, conduce) => {
         const transitTime = calculateTransitTime(conduce.fechaEntrega, conduce.numeroCliente);
