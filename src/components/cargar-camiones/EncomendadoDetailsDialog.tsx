@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,8 +6,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, FileText, AlertTriangle, CheckCircle, FlaskConical, Pill, Beaker, Microscope } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { 
+  Package, 
+  AlertTriangle, 
+  CheckCircle2, 
+  FlaskConical, 
+  Pill, 
+  Beaker, 
+  Microscope,
+  Search,
+  XCircle,
+  Truck
+} from 'lucide-react';
 import { Conduce } from '@/types/conduces';
 
 interface EncomendadoDetailsDialogProps {
@@ -26,390 +37,429 @@ const EncomendadoDetailsDialog = ({
   verifiedShipments,
   assignedConduces
 }: EncomendadoDetailsDialogProps) => {
-  const [activeTab, setActiveTab] = useState("pending");
+  const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
   const [labFilter, setLabFilter] = useState<string | null>(null);
-  const [showLabConduces, setShowLabConduces] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   if (!encomendado) return null;
 
   const cleanTarget = (encomendado || '').trim().toUpperCase().replace(/[-_]/g, '');
 
   // Filtrar conduces para este encomendado (insensible a guiones y mayúsculas)
-  const truckConduces = assignedConduces.filter(c => {
-    if (!c.encomendado) return false;
-    const cleanC = c.encomendado.trim().toUpperCase().replace(/[-_]/g, '');
-    return cleanC === cleanTarget;
-  });
+  const truckConduces = useMemo(() => {
+    return assignedConduces.filter(c => {
+      if (!c.encomendado) return false;
+      const cleanC = c.encomendado.trim().toUpperCase().replace(/[-_]/g, '');
+      return cleanC === cleanTarget;
+    });
+  }, [assignedConduces, cleanTarget]);
 
   // Obtener shipments verificados para este camión/almacén
-  const truckShipments = verifiedShipments.filter(s => {
-    if (!s.encomendado) return false;
-    const cleanS = s.encomendado.trim().toUpperCase().replace(/[-_]/g, '');
-    return cleanS === cleanTarget;
-  });
+  const truckShipments = useMemo(() => {
+    return verifiedShipments.filter(s => {
+      if (!s.encomendado) return false;
+      const cleanS = s.encomendado.trim().toUpperCase().replace(/[-_]/g, '');
+      return cleanS === cleanTarget;
+    });
+  }, [verifiedShipments, cleanTarget]);
 
   // Obtener conduces escaneados y bultos escaneados por separado
-  const scannedConduceNumbers = truckShipments
-    .filter(s => s.scan_type === 'conduce')
-    .map(s => s.conduce_number);
+  const { scannedConduceNumbers, scannedBultosByConduce } = useMemo(() => {
+    const numbers = new Set<string>();
+    const bultosMap: Record<string, number> = {};
 
-  // Crear mapa de bultos escaneados por conduce
-  const scannedBultosByConduce = truckShipments
-    .filter(s => s.scan_type === 'bulto')
-    .reduce((acc, shipment) => {
-      if (!acc[shipment.conduce_number]) {
-        acc[shipment.conduce_number] = 0;
+    truckShipments.forEach(s => {
+      if (s.scan_type === 'conduce' && s.conduce_number) {
+        numbers.add(s.conduce_number);
       }
-      acc[shipment.conduce_number]++;
-      return acc;
-    }, {} as Record<string, number>);
+      if (s.scan_type === 'bulto' && s.conduce_number) {
+        bultosMap[s.conduce_number] = (bultosMap[s.conduce_number] || 0) + 1;
+      }
+    });
 
-  // Procesar todos los conduces para mostrar su estado independientemente
-  const processedConduces = truckConduces.map(conduce => {
-    const scannedBultos = scannedBultosByConduce[conduce.numeroConduce] || 0;
-    const conduceScanned = scannedConduceNumbers.includes(conduce.numeroConduce);
-    const missingBultos = conduce.cantidadBultos - scannedBultos;
-    
-    return {
-      conduce,
-      conduceScanned,
-      scannedBultos,
-      totalBultos: conduce.cantidadBultos,
-      missingBultos,
-      isCompleted: conduceScanned && scannedBultos === conduce.cantidadBultos
-    };
-  });
+    return { scannedConduceNumbers: numbers, scannedBultosByConduce: bultosMap };
+  }, [truckShipments]);
 
-  // Separar por estado
-  const pendingConduces = processedConduces.filter(item => 
-    !item.conduceScanned || item.missingBultos > 0
-  );
-  
-  const completedConduces = processedConduces.filter(item => item.isCompleted);
+  // Procesar todos los conduces
+  const processedConduces = useMemo(() => {
+    return truckConduces.map(conduce => {
+      const scannedBultos = scannedBultosByConduce[conduce.numeroConduce] || 0;
+      const conduceScanned = scannedConduceNumbers.has(conduce.numeroConduce);
+      const totalBultos = conduce.cantidadBultos || 0;
+      const missingBultos = Math.max(0, totalBultos - scannedBultos);
+      const isCompleted = conduceScanned && scannedBultos >= totalBultos;
 
-  const totalPending = pendingConduces.length;
+      return {
+        conduce,
+        conduceScanned,
+        scannedBultos,
+        totalBultos,
+        missingBultos,
+        isCompleted
+      };
+    });
+  }, [truckConduces, scannedConduceNumbers, scannedBultosByConduce]);
+
+  // Configuración de laboratorios conocidos
+  const labConfig = [
+    { key: 'LAM', label: 'LAM', icon: Beaker },
+    { key: 'Fersuaz', label: 'Fersuaz', icon: FlaskConical },
+    { key: 'Taapharmaceutica', label: 'Taapharma', icon: Pill },
+    { key: 'Innovacion Quimica', label: 'Innov. Química', icon: Beaker },
+    { key: 'Krishpar Care Dominicana', label: 'Krishpar', icon: Microscope },
+  ];
 
   // Stats por laboratorio
-  const labConfig = [
-    { key: 'LAM', label: 'LAM', icon: Beaker, color: 'purple' },
-    { key: 'Fersuaz', label: 'Fersuaz', icon: FlaskConical, color: 'teal' },
-    { key: 'Taapharmaceutica', label: 'Taapharma', icon: Pill, color: 'amber' },
-    { key: 'Innovacion Quimica', label: 'Innov. Quimica', icon: Beaker, color: 'green' },
-    { key: 'Krishpar Care Dominicana', label: 'Krishpar', icon: Microscope, color: 'rose' },
-  ] as const;
+  const labStats = useMemo(() => {
+    const labsPresent = new Set(processedConduces.map(i => i.conduce.laboratorio).filter(Boolean));
+    
+    return labConfig
+      .map(lab => {
+        const labItems = processedConduces.filter(item => {
+          if (lab.key === 'Krishpar Care Dominicana') {
+            return (
+              item.conduce.laboratorio === 'Krishpar Care Dominicana' ||
+              item.conduce.laboratorio === 'Krishpar care dominicana'
+            );
+          }
+          return item.conduce.laboratorio === lab.key;
+        });
 
-  const labStats = labConfig.map(lab => {
-    const labItems = processedConduces.filter(item => {
-      if (lab.key === 'Krishpar Care Dominicana') {
-        return item.conduce.laboratorio === 'Krishpar Care Dominicana' || item.conduce.laboratorio === 'Krishpar care dominicana';
+        const totalConduces = labItems.length;
+        const totalBultos = labItems.reduce((acc, item) => acc + item.totalBultos, 0);
+        const scannedBultos = labItems.reduce((acc, item) => acc + item.scannedBultos, 0);
+        const scannedConducesCount = labItems.filter(item => item.conduceScanned).length;
+
+        return {
+          ...lab,
+          totalConduces,
+          totalBultos,
+          scannedBultos,
+          scannedConducesCount
+        };
+      })
+      .filter(s => s.totalConduces > 0);
+  }, [processedConduces]);
+
+  // Totales generales
+  const grandTotalBultos = useMemo(
+    () => processedConduces.reduce((acc, i) => acc + i.totalBultos, 0),
+    [processedConduces]
+  );
+  const grandScannedBultos = useMemo(
+    () => processedConduces.reduce((acc, i) => acc + i.scannedBultos, 0),
+    [processedConduces]
+  );
+  const grandScannedConduces = useMemo(
+    () => processedConduces.filter(i => i.conduceScanned).length,
+    [processedConduces]
+  );
+
+  // Filtrar según el tab, el laboratorio seleccionado y el término de búsqueda
+  const filteredConduces = useMemo(() => {
+    return processedConduces.filter(item => {
+      // Filtro de pestaña
+      if (activeTab === 'pending' && item.isCompleted) return false;
+      if (activeTab === 'completed' && !item.isCompleted) return false;
+
+      // Filtro de laboratorio
+      if (labFilter) {
+        if (labFilter === 'Krishpar Care Dominicana') {
+          const isKrishpar =
+            item.conduce.laboratorio === 'Krishpar Care Dominicana' ||
+            item.conduce.laboratorio === 'Krishpar care dominicana';
+          if (!isKrishpar) return false;
+        } else if (item.conduce.laboratorio !== labFilter) {
+          return false;
+        }
       }
-      return item.conduce.laboratorio === lab.key;
+
+      // Filtro de búsqueda
+      if (searchTerm.trim()) {
+        const query = searchTerm.toLowerCase().trim();
+        const num = (item.conduce.numeroConduce || '').toLowerCase();
+        const client = (item.conduce.razonSocial || '').toLowerCase();
+        const city = (item.conduce.ciudad || '').toLowerCase();
+        if (!num.includes(query) && !client.includes(query) && !city.includes(query)) {
+          return false;
+        }
+      }
+
+      return true;
     });
-    const totalConduces = labItems.length;
-    const totalBultos = labItems.reduce((acc, item) => acc + item.totalBultos, 0);
-    const scannedBultos = labItems.reduce((acc, item) => acc + item.scannedBultos, 0);
-    const scannedConducesCount = labItems.filter(item => item.conduceScanned).length;
-    return { ...lab, totalConduces, totalBultos, scannedBultos, scannedConducesCount };
-  }).filter(s => s.totalConduces > 0);
+  }, [processedConduces, activeTab, labFilter, searchTerm]);
 
-  const grandTotalBultos = processedConduces.reduce((acc, i) => acc + i.totalBultos, 0);
-  const grandScannedBultos = processedConduces.reduce((acc, i) => acc + i.scannedBultos, 0);
-  const grandScannedConduces = processedConduces.filter(i => i.conduceScanned).length;
+  const pendingCount = useMemo(
+    () => processedConduces.filter(i => !i.isCompleted).length,
+    [processedConduces]
+  );
+  const completedCount = useMemo(
+    () => processedConduces.filter(i => i.isCompleted).length,
+    [processedConduces]
+  );
 
-  const colorClasses: Record<string, string> = {
-    purple: 'bg-purple-50 border-purple-200 text-purple-700',
-    teal: 'bg-teal-50 border-teal-200 text-teal-700',
-    amber: 'bg-amber-50 border-amber-200 text-amber-700',
-    green: 'bg-green-50 border-green-200 text-green-700',
-    rose: 'bg-rose-50 border-rose-200 text-rose-700',
-  };
-  const iconBgClasses: Record<string, string> = {
-    purple: 'bg-purple-500',
-    teal: 'bg-teal-500',
-    amber: 'bg-amber-500',
-    green: 'bg-green-500',
-    rose: 'bg-rose-500',
-  };
+  const conducesPercent = truckConduces.length > 0 
+    ? Math.round((grandScannedConduces / truckConduces.length) * 100) 
+    : 0;
+
+  const bultosPercent = grandTotalBultos > 0 
+    ? Math.round((grandScannedBultos / grandTotalBultos) * 100) 
+    : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[calc(100vw-1rem)] sm:w-full max-h-[92vh] p-3 sm:p-6 flex flex-col gap-3 overflow-hidden">
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="flex flex-wrap items-center gap-2 text-base sm:text-lg">
-            Detalles de {encomendado}
-            <Badge variant="outline" className="text-xs">
-              {truckConduces.length} conduces
-            </Badge>
-          </DialogTitle>
+      <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-full max-h-[90vh] p-4 sm:p-6 flex flex-col gap-4 overflow-hidden rounded-xl">
+        {/* Cabecera limpia y clara */}
+        <DialogHeader className="shrink-0 pb-1 border-b">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-royal-blue/10 text-royal-blue">
+                <Truck className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight">
+                  Detalles de {encomendado}
+                </DialogTitle>
+                <p className="text-xs text-muted-foreground">
+                  Control de carga y verificación de escaneo
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Badge variant="secondary" className="font-semibold text-xs px-2.5 py-0.5">
+                {truckConduces.length} conduces
+              </Badge>
+              <Badge variant="outline" className="font-semibold text-xs px-2.5 py-0.5">
+                {grandTotalBultos} bultos
+              </Badge>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto -mx-1 px-1 space-y-3">
-        {labStats.length > 0 && (
-          <div className="space-y-2">
-            <div className={`grid gap-2 ${labStats.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-3'}`}>
-              {labStats.map(lab => {
-                const Icon = lab.icon;
-                const isActive = showLabConduces && labFilter === lab.key;
-                return (
+        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+          {/* Tarjetas de Laboratorios (Filtros interactivos limpios) */}
+          {labStats.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Laboratorios en esta ruta
+                </span>
+                {labFilter && (
                   <button
-                    key={lab.key}
                     type="button"
-                    onClick={() => {
-                      if (isActive) {
-                        setShowLabConduces(false);
-                        setLabFilter(null);
-                      } else {
-                        setLabFilter(lab.key);
-                        setShowLabConduces(true);
-                      }
-                    }}
-                    className={`text-left rounded-lg border p-2 sm:p-3 transition-all hover:shadow-md ${colorClasses[lab.color]} ${isActive ? 'ring-2 ring-primary' : ''}`}
+                    onClick={() => setLabFilter(null)}
+                    className="text-xs text-royal-blue hover:underline font-medium"
                   >
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <div className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full ${iconBgClasses[lab.color]}`}>
-                        <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" />
-                      </div>
-                      <span className="font-semibold text-[11px] sm:text-sm truncate">{lab.label}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1 text-[10px] sm:text-xs">
-                      <div>
-                        <p className="opacity-70 leading-tight">Conduces</p>
-                        <p className="font-bold text-sm sm:text-base leading-tight">{lab.scannedConducesCount}/{lab.totalConduces}</p>
-                      </div>
-                      <div>
-                        <p className="opacity-70 leading-tight">Bultos</p>
-                        <p className="font-bold text-sm sm:text-base leading-tight">{lab.scannedBultos}/{lab.totalBultos}</p>
-                      </div>
-                    </div>
+                    Mostrar todos
                   </button>
-                );
-              })}
-            </div>
-            <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-2 sm:p-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-xs sm:text-sm">Total general</span>
+                )}
               </div>
-              <div className="flex gap-3 text-xs sm:text-sm">
-                <span><span className="text-muted-foreground">Conduces:</span> <strong>{grandScannedConduces}/{truckConduces.length}</strong></span>
-                <span><span className="text-muted-foreground">Bultos:</span> <strong className="text-primary">{grandScannedBultos}/{grandTotalBultos}</strong></span>
-              </div>
-            </div>
 
-            {showLabConduces && labFilter && (() => {
-              const labItems = processedConduces.filter(i => i.conduce.laboratorio === labFilter);
-              const labMeta = labConfig.find(l => l.key === labFilter);
-              return (
-                <div className={`rounded-lg border p-2 sm:p-3 ${labMeta ? colorClasses[labMeta.color] : ''}`}>
-                  <div className="flex items-center justify-between mb-2 sticky top-0 bg-inherit pb-2">
-                    <h4 className="font-semibold text-sm">Conduces de {labMeta?.label}</h4>
-                    <Badge variant="outline" className="text-xs">{labItems.length}</Badge>
-                  </div>
-                  <div className="space-y-1.5">
-                    {labItems.map(item => {
-                      const { conduce, scannedBultos, totalBultos, isCompleted, conduceScanned } = item;
-                      return (
-                        <div key={conduce.id} className="bg-white/70 rounded-md p-2 border border-white">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs font-semibold">{conduce.numeroConduce}</span>
-                                {isCompleted ? (
-                                  <Badge className="bg-green-600 text-[10px] h-4 px-1.5">✓</Badge>
-                                ) : !conduceScanned ? (
-                                  <Badge variant="destructive" className="text-[10px] h-4 px-1.5">Sin escanear</Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-amber-100 text-amber-700 border-amber-300">Bultos: {scannedBultos}/{totalBultos}</Badge>
-                                )}
-                              </div>
-                              <p className="text-xs text-foreground/80 truncate">{conduce.razonSocial}</p>
-                              {conduce.ciudad && (
-                                <p className="text-[11px] text-muted-foreground">📍 {conduce.ciudad}</p>
-                              )}
-                            </div>
-                            <div className="text-right text-xs">
-                              <span className="font-semibold">{scannedBultos}/{totalBultos}</span>
-                              <p className="text-[10px] text-muted-foreground">bultos</p>
-                            </div>
-                          </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {labStats.map(lab => {
+                  const Icon = lab.icon;
+                  const isSelected = labFilter === lab.key;
+                  const isLabComplete = 
+                    lab.scannedConducesCount === lab.totalConduces && 
+                    lab.scannedBultos === lab.totalBultos;
+
+                  return (
+                    <button
+                      key={lab.key}
+                      type="button"
+                      onClick={() => setLabFilter(isSelected ? null : lab.key)}
+                      className={`text-left rounded-lg p-2.5 transition-all border ${
+                        isSelected
+                          ? 'bg-blue-50/80 border-royal-blue shadow-sm ring-1 ring-royal-blue/30'
+                          : 'bg-white hover:bg-slate-50 border-slate-200 shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Icon className={`h-4 w-4 shrink-0 ${isSelected ? 'text-royal-blue' : 'text-slate-600'}`} />
+                          <span className="font-bold text-xs truncate text-foreground">
+                            {lab.label}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
+                        {isLabComplete ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        ) : null}
+                      </div>
+
+                      <div className="space-y-0.5 text-[11px]">
+                        <div className="flex justify-between items-center text-muted-foreground">
+                          <span>Conduces:</span>
+                          <span className={`font-semibold ${lab.scannedConducesCount === lab.totalConduces ? 'text-emerald-700' : 'text-foreground'}`}>
+                            {lab.scannedConducesCount}/{lab.totalConduces}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-muted-foreground">
+                          <span>Bultos:</span>
+                          <span className={`font-semibold ${lab.scannedBultos === lab.totalBultos ? 'text-emerald-700' : 'text-foreground'}`}>
+                            {lab.scannedBultos}/{lab.totalBultos}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Resumen Total General */}
+          <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-royal-blue shrink-0" />
+              <span className="font-bold text-xs sm:text-sm text-foreground">
+                Total General
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+              <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded border border-slate-200">
+                <span className="text-muted-foreground">Conduces:</span>
+                <span className="font-bold text-foreground">
+                  {grandScannedConduces} / {truckConduces.length}
+                </span>
+                <span className={`text-[10px] font-semibold px-1 rounded ${conducesPercent === 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}`}>
+                  {conducesPercent}%
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded border border-slate-200">
+                <span className="text-muted-foreground">Bultos:</span>
+                <span className="font-bold text-foreground">
+                  {grandScannedBultos} / {grandTotalBultos}
+                </span>
+                <span className={`text-[10px] font-semibold px-1 rounded ${bultosPercent === 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}`}>
+                  {bultosPercent}%
+                </span>
+              </div>
+            </div>
           </div>
-        )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-          <TabsList className="grid w-full grid-cols-2 h-auto">
-            <TabsTrigger value="pending" className="flex items-center gap-1.5 text-xs sm:text-sm py-2">
-              <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              Pendientes ({totalPending})
-            </TabsTrigger>
-            <TabsTrigger value="completed" className="flex items-center gap-1.5 text-xs sm:text-sm py-2">
-              <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              Completados ({completedConduces.length})
-            </TabsTrigger>
-          </TabsList>
+          {/* Selector de pestañas + Buscador */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+              <Tabs
+                value={activeTab}
+                onValueChange={(val) => setActiveTab(val as 'pending' | 'completed')}
+                className="w-full sm:w-auto"
+              >
+                <TabsList className="grid grid-cols-2 w-full sm:w-72 h-9">
+                  <TabsTrigger value="pending" className="text-xs font-semibold gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                    Pendientes ({pendingCount})
+                  </TabsTrigger>
+                  <TabsTrigger value="completed" className="text-xs font-semibold gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                    Completados ({completedCount})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-          <TabsContent value="pending" className="mt-3">
-            {totalPending === 0 ? (
-              <div className="text-center py-8">
-                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                <p className="text-green-600 font-medium">
-                  Todos los conduces y bultos han sido escaneados
-                </p>
+              {/* Buscador rápido */}
+              <div className="relative flex-1 sm:max-w-xs">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar conduce o cliente..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-9 pl-8 text-xs bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Lista unificada y limpia de Conduces */}
+            {filteredConduces.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
+                {activeTab === 'pending' ? (
+                  <>
+                    <CheckCircle2 className="h-10 w-10 text-emerald-600 mx-auto mb-2" />
+                    <p className="font-bold text-sm text-emerald-700">
+                      ¡Todos los conduces y bultos están completos!
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      No hay elementos pendientes para este filtro.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Package className="h-10 w-10 text-slate-400 mx-auto mb-2" />
+                    <p className="font-semibold text-sm text-slate-600">
+                      No hay conduces completados aún
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Los conduces y sus bultos escaneados aparecerán aquí.
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {/* Columna de Conduces Pendientes */}
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-blue-700 flex items-center gap-2 border-b pb-1.5 text-sm">
-                    <FileText className="h-4 w-4" />
-                    Conduces Pendientes
-                    <Badge variant="outline" className="ml-auto bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                      {pendingConduces.filter(item => !item.conduceScanned).length}
-                    </Badge>
-                  </h3>
-                  
-                  <div className="space-y-1.5">
-                    {pendingConduces
-                      .filter(item => !item.conduceScanned)
-                      .map((item) => {
-                        const { conduce, scannedBultos, totalBultos } = item;
-                        return (
-                          <div 
-                            key={`conduce-${conduce.id}`} 
-                            className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-2.5"
-                          >
-                            <div className="flex justify-between items-start gap-2 mb-0.5">
-                              <span className="font-mono text-xs sm:text-sm font-semibold text-blue-800 truncate">
-                                {conduce.numeroConduce}
-                              </span>
-                              <Badge variant="destructive" className="text-[10px] h-4 px-1.5 shrink-0">
-                                Sin escanear
-                              </Badge>
-                            </div>
-                            <p className="text-xs sm:text-sm text-gray-700 truncate">{conduce.razonSocial}</p>
-                            {conduce.ciudad && (
-                              <p className="text-[11px] text-gray-500">📍 {conduce.ciudad}</p>
-                            )}
-                            {conduce.fechaCarga && (
-                              <p className="text-[11px] text-gray-500">📅 Cargado: {conduce.fechaCarga}</p>
-                            )}
-                            {scannedBultos > 0 && (
-                              <p className="text-[11px] text-amber-600 mt-0.5">
-                                • {scannedBultos}/{totalBultos} bultos escaneados
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    
-                    {pendingConduces.filter(item => !item.conduceScanned).length === 0 && (
-                      <div className="text-center py-3 text-green-600 bg-green-50 rounded-lg">
-                        <CheckCircle className="h-5 w-5 mx-auto mb-1" />
-                        <p className="text-xs">Todos los conduces escaneados</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                {filteredConduces.map(item => {
+                  const { conduce, conduceScanned, scannedBultos, totalBultos, missingBultos } = item;
+                  const isBultosDone = missingBultos === 0 && totalBultos > 0;
 
-                {/* Columna de Bultos Pendientes */}
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-amber-700 flex items-center gap-2 border-b pb-1.5 text-sm">
-                    <Package className="h-4 w-4" />
-                    Bultos Pendientes
-                    <Badge variant="outline" className="ml-auto bg-amber-50 text-amber-700 border-amber-200 text-xs">
-                      {pendingConduces.reduce((acc, item) => acc + item.missingBultos, 0)}
-                    </Badge>
-                  </h3>
-                  
-                  <div className="space-y-1.5">
-                    {pendingConduces
-                      .filter(item => item.missingBultos > 0)
-                      .map((item) => {
-                        const { conduce, scannedBultos, totalBultos, missingBultos, conduceScanned } = item;
-                        return (
-                          <div 
-                            key={`bulto-${conduce.id}`} 
-                            className="bg-amber-50 border border-amber-200 rounded-lg p-2 sm:p-2.5"
-                          >
-                            <div className="flex justify-between items-start gap-2 mb-0.5">
-                              <span className="font-mono text-xs sm:text-sm font-semibold text-amber-800 truncate">
-                                {conduce.numeroConduce}
-                              </span>
-                              <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-amber-100 text-amber-700 border-amber-300 shrink-0">
-                                {scannedBultos}/{totalBultos}
-                              </Badge>
-                            </div>
-                            <p className="text-xs sm:text-sm text-gray-700 truncate">{conduce.razonSocial}</p>
-                            {conduce.ciudad && (
-                              <p className="text-[11px] text-gray-500">📍 {conduce.ciudad}</p>
-                            )}
-                            {conduce.fechaCarga && (
-                              <p className="text-[11px] text-gray-500">📅 Cargado: {conduce.fechaCarga}</p>
-                            )}
-                            <p className="text-[11px] text-amber-600 mt-0.5 font-medium">
-                              Faltan {missingBultos} {missingBultos === 1 ? 'bulto' : 'bultos'}
-                            </p>
-                            {!conduceScanned && (
-                              <p className="text-[11px] text-blue-600">• Conduce pendiente</p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    
-                    {pendingConduces.filter(item => item.missingBultos > 0).length === 0 && (
-                      <div className="text-center py-3 text-green-600 bg-green-50 rounded-lg">
-                        <CheckCircle className="h-5 w-5 mx-auto mb-1" />
-                        <p className="text-xs">Todos los bultos escaneados</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </TabsContent>
+                  return (
+                    <div
+                      key={conduce.id}
+                      className="bg-white border border-slate-200/90 rounded-lg p-3 hover:border-slate-300 transition-all shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      {/* Información Principal del Conduce */}
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-bold text-sm text-royal-blue bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                            {conduce.numeroConduce}
+                          </span>
+                          {conduce.laboratorio && (
+                            <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                              {conduce.laboratorio}
+                            </span>
+                          )}
+                        </div>
 
-          <TabsContent value="completed" className="space-y-2 mt-3">
-            {completedConduces.map((item) => {
-              const { conduce, scannedBultos, totalBultos } = item;
-              return (
-                <div key={conduce.id} className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-2.5">
-                  <div className="flex justify-between items-start gap-2 mb-1 flex-wrap">
-                    <span className="font-mono text-xs sm:text-sm font-semibold text-green-800">
-                      {conduce.numeroConduce}
-                    </span>
-                    <div className="flex gap-1">
-                      <Badge variant="default" className="bg-green-600 text-[10px] h-4 px-1.5">
-                        ✓ Conduce
-                      </Badge>
-                      <Badge variant="default" className="bg-green-600 text-[10px] h-4 px-1.5">
-                        {scannedBultos}/{totalBultos} bultos
-                      </Badge>
+                        <p className="text-sm font-semibold text-foreground truncate">
+                          {conduce.razonSocial || 'Cliente sin nombre'}
+                        </p>
+
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                          {conduce.ciudad && <span>📍 {conduce.ciudad}</span>}
+                          {conduce.fechaCarga && <span>📅 Cargado: {conduce.fechaCarga}</span>}
+                        </div>
+                      </div>
+
+                      {/* Estado claro de Conduce y Bultos */}
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                        {/* Estado del Conduce Físico */}
+                        {conduceScanned ? (
+                          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold hover:bg-emerald-50">
+                            ✓ Conduce escaneado
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-200 text-xs font-semibold hover:bg-red-100">
+                            Falta escanear conduce
+                          </Badge>
+                        )}
+
+                        {/* Estado de los Bultos */}
+                        {isBultosDone ? (
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold">
+                            ✓ {scannedBultos}/{totalBultos} bultos listos
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-xs font-semibold">
+                            {scannedBultos}/{totalBultos} bultos (faltan {missingBultos})
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-xs sm:text-sm text-gray-700 truncate">{conduce.razonSocial}</p>
-                  {conduce.ciudad && (
-                    <p className="text-[11px] text-gray-500">📍 {conduce.ciudad}</p>
-                  )}
-                </div>
-              );
-            })}
-
-            {completedConduces.length === 0 && (
-              <div className="text-center py-6">
-                <Package className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">
-                  Ningún conduce completamente escaneado aún
-                </p>
+                  );
+                })}
               </div>
             )}
-          </TabsContent>
-        </Tabs>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
