@@ -240,31 +240,34 @@ export async function asignarConducesConDivisionRuta(
       const c = conducesList.find(item => item.id === id);
       const cliente = c?.numeroCliente ? clientesMap.get(c.numeroCliente) : null;
 
-      let targetTruck = '';
+      let baseTruck = '';
       if (encomendadoDestino === 'AUTO_CLIENTE') {
-        targetTruck = cliente?.encomendado || c?.encomendado || '';
-      } else {
-        targetTruck = encomendadoDestino;
+        // 1. Preferencia por el chofer/camión predeterminado del cliente
+        const clientTruck = cliente?.encomendado ? getBaseTruck(cliente.encomendado) : '';
+        // 2. Si no tiene cliente predeterminado, verificar camión base actual del conduce
+        const currentTruck = c?.encomendado ? getBaseTruck(c.encomendado) : '';
+
+        if (clientTruck && clientTruck.toLowerCase() !== 'almacen') {
+          baseTruck = clientTruck;
+        } else if (currentTruck && currentTruck.toLowerCase() !== 'almacen') {
+          baseTruck = currentTruck;
+        }
+      } else if (encomendadoDestino.toLowerCase() !== 'almacen') {
+        baseTruck = getBaseTruck(encomendadoDestino);
       }
 
-      if (!targetTruck) {
-        countSinAsignar++;
-        continue;
-      }
-
-      // Si el destino es un almacén específico o general explícito
-      if (targetTruck.toLowerCase().includes('almacen')) {
-        const dest = targetTruck;
+      // Si no hay camión base o es Almacén General explícito sin camión asignable
+      if (!baseTruck || baseTruck.toLowerCase() === 'almacen') {
+        const dest = 'Almacen';
         if (!gruposDestino[dest]) {
-          gruposDestino[dest] = { ids: [], esCamion: false, camionBase: getBaseTruck(dest) };
+          gruposDestino[dest] = { ids: [], esCamion: false, camionBase: '' };
         }
         gruposDestino[dest].ids.push(id);
         countAlmacen++;
         continue;
       }
 
-      // Es un camión: aplicar división inteligente según la ruta de hoy
-      const baseTruck = getBaseTruck(targetTruck);
+      // Es un camión válido: aplicar división inteligente según la ruta de hoy
       const rutaHoy = getRutaProgramadaHoy(programacion, baseTruck);
       const conduceRoute = c?.ruta || cliente?.ruta || '0';
 

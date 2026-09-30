@@ -80,24 +80,20 @@ const AsignacionForm = ({
     setIsSubmitting(true);
     try {
       if (currentEncomendado === 'AUTO_CLIENTE') {
-        const grupos: Record<string, string[]> = {};
-        for (const id of selectedConduces) {
-          const c = conduces.find(item => item.id === id);
-          const cl = clientes.find(item => item.numeroCliente === c?.numeroCliente);
-          const truck = cl?.encomendado || c?.encomendado;
-          if (truck && !truck.toLowerCase().includes('almacen')) {
-            if (!grupos[truck]) grupos[truck] = [];
-            grupos[truck].push(id);
+        const res = await asignarConducesConDivisionRuta(
+          selectedConduces,
+          'AUTO_CLIENTE',
+          {
+            prioridad: isPriority,
+            conduces,
+            clientes,
+            programacion
           }
-        }
-
-        for (const [truck, ids] of Object.entries(grupos)) {
-          await asignarEncomendado(ids, truck, isPriority);
-        }
+        );
 
         toast({
-          title: "Conduces asignados",
-          description: `${selectedConduces.length} conduces asignados a sus choferes.`,
+          title: "Conduces asignados por ruta",
+          description: res.mensaje || `${res.enCamion} a camión y ${res.enAlmacen} a almacén según la ruta de hoy.`,
         });
       } else {
         await asignarEncomendado(selectedConduces, currentEncomendado, isPriority);

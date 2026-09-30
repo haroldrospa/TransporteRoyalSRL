@@ -271,13 +271,15 @@ const ConducesAsignados = ({
     }
   };
 
-  // Dividir todos los camiones según la ruta programada de hoy
+  // Dividir masivamente todos los conduces (Camiones y Almacén) según la programación de hoy
   const handleDividirTodosPorRuta = async () => {
     setIsTransferring(true);
     try {
       const trucks = encomendadosList.filter(t => t !== 'Almacen');
-      let totalMovidos = 0;
+      let totalAMoverAlmacen = 0;
+      let totalAMoverCamion = 0;
 
+      // 1. De Camiones a Almacén: conduces que no corresponden a la ruta de hoy
       for (const t of trucks) {
         const baseTruck = getBaseTruck(t);
         const rutaHoy = getRutaProgramadaHoy(programacion, baseTruck);
@@ -290,28 +292,65 @@ const ConducesAsignados = ({
 
         if (aMover.length > 0) {
           const res = await transferirConducesAAlmacen(aMover.map(c => c.id), baseTruck);
-          if (res.success) totalMovidos += res.count;
+          if (res.success) totalAMoverAlmacen += res.count;
+        }
+      }
+
+      // 2. De Almacenes de Camión a Camión: conduces que SÍ corresponden a la ruta de hoy
+      for (const t of trucks) {
+        const baseTruck = getBaseTruck(t);
+        const whName = getTruckWarehouse(baseTruck);
+        const rutaHoy = getRutaProgramadaHoy(programacion, baseTruck);
+        const whConduces = getConducesByEncomendado(whName);
+
+        const aCargar = whConduces.filter(c => {
+          const r = getConduceRoute(c);
+          return coincideRutaConProgramacion(r, rutaHoy);
+        });
+
+        if (aCargar.length > 0) {
+          const res = await transferirConducesACamion(aCargar.map(c => c.id), baseTruck);
+          if (res.success) totalAMoverCamion += res.count;
+        }
+      }
+
+      // 3. De Almacén General: auto-asignar con división de ruta según chofer predeterminado
+      const generalConduces = getConducesByEncomendado('Almacen');
+      if (generalConduces.length > 0) {
+        const resAlmacen = await asignarConducesConDivisionRuta(
+          generalConduces.map(c => c.id),
+          'AUTO_CLIENTE',
+          {
+            conduces: generalConduces,
+            clientes,
+            programacion
+          }
+        );
+        if (resAlmacen.success) {
+          totalAMoverCamion += resAlmacen.enCamion;
+          totalAMoverAlmacen += resAlmacen.enAlmacen;
         }
       }
 
       if (refreshData) await refreshData();
 
-      if (totalMovidos > 0) {
+      const totalAfectados = totalAMoverAlmacen + totalAMoverCamion;
+      if (totalAfectados > 0) {
         toast({
-          title: "División completada",
-          description: `Se movieron ${totalMovidos} conduces a almacén según la ruta de hoy.`,
+          title: "División masiva completada",
+          description: `🚚 ${totalAMoverCamion} conduces cargados a camiones y 📦 ${totalAMoverAlmacen} movidos a almacén según la ruta de hoy.`,
         });
       } else {
         toast({
           title: "Todo al día",
-          description: "Todos los conduces en camiones ya coinciden con la ruta de hoy (o son Ruta 0).",
+          description: "Todos los conduces en camiones y almacenes coinciden con la ruta de hoy (o son Ruta 0).",
         });
       }
     } catch (err) {
-      console.error('Error dividiendo todos:', err);
+      console.error('Error en división masiva:', err);
       toast({
         title: "Error",
-        description: "No se pudieron dividir los conduces.",
+        description: "No se pudieron dividir los conduces masivamente.",
         variant: "destructive"
       });
     } finally {
@@ -319,25 +358,34 @@ const ConducesAsignados = ({
     }
   };
 
-  // Función para dividir los conduces de Almacén
-  const handleDividirAlmacen = async () => {
+  // Función para dividir los conduces de Almacén (General o por camión)
+  const handleDividirAlmacen = async (targetConduces?: Conduce[]) => {
     setIsDividing(true);
     try {
-      const almacenConduces = getConducesByEncomendado('Almacen');
-      
-      if (almacenConduces.length === 0) {
+      const allWh = encomendadosList
+        .filter(t => t !== 'Almacen')
+        .flatMap(t => getConducesByEncomendado(getTruckWarehouse(t)))
+        .concat(getConducesByEncomendado('Almacen'));
+
+      const conducesToDivide = targetConduces || (almacenTruckFilter === 'todos' 
+        ? allWh 
+        : almacenTruckFilter === 'general'
+        ? getConducesByEncomendado('Almacen')
+        : getConducesByEncomendado(almacenTruckFilter));
+
+      if (conducesToDivide.length === 0) {
         toast({
-          title: "Información",
-          description: "No hay conduces asignados a Almacén General",
+          title: "Almacén vacío",
+          description: "No hay conduces en almacén para dividir.",
         });
         return;
       }
 
       const res = await asignarConducesConDivisionRuta(
-        almacenConduces.map(c => c.id),
+        conducesToDivide.map(c => c.id),
         'AUTO_CLIENTE',
         {
-          conduces: almacenConduces,
+          conduces: conducesToDivide,
           clientes,
           programacion
         }
@@ -346,19 +394,27 @@ const ConducesAsignados = ({
       if (refreshData) await refreshData();
 
       toast({
-        title: "División completada",
-        description: res.mensaje,
+        title: "División de almacén completada",
+        description: res.mensaje || `🚚 ${res.enCamion} conduces asignados a camión y 📦 ${res.enAlmacen} en almacén.`,
       });
+      setSelectedInTab([]);
     } catch (error) {
-      console.error('Error dividiendo conduces:', error);
+      console.error('Error dividiendo conduces de almacén:', error);
       toast({
         title: "Error",
-        description: "No se pudieron dividir los conduces",
+        description: "No se pudieron dividir los conduces de almacén",
         variant: "destructive"
       });
     } finally {
       setIsDividing(false);
     }
+  };
+
+  // Dividir sólo los conduces seleccionados en Almacén
+  const handleDividirSeleccionadosAlmacen = async (baseConduces: Conduce[]) => {
+    const selected = baseConduces.filter(c => selectedInTab.includes(c.id));
+    if (selected.length === 0) return;
+    await handleDividirAlmacen(selected);
   };
 
   return (
@@ -375,10 +431,10 @@ const ConducesAsignados = ({
           </CardTitle>
           <Button
             size="sm"
-            variant="outline"
-            className="h-8 text-xs font-medium border-royal-blue/30 text-royal-blue hover:bg-royal-blue/10 flex items-center gap-1.5"
+            className="h-8 text-xs font-semibold bg-royal-blue hover:bg-blue-700 text-white shadow-xs flex items-center gap-1.5 transition-all"
             onClick={handleDividirTodosPorRuta}
-            disabled={isTransferring || loading}
+            disabled={isTransferring || isDividing || loading}
+            title="Dividir masivamente todos los conduces de camiones y almacén según la ruta de hoy"
           >
             <GitBranch className="h-3.5 w-3.5" />
             <span>Dividir por ruta de hoy</span>
@@ -585,15 +641,16 @@ const ConducesAsignados = ({
                             </select>
                           </div>
 
-                          {whConduces.length > 0 && (
+                          {baseConduces.length > 0 && (
                             <Button 
-                              onClick={handleDividirAlmacen}
-                              className="bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs font-semibold"
+                              onClick={() => handleDividirAlmacen(baseConduces)}
+                              className="bg-royal-blue hover:bg-blue-700 text-white h-8 text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all"
                               size="sm"
-                              disabled={isDividing}
+                              disabled={isDividing || isTransferring}
+                              title="Carga a camiones los conduces que coinciden con la ruta de hoy y organiza el almacén"
                             >
                               <GitBranch className="h-3.5 w-3.5 mr-1" />
-                              Dividir Almacén General
+                              Dividir Almacén por Ruta de Hoy ({baseConduces.length})
                             </Button>
                           )}
                         </div>
@@ -779,11 +836,22 @@ const ConducesAsignados = ({
                                   size="sm"
                                   className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
                                   onClick={() => handleReasignarSeleccionadosACamionesBase(baseConduces)}
-                                  disabled={isTransferring}
+                                  disabled={isTransferring || isDividing}
                                   title="Devuelve cada conduce a su camión original (R03-Almacen -> R-03, R05-Almacen -> R-05, etc.)"
                                 >
                                   <Truck className="h-3.5 w-3.5 mr-1" />
                                   Cargar a Camiones Base ({selectedInTab.length})
+                                </Button>
+
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-royal-blue hover:bg-blue-700 text-white font-semibold shadow-xs"
+                                  onClick={() => handleDividirSeleccionadosAlmacen(baseConduces)}
+                                  disabled={isTransferring || isDividing}
+                                  title="Divide los conduces seleccionados según la programación de ruta de hoy"
+                                >
+                                  <GitBranch className="h-3.5 w-3.5 mr-1" />
+                                  Dividir por Ruta ({selectedInTab.length})
                                 </Button>
 
                                 <DropdownMenu>
