@@ -45,8 +45,8 @@ export const useScanner = ({
   selectedRelacion
 }: UseScannerProps) => {
   const { user } = useAuth();
-  const isEscaneadorConduces = user?.puesto === 'Escaneador de conduces' || user?.puesto === 'Despachador';
-  const isEscaneadorBultos = user?.puesto === 'Escaneador de bultos';
+  const isEscaneadorConduces = user?.puesto === 'Escaneador de conduces' || user?.puesto === 'Despachador' || user?.nivel === 3;
+  const isEscaneadorBultos = user?.puesto === 'Escaneador de bultos' || user?.nivel === 7;
   
   const [scanValue, setScanValue] = useState('');
   const [scanType, setScanType] = useState<'conduce' | 'bulto'>(isEscaneadorBultos ? 'bulto' : 'conduce');

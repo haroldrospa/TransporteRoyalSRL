@@ -20,7 +20,7 @@ const usuarioFormSchema = z.object({
       message: 'Contraseña es obligatoria para nuevos usuarios',
     }
   ),
-  nivel: z.number().min(1).max(6),
+  nivel: z.number().min(1).max(10),
   puesto: z.string().min(1, 'Puesto es obligatorio'),
   camion: z.string().optional(),
   laboratorio: z.string().optional(),
@@ -36,6 +36,11 @@ interface UsuarioFormProps {
 const UsuarioForm = ({ usuario, onSubmit, onCancel, isSubmitting = false }: UsuarioFormProps) => {
   const isEditing = !!usuario;
 
+  // Determine initial nivel based on user puesto
+  const initialNivel = usuario?.nivel 
+    ? (usuario.puesto === 'Escaneador de bultos' && usuario.nivel === 1 ? 7 : usuario.nivel)
+    : (usuario?.puesto === 'Escaneador de bultos' ? 7 : usuario?.puesto === 'Escaneador de conduces' ? 3 : 1);
+
   // Initialize form with react-hook-form and zod validation
   const form = useForm<UsuarioFormData>({
     resolver: zodResolver(usuarioFormSchema),
@@ -44,7 +49,7 @@ const UsuarioForm = ({ usuario, onSubmit, onCancel, isSubmitting = false }: Usua
       nombre: usuario?.nombre || '',
       apellido: usuario?.apellido || '',
       password: '',
-      nivel: usuario?.nivel || 1,
+      nivel: initialNivel,
       puesto: usuario?.puesto || 'Chofer',
       camion: usuario?.camion || '',
       laboratorio: usuario?.laboratorio || ''
@@ -79,6 +84,7 @@ const UsuarioForm = ({ usuario, onSubmit, onCancel, isSubmitting = false }: Usua
         
         <FormFieldGroups 
           control={form.control} 
+          setValue={form.setValue}
           isSubmitting={isSubmitting} 
           isChofer={isChofer} 
           isEditing={isEditing} 

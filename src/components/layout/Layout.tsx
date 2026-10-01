@@ -25,12 +25,12 @@ const Layout = ({ children }: LayoutProps) => {
       navigate('/entregas');
     }
     // Para escaneador de bultos: solo acceso a cargar camiones
-    if (user?.puesto === 'Escaneador de bultos' && location.pathname !== '/cargar-camiones') {
+    if ((user?.puesto === 'Escaneador de bultos' || user?.nivel === 7) && location.pathname !== '/cargar-camiones') {
       navigate('/cargar-camiones');
     }
     // Para escaneador de conduces (y despachador): acceso a control de bultos y cargar camiones
     if (
-      (user?.puesto === 'Escaneador de conduces' || user?.puesto === 'Despachador') && 
+      (user?.puesto === 'Escaneador de conduces' || user?.puesto === 'Despachador' || user?.nivel === 3) && 
       !['/control-bultos', '/cargar-camiones'].includes(location.pathname)
     ) {
       navigate('/cargar-camiones');

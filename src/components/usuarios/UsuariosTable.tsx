@@ -136,12 +136,20 @@ const UsuariosTable = ({
                           <TableCell>{usuario.puesto}</TableCell>
                           <TableCell>
                             <div className="flex items-center">
-                              <Shield className={`h-4 w-4 mr-1 ${
+                              <Shield className={`h-4 w-4 mr-1 shrink-0 ${
+                                usuario.nivel >= 5 ? 'text-purple-600' :
                                 usuario.nivel >= 4 ? 'text-green-500' : 
-                                usuario.nivel >= 3 ? 'text-blue-500' :
+                                usuario.nivel === 3 ? 'text-blue-500' :
+                                usuario.nivel === 7 ? 'text-indigo-500' :
                                 usuario.nivel >= 2 ? 'text-yellow-500' : 'text-gray-500'
                               }`} />
-                              Nivel {usuario.nivel}
+                              <span className="text-xs font-medium">
+                                {usuario.nivel === 7 ? 'Nivel 7 (Cargar Camiones)' :
+                                 usuario.nivel === 3 ? 'Nivel 3 (Control Bultos / Cargar Camiones)' :
+                                 usuario.nivel === 1 ? 'Nivel 1 (Entregas)' :
+                                 usuario.nivel === 5 ? 'Nivel 5 (Admin)' :
+                                 `Nivel ${usuario.nivel}`}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>

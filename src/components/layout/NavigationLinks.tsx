@@ -50,12 +50,12 @@ export const getNavLinks = (user: User | null) => {
   }
 
   // Escaneador de conduces (y Despachador): Control de Bultos y Cargar Camiones
-  if (user?.puesto === 'Escaneador de conduces' || user?.puesto === 'Despachador') {
+  if (user?.puesto === 'Escaneador de conduces' || user?.puesto === 'Despachador' || user?.nivel === 3) {
     return baseLinks.filter(link => ['/control-bultos', '/cargar-camiones'].includes(link.to));
   }
 
   // Escaneador de bultos: Solo Cargar Camiones
-  if (user?.puesto === 'Escaneador de bultos') {
+  if (user?.puesto === 'Escaneador de bultos' || user?.nivel === 7) {
     return baseLinks.filter(link => link.to === '/cargar-camiones');
   }
 

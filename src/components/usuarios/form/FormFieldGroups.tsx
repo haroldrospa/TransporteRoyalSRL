@@ -1,17 +1,17 @@
-
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Control } from 'react-hook-form';
+import { Control, UseFormSetValue } from 'react-hook-form';
 import { UsuarioFormData } from '@/types/usuarios';
 
 interface FormFieldGroupsProps {
   control: Control<UsuarioFormData>;
+  setValue?: UseFormSetValue<UsuarioFormData>;
   isSubmitting: boolean;
   isChofer: boolean;
   isEditing: boolean;
 }
 
-const FormFieldGroups = ({ control, isSubmitting, isChofer, isEditing }: FormFieldGroupsProps) => {
+const FormFieldGroups = ({ control, setValue, isSubmitting, isChofer, isEditing }: FormFieldGroupsProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <FormField
@@ -98,16 +98,33 @@ const FormFieldGroups = ({ control, isSubmitting, isChofer, isEditing }: FormFie
               <select
                 {...field}
                 value={field.value}
-                onChange={(e) => field.onChange(parseInt(e.target.value))}
+                onChange={(e) => {
+                  const newNivel = parseInt(e.target.value);
+                  field.onChange(newNivel);
+                  if (setValue) {
+                    if (newNivel === 7) {
+                      setValue('puesto', 'Escaneador de bultos');
+                    } else if (newNivel === 3) {
+                      setValue('puesto', 'Escaneador de conduces');
+                    } else if (newNivel === 1) {
+                      setValue('puesto', 'Chofer');
+                    } else if (newNivel === 5) {
+                      setValue('puesto', 'Administrador');
+                    } else if (newNivel === 2) {
+                      setValue('puesto', 'Laboratorio');
+                    }
+                  }
+                }}
                 className="w-full p-2 border rounded-md"
                 disabled={isSubmitting}
               >
-                <option value={1}>Nivel 1 - Entregas</option>
+                <option value={1}>Nivel 1 - Entregas (Chofer)</option>
                 <option value={2}>Nivel 2 - LAM (Solo lectura)</option>
-                <option value={3}>Nivel 3 - LAM, Control Bultos, Cargar Camiones</option>
+                <option value={3}>Nivel 3 - Control Bultos y Cargar Camiones (Escaneador de conduces)</option>
                 <option value={4}>Nivel 4 - Acceso completo</option>
                 <option value={5}>Nivel 5 - Administrador</option>
                 <option value={6}>Nivel 6 - LAM y Entregas</option>
+                <option value={7}>Nivel 7 - Solo Cargar Camiones (Escaneador de bultos)</option>
               </select>
             </FormControl>
             <FormMessage />
@@ -126,6 +143,23 @@ const FormFieldGroups = ({ control, isSubmitting, isChofer, isEditing }: FormFie
                 {...field}
                 className="w-full p-2 border rounded-md"
                 disabled={isSubmitting}
+                onChange={(e) => {
+                  const newPuesto = e.target.value;
+                  field.onChange(e);
+                  if (setValue) {
+                    if (newPuesto === 'Escaneador de bultos') {
+                      setValue('nivel', 7);
+                    } else if (newPuesto === 'Escaneador de conduces' || newPuesto === 'Despachador') {
+                      setValue('nivel', 3);
+                    } else if (newPuesto === 'Chofer') {
+                      setValue('nivel', 1);
+                    } else if (newPuesto === 'Administrador') {
+                      setValue('nivel', 5);
+                    } else if (newPuesto === 'Laboratorio') {
+                      setValue('nivel', 2);
+                    }
+                  }
+                }}
               >
                 <option value="Administrador">Administrador</option>
                 <option value="Chofer">Chofer</option>
