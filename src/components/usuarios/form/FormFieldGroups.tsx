@@ -130,6 +130,8 @@ const FormFieldGroups = ({ control, isSubmitting, isChofer, isEditing }: FormFie
                 <option value="Administrador">Administrador</option>
                 <option value="Chofer">Chofer</option>
                 <option value="Laboratorio">Laboratorio</option>
+                <option value="Escaneador de conduces">Escaneador de conduces</option>
+                <option value="Escaneador de bultos">Escaneador de bultos</option>
                 <option value="Despachador">Despachador</option>
                 <option value="LAM">LAM</option>
               </select>

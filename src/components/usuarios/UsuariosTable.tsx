@@ -45,8 +45,17 @@ const UsuariosTable = ({
   });
 
   // Group users by puesto in a specific order
-  const puestoOrder = ['Administrador', 'Despachador', 'LAM', 'Laboratorio', 'Chofer'];
-  const groupedUsers = puestoOrder.reduce((acc, puesto) => {
+  const puestoOrder = [
+    'Administrador',
+    'Escaneador de conduces',
+    'Escaneador de bultos',
+    'Despachador',
+    'LAM',
+    'Laboratorio',
+    'Chofer'
+  ];
+  const allKnownPuestos = Array.from(new Set([...puestoOrder, ...filteredUsers.map(u => u.puesto)]));
+  const groupedUsers = allKnownPuestos.reduce((acc, puesto) => {
     const usersInPuesto = filteredUsers.filter(u => u.puesto === puesto);
     if (usersInPuesto.length > 0) {
       acc[puesto] = usersInPuesto;

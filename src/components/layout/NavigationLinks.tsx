@@ -49,7 +49,13 @@ export const getNavLinks = (user: User | null) => {
     return baseLinks.filter(link => ['/entregas'].includes(link.to));
   }
 
-  if (user?.puesto === 'Despachador') {
+  // Escaneador de conduces (y Despachador): Control de Bultos y Cargar Camiones
+  if (user?.puesto === 'Escaneador de conduces' || user?.puesto === 'Despachador') {
+    return baseLinks.filter(link => ['/control-bultos', '/cargar-camiones'].includes(link.to));
+  }
+
+  // Escaneador de bultos: Solo Cargar Camiones
+  if (user?.puesto === 'Escaneador de bultos') {
     return baseLinks.filter(link => link.to === '/cargar-camiones');
   }
 

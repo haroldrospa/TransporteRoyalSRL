@@ -45,13 +45,23 @@ export const useScanner = ({
   selectedRelacion
 }: UseScannerProps) => {
   const { user } = useAuth();
-  const isDespachador = user?.puesto === 'Despachador';
+  const isEscaneadorConduces = user?.puesto === 'Escaneador de conduces' || user?.puesto === 'Despachador';
+  const isEscaneadorBultos = user?.puesto === 'Escaneador de bultos';
   
   const [scanValue, setScanValue] = useState('');
-  const [scanType, setScanType] = useState<'conduce' | 'bulto'>(isDespachador ? 'bulto' : 'conduce');
+  const [scanType, setScanType] = useState<'conduce' | 'bulto'>(isEscaneadorBultos ? 'bulto' : 'conduce');
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [lastScrollPosition, setLastScrollPosition] = useState(0);
+
+  // Sync scanType if user profile loads after initial mount
+  useEffect(() => {
+    if (isEscaneadorBultos) {
+      setScanType('bulto');
+    } else if (isEscaneadorConduces) {
+      setScanType('conduce');
+    }
+  }, [isEscaneadorBultos, isEscaneadorConduces]);
 
   // Focus input after scan completion always
   useEffect(() => {
@@ -72,6 +82,8 @@ export const useScanner = ({
 
   // Update scan type and notify parent
   const handleScanTypeChange = (type: 'conduce' | 'bulto') => {
+    if (isEscaneadorConduces && type !== 'conduce') return;
+    if (isEscaneadorBultos && type !== 'bulto') return;
     setScanType(type);
     onUpdateScanValue(scanValue, type);
     if (inputRef.current) {
@@ -84,6 +96,15 @@ export const useScanner = ({
     setLastScrollPosition(window.scrollY);
     
     if (isProcessing) {
+      return;
+    }
+
+    if (isEscaneadorConduces && scanType !== 'conduce') {
+      emitStatusMessage('Su usuario solo tiene permisos para escanear conduces', 'error');
+      return;
+    }
+    if (isEscaneadorBultos && scanType !== 'bulto') {
+      emitStatusMessage('Su usuario solo tiene permisos para escanear bultos', 'error');
       return;
     }
 

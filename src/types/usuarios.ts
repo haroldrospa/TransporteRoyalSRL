@@ -1,5 +1,5 @@
 
-export type PuestoType = 'Administrador' | 'Chofer' | 'Laboratorio' | 'Despachador' | 'LAM';
+export type PuestoType = 'Administrador' | 'Chofer' | 'Laboratorio' | 'Despachador' | 'Escaneador de conduces' | 'Escaneador de bultos' | 'LAM';
 
 export interface Usuario {
   id: string;

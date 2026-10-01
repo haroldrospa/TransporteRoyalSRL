@@ -20,12 +20,19 @@ const Layout = ({ children }: LayoutProps) => {
   useEffect(() => {
     if (loading || !user) return;
 
-    // For drivers, always redirect to entregas page if they're on home page
-    if (user?.puesto === 'Chofer' && location.pathname === '/') {
+    // Para choferes: siempre redirigir a entregas si están en cualquier otra página
+    if (user?.puesto === 'Chofer' && location.pathname !== '/entregas') {
       navigate('/entregas');
     }
-    // For dispatchers, always redirect to cargar-camiones page if they're on any other page
-    if (user?.puesto === 'Despachador' && location.pathname !== '/cargar-camiones') {
+    // Para escaneador de bultos: solo acceso a cargar camiones
+    if (user?.puesto === 'Escaneador de bultos' && location.pathname !== '/cargar-camiones') {
+      navigate('/cargar-camiones');
+    }
+    // Para escaneador de conduces (y despachador): acceso a control de bultos y cargar camiones
+    if (
+      (user?.puesto === 'Escaneador de conduces' || user?.puesto === 'Despachador') && 
+      !['/control-bultos', '/cargar-camiones'].includes(location.pathname)
+    ) {
       navigate('/cargar-camiones');
     }
     // For level 6 users, redirect to LAM if they're on an unauthorized page
