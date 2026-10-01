@@ -1,17 +1,80 @@
+import { useState, useEffect, useRef } from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Control, UseFormSetValue } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import { Control, UseFormSetValue, UseFormWatch } from 'react-hook-form';
 import { UsuarioFormData } from '@/types/usuarios';
+import { Eye, EyeOff, Sparkles, Copy, Check } from 'lucide-react';
+import { generateCorporateCredentials } from '@/utils/credentialsGenerator';
+import { useToast } from '@/hooks/use-toast';
 
 interface FormFieldGroupsProps {
   control: Control<UsuarioFormData>;
   setValue?: UseFormSetValue<UsuarioFormData>;
+  watch?: UseFormWatch<UsuarioFormData>;
   isSubmitting: boolean;
   isChofer: boolean;
   isEditing: boolean;
 }
 
-const FormFieldGroups = ({ control, setValue, isSubmitting, isChofer, isEditing }: FormFieldGroupsProps) => {
+const FormFieldGroups = ({ control, setValue, watch, isSubmitting, isChofer, isEditing }: FormFieldGroupsProps) => {
+  const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
+  const [copiedField, setCopiedField] = useState<'email' | 'password' | null>(null);
+
+  const isAutoEmailRef = useRef(!isEditing);
+  const isAutoPasswordRef = useRef(!isEditing);
+
+  const nombreValue = watch ? watch('nombre') : '';
+  const apellidoValue = watch ? watch('apellido') : '';
+
+  // Generación automática en vivo al escribir nombre y apellido (cuando no se ha editado manualmente)
+  useEffect(() => {
+    if (isEditing || !setValue) return;
+
+    if (isAutoEmailRef.current || isAutoPasswordRef.current) {
+      const creds = generateCorporateCredentials(nombreValue, apellidoValue);
+      if (isAutoEmailRef.current && creds.email) {
+        setValue('email', creds.email, { shouldValidate: true });
+      }
+      if (isAutoPasswordRef.current && creds.password) {
+        setValue('password', creds.password, { shouldValidate: true });
+      }
+    }
+  }, [nombreValue, apellidoValue, isEditing, setValue]);
+
+  const handleGenerateCredentials = () => {
+    if (!setValue) return;
+    const creds = generateCorporateCredentials(nombreValue, apellidoValue);
+    if (!creds.email && !creds.password) {
+      toast({
+        title: 'Información incompleta',
+        description: 'Escriba al menos el Nombre para generar credenciales empresariales',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (creds.email) setValue('email', creds.email, { shouldValidate: true });
+    if (creds.password) setValue('password', creds.password, { shouldValidate: true });
+    isAutoEmailRef.current = true;
+    isAutoPasswordRef.current = true;
+    setShowPassword(true);
+    toast({
+      title: 'Credenciales corporativas generadas',
+      description: `${creds.email} / ${creds.password}`,
+    });
+  };
+
+  const handleCopy = (text: string, field: 'email' | 'password') => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    toast({
+      description: `${field === 'email' ? 'Correo' : 'Contraseña'} copiado al portapapeles`,
+    });
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <FormField
@@ -50,18 +113,57 @@ const FormFieldGroups = ({ control, setValue, isSubmitting, isChofer, isEditing 
         )}
       />
 
+      {/* Banner / Botón de generación corporativa */}
+      <div className="col-span-1 md:col-span-2 flex items-center justify-between bg-blue-50/70 border border-blue-200/80 rounded-lg p-2 px-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-royal-blue shrink-0" />
+          <span className="text-xs font-medium text-blue-900">
+            Credenciales corporativas automáticas (@transroyal.com)
+          </span>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleGenerateCredentials}
+          className="h-7 text-xs bg-white text-royal-blue border-blue-300 hover:bg-blue-100 flex items-center gap-1.5 shadow-xs"
+        >
+          <Sparkles className="h-3 w-3 text-royal-blue" />
+          Generar credenciales
+        </Button>
+      </div>
+
       <FormField
         control={control}
         name="email"
         render={({ field }) => (
           <FormItem className="space-y-2">
-            <FormLabel>Email *</FormLabel>
+            <div className="flex items-center justify-between">
+              <FormLabel>Email *</FormLabel>
+              {field.value && (
+                <button
+                  type="button"
+                  onClick={() => handleCopy(field.value, 'email')}
+                  className="text-xs text-muted-foreground hover:text-royal-blue flex items-center gap-1 transition-colors"
+                  tabIndex={-1}
+                >
+                  {copiedField === 'email' ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                  <span className={copiedField === 'email' ? 'text-green-600' : ''}>
+                    {copiedField === 'email' ? 'Copiado' : 'Copiar'}
+                  </span>
+                </button>
+              )}
+            </div>
             <FormControl>
               <Input 
                 {...field} 
                 type="email" 
                 placeholder="email@transroyal.com" 
                 disabled={isSubmitting}
+                onChange={(e) => {
+                  isAutoEmailRef.current = false;
+                  field.onChange(e);
+                }}
               />
             </FormControl>
             <FormMessage />
@@ -74,14 +176,47 @@ const FormFieldGroups = ({ control, setValue, isSubmitting, isChofer, isEditing 
         name="password"
         render={({ field }) => (
           <FormItem className="space-y-2">
-            <FormLabel>Contraseña {isEditing ? '(Dejar en blanco para mantener actual)' : '*'}</FormLabel>
+            <div className="flex items-center justify-between">
+              <FormLabel>
+                {isEditing ? 'Contraseña (en blanco = mantener)' : 'Contraseña *'}
+              </FormLabel>
+              {field.value && (
+                <button
+                  type="button"
+                  onClick={() => handleCopy(field.value, 'password')}
+                  className="text-xs text-muted-foreground hover:text-royal-blue flex items-center gap-1 transition-colors"
+                  tabIndex={-1}
+                >
+                  {copiedField === 'password' ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                  <span className={copiedField === 'password' ? 'text-green-600' : ''}>
+                    {copiedField === 'password' ? 'Copiada' : 'Copiar'}
+                  </span>
+                </button>
+              )}
+            </div>
             <FormControl>
-              <Input 
-                {...field} 
-                type="password" 
-                placeholder="********" 
-                disabled={isSubmitting}
-              />
+              <div className="relative">
+                <Input 
+                  {...field} 
+                  type={showPassword ? 'text' : 'password'} 
+                  placeholder={isEditing ? 'Mantener actual' : 'RoyalNombre2026*'} 
+                  disabled={isSubmitting}
+                  className="pr-10"
+                  onChange={(e) => {
+                    isAutoPasswordRef.current = false;
+                    field.onChange(e);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                  tabIndex={-1}
+                  title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </FormControl>
             <FormMessage />
           </FormItem>

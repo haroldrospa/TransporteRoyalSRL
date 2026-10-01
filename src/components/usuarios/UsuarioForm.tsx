@@ -85,6 +85,7 @@ const UsuarioForm = ({ usuario, onSubmit, onCancel, isSubmitting = false }: Usua
         <FormFieldGroups 
           control={form.control} 
           setValue={form.setValue}
+          watch={form.watch}
           isSubmitting={isSubmitting} 
           isChofer={isChofer} 
           isEditing={isEditing} 
