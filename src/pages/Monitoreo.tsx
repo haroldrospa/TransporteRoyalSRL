@@ -12,9 +12,29 @@ import { Usuario } from '@/types/usuarios';
 import { useToast } from '@/hooks/use-toast';
 import { getTruckColor } from '@/components/monitoreo/truckColors';
 import { normalizeTruckCode } from '@/utils/trucksByRegion';
+import { supabase } from '@/integrations/supabase/client';
+import { mapDbConduceToConduce } from '@/utils/mappers/conduceMappers';
+import { Loader2 } from 'lucide-react';
+
+const MONITOREO_CACHE_KEY = 'royal_monitoreo_active_cache';
+
+const getInitialMonitoreoCache = (): Conduce[] => {
+  try {
+    const cached = localStorage.getItem(MONITOREO_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading monitoreo cache:', e);
+  }
+  return [];
+};
 
 const Monitoreo: React.FC = () => {
-  const { conduces = [], regionActual, setRegionActual, getClienteByNumero, refreshData } = useData();
+  const { conduces = [], regionActual, setRegionActual, getClienteByNumero, refreshData, loading } = useData();
   const { toast } = useToast();
 
   const [users, setUsers] = useState<Usuario[]>([]);
@@ -22,6 +42,46 @@ const Monitoreo: React.FC = () => {
   const [focusTruckName, setFocusTruckName] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'todos' | 'pendientes' | 'entregados' | 'devueltos'>('todos');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [fastConduces, setFastConduces] = useState<Conduce[]>(getInitialMonitoreoCache);
+  const [isFastFetching, setIsFastFetching] = useState<boolean>(false);
+
+  // Fast fetch directo de Supabase para flota activa (~300ms) si no hay datos aún
+  useEffect(() => {
+    if (conduces.length === 0 && fastConduces.length === 0) {
+      let isMounted = true;
+      setIsFastFetching(true);
+
+      const fetchActiveConduces = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('conduces')
+            .select('*')
+            .in('estado', ['En tránsito', 'Entregado', 'Devuelto'])
+            .order('updated_at', { ascending: false })
+            .limit(500);
+
+          if (!error && data && data.length > 0 && isMounted) {
+            const mapped = data.map(mapDbConduceToConduce);
+            setFastConduces(mapped);
+            try {
+              localStorage.setItem(MONITOREO_CACHE_KEY, JSON.stringify(mapped));
+            } catch (err) {
+              // Ignore quota limit
+            }
+          }
+        } catch (err) {
+          console.warn('Error fetching fast active conduces:', err);
+        } finally {
+          if (isMounted) setIsFastFetching(false);
+        }
+      };
+
+      fetchActiveConduces();
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [conduces.length, fastConduces.length]);
 
   // Cargar lista de usuarios para asociar choferes a cada camión
   useEffect(() => {
@@ -30,11 +90,32 @@ const Monitoreo: React.FC = () => {
       .catch((err) => console.warn('Could not load users for driver mapping:', err));
   }, []);
 
+  // Determinar los conduces efectivos: los globales de DataContext o el cache/fast fetch
+  const effectiveConduces = useMemo(() => {
+    if (conduces && conduces.length > 0) {
+      return conduces;
+    }
+    return fastConduces;
+  }, [conduces, fastConduces]);
+
+  const isDataLoading = (loading && effectiveConduces.length === 0) || (isFastFetching && effectiveConduces.length === 0);
+
   // 1. Filtrar estrictamente: Solo bultos en ruta (en tránsito cargados en encomendados, NO almacén)
   //    y los entregados o devueltos el día de la ruta activa.
   const { filteredConduces, activeDates } = useMemo(() => {
-    return filterConducesParaMonitoreo(conduces, regionActual);
-  }, [conduces, regionActual]);
+    return filterConducesParaMonitoreo(effectiveConduces, regionActual);
+  }, [effectiveConduces, regionActual]);
+
+  // Persistir en cache activo cuando se filtran conduces reales
+  useEffect(() => {
+    if (filteredConduces.length > 0) {
+      try {
+        localStorage.setItem(MONITOREO_CACHE_KEY, JSON.stringify(filteredConduces.slice(0, 400)));
+      } catch (err) {
+        // Safe ignore
+      }
+    }
+  }, [filteredConduces]);
 
   const activeDatesLabel = useMemo(() => {
     if (activeDates.length === 0) return undefined;
@@ -226,55 +307,73 @@ const Monitoreo: React.FC = () => {
           activeDatesLabel={activeDatesLabel}
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
+          isLoading={isDataLoading}
         />
 
         {/* Barra de Selección Rápida de Camiones (Chips Minimalistas) */}
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5">
-          <button
-            onClick={() => setSelectedTruck(null)}
-            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all shrink-0 ${
-              selectedTruck === null
-                ? 'bg-slate-900 text-white shadow-2xs'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 hover:bg-slate-50'
-            }`}
-          >
-            Todos ({trucksStats.length})
-          </button>
-
-          {trucksStats.map((truck) => {
-            const isSelected = selectedTruck !== null && normalizeTruckCode(selectedTruck) === normalizeTruckCode(truck.truckName);
-            const colors = getTruckColor(truck.truckName);
-
-            return (
+          {isDataLoading && trucksStats.length === 0 ? (
+            <div className="flex items-center gap-2 py-0.5 animate-pulse">
+              <div className="h-6 w-20 bg-slate-200/70 dark:bg-slate-800 rounded-full" />
+              <div className="h-6 w-24 bg-slate-200/70 dark:bg-slate-800 rounded-full" />
+              <div className="h-6 w-24 bg-slate-200/70 dark:bg-slate-800 rounded-full" />
+              <div className="h-6 w-24 bg-slate-200/70 dark:bg-slate-800 rounded-full" />
+            </div>
+          ) : (
+            <>
               <button
-                key={truck.truckName}
-                onClick={() => {
-                  if (isSelected) {
-                    setSelectedTruck(null);
-                  } else {
-                    handleFocusTruck(truck.truckName);
-                  }
-                }}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 border ${
-                  isSelected
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                    : 'bg-white dark:bg-slate-800 border-slate-200/80 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                onClick={() => setSelectedTruck(null)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all shrink-0 ${
+                  selectedTruck === null
+                    ? 'bg-slate-900 text-white shadow-2xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 hover:bg-slate-50'
                 }`}
               >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.hex }}></span>
-                <span>{truck.truckName}</span>
-                <span className={`text-[10px] ${isSelected ? 'text-white/70' : 'text-slate-400'}`}>
-                  {truck.bultosPendientes > 0 ? truck.bultosPendientes : '✓'}
-                </span>
+                Todos ({trucksStats.length})
               </button>
-            );
-          })}
+
+              {trucksStats.map((truck) => {
+                const isSelected = selectedTruck !== null && normalizeTruckCode(selectedTruck) === normalizeTruckCode(truck.truckName);
+                const colors = getTruckColor(truck.truckName);
+
+                return (
+                  <button
+                    key={truck.truckName}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedTruck(null);
+                      } else {
+                        handleFocusTruck(truck.truckName);
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 border ${
+                      isSelected
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                        : 'bg-white dark:bg-slate-800 border-slate-200/80 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.hex }}></span>
+                    <span>{truck.truckName}</span>
+                    <span className={`text-[10px] ${isSelected ? 'text-white/70' : 'text-slate-400'}`}>
+                      {truck.bultosPendientes > 0 ? truck.bultosPendientes : '✓'}
+                    </span>
+                  </button>
+                );
+              })}
+            </>
+          )}
         </div>
 
         {/* Contenido Principal: Mapa Grande (70%) + Panel de Flota (30%) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
           {/* Mapa Grande (8 cols en lg, 9 cols en xl) */}
-          <div className="lg:col-span-8 xl:col-span-9 w-full">
+          <div className="lg:col-span-8 xl:col-span-9 w-full relative">
+            {(isDataLoading || isRefreshing) && (
+              <div className="absolute top-3 right-3 z-[1000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-200/80 dark:border-slate-800 shadow-md flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-200 pointer-events-none animate-in fade-in duration-200">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-royal-blue" />
+                <span>Sincronizando ruta...</span>
+              </div>
+            )}
             <MonitoreoMapa
               conduces={filteredConduces}
               getClienteByNumero={getClienteByNumero}
@@ -294,6 +393,7 @@ const Monitoreo: React.FC = () => {
               onSelectTruck={setSelectedTruck}
               onFocusTruck={handleFocusTruck}
               truckLocations={truckLocations}
+              isLoading={isDataLoading}
             />
           </div>
         </div>

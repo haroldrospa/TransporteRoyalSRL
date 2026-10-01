@@ -22,6 +22,7 @@ interface MonitoreoHeaderStatsProps {
   activeDatesLabel?: string;
   onRefresh: () => void;
   isRefreshing?: boolean;
+  isLoading?: boolean;
 }
 
 export const MonitoreoHeaderStats: React.FC<MonitoreoHeaderStatsProps> = ({
@@ -39,9 +40,11 @@ export const MonitoreoHeaderStats: React.FC<MonitoreoHeaderStatsProps> = ({
   onStatusFilterChange,
   activeDatesLabel,
   onRefresh,
-  isRefreshing = false
+  isRefreshing = false,
+  isLoading = false
 }) => {
   const percentEntregado = totalBultos > 0 ? Math.round((bultosEntregados / totalBultos) * 100) : 0;
+  const showSkeleton = isLoading && totalCamiones === 0 && totalBultos === 0;
 
   // Extraer la primera fecha limpia para evitar listas largas de fechas
   const primaryDate = activeDatesLabel ? activeDatesLabel.split(',')[0].trim() : 'Hoy';
@@ -129,9 +132,13 @@ export const MonitoreoHeaderStats: React.FC<MonitoreoHeaderStatsProps> = ({
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Camiones en Ruta
               </p>
-              <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">
-                {totalCamiones}
-              </p>
+              {showSkeleton ? (
+                <div className="h-7 w-12 bg-slate-200 dark:bg-slate-700 animate-pulse rounded my-0.5" />
+              ) : (
+                <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                  {totalCamiones}
+                </p>
+              )}
               <p className="text-[10px] text-slate-500 font-medium">
                 Con entregas activas
               </p>
@@ -150,9 +157,13 @@ export const MonitoreoHeaderStats: React.FC<MonitoreoHeaderStatsProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                 Por Entregar
               </p>
-              <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">
-                {bultosPendientes} <span className="text-xs font-normal text-slate-400">bultos</span>
-              </p>
+              {showSkeleton ? (
+                <div className="h-7 w-20 bg-slate-200 dark:bg-slate-700 animate-pulse rounded my-0.5" />
+              ) : (
+                <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                  {bultosPendientes} <span className="text-xs font-normal text-slate-400">bultos</span>
+                </p>
+              )}
               <p className="text-[10px] text-slate-500 font-medium">
                 {conducesPendientes} conduces en camino
               </p>
@@ -171,9 +182,13 @@ export const MonitoreoHeaderStats: React.FC<MonitoreoHeaderStatsProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 Entregados
               </p>
-              <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">
-                {bultosEntregados} <span className="text-xs font-normal text-slate-400">bultos</span>
-              </p>
+              {showSkeleton ? (
+                <div className="h-7 w-20 bg-slate-200 dark:bg-slate-700 animate-pulse rounded my-0.5" />
+              ) : (
+                <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                  {bultosEntregados} <span className="text-xs font-normal text-slate-400">bultos</span>
+                </p>
+              )}
               <p className="text-[10px] text-slate-500 font-medium">
                 {conducesEntregados} conduces completados
               </p>
@@ -192,20 +207,32 @@ export const MonitoreoHeaderStats: React.FC<MonitoreoHeaderStatsProps> = ({
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Carga Total
                 </p>
-                <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">
-                  {totalBultos} <span className="text-xs font-normal text-slate-400">bultos</span>
-                </p>
+                {showSkeleton ? (
+                  <div className="h-7 w-20 bg-slate-200 dark:bg-slate-700 animate-pulse rounded my-0.5" />
+                ) : (
+                  <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                    {totalBultos} <span className="text-xs font-normal text-slate-400">bultos</span>
+                  </p>
+                )}
               </div>
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                {percentEntregado}% avance
-              </span>
+              {showSkeleton ? (
+                <div className="h-4 w-12 bg-slate-200 dark:bg-slate-700 animate-pulse rounded" />
+              ) : (
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {percentEntregado}% avance
+                </span>
+              )}
             </div>
-            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
-              <div 
-                className="bg-royal-blue dark:bg-royal-yellow h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${percentEntregado}%` }}
-              />
-            </div>
+            {showSkeleton ? (
+              <div className="w-full bg-slate-200 dark:bg-slate-700 animate-pulse rounded-full h-1.5 mt-2" />
+            ) : (
+              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
+                <div 
+                  className="bg-royal-blue dark:bg-royal-yellow h-1.5 rounded-full transition-all duration-500"
+                  style={{ width: `${percentEntregado}%` }}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

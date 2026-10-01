@@ -16,9 +16,31 @@ import { fetchClientesOptimized } from '@/services/optimizedDataService';
 import { useAuth } from '../AuthContext';
 import { getTrucksByRegion, getRegionByTruck } from '@/utils/trucksByRegion';
 
+const CONDUCES_CACHE_KEY = 'royal_conduces_optimized_cache';
+const CONDUCES_CACHE_TIME_KEY = 'royal_conduces_optimized_cache_time';
+const CACHE_MAX_AGE = 10 * 60 * 1000; // 10 minutos para inicio instantáneo
+
+const getInitialCachedConduces = (): Conduce[] => {
+  try {
+    const raw = localStorage.getItem(CONDUCES_CACHE_KEY);
+    const time = localStorage.getItem(CONDUCES_CACHE_TIME_KEY);
+    if (raw && time && Date.now() - parseInt(time) < CACHE_MAX_AGE) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        console.log(`⚡ [DataProvider] Inicializando con ${parsed.length} conduces en caché`);
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading conduces cache:', e);
+  }
+  return [];
+};
+
 export const DataProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const [conduces, setConduces] = useState<Conduce[]>([]);
+  const initialCachedConduces = useMemo(() => getInitialCachedConduces(), []);
+  const [conduces, setConduces] = useState<Conduce[]>(initialCachedConduces);
   const [clientes, setClientes] = useState<Cliente[]>(() => {
     const cached = clienteService.getCachedClientes();
     return cached && cached.length > 0 ? cached : [];
@@ -36,8 +58,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const [regionActual, setRegionActual] = useState<Region>(getInitialRegion());
-  const [loading, setLoading] = useState(true); // Mantener true hasta que los datos estén listos
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [loading, setLoading] = useState(initialCachedConduces.length === 0);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(initialCachedConduces.length > 0);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const [totalClientsCount, setTotalClientsCount] = useState<number | null>(null);
   const { toast } = useToast();
@@ -104,8 +126,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     isRefreshingRef.current = true;
     
-    // Solo mostrar loading si es después de la carga inicial
-    if (initialLoadComplete) {
+    // Solo mostrar loading si aún no tenemos datos en memoria
+    if (conduces.length === 0) {
       setLoading(true);
     }
     
@@ -170,6 +192,13 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       
       // Actualizar estados de forma sincrónica para evitar renders intermedios
       setConduces(enrichedConduces);
+      try {
+        const toCache = enrichedConduces.slice(0, 1500);
+        localStorage.setItem(CONDUCES_CACHE_KEY, JSON.stringify(toCache));
+        localStorage.setItem(CONDUCES_CACHE_TIME_KEY, Date.now().toString());
+      } catch (cacheErr) {
+        console.warn('Could not cache conduces to localStorage:', cacheErr);
+      }
       setClientes(clientesData);
       
       // Obtener conteo optimizado de clientes

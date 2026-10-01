@@ -28,6 +28,7 @@ interface TruckFleetPanelProps {
   onSelectTruck: (truck: string | null) => void;
   onFocusTruck?: (truck: string) => void;
   truckLocations?: Map<string, TruckCurrentLocation>;
+  isLoading?: boolean;
 }
 
 export const TruckFleetPanel: React.FC<TruckFleetPanelProps> = ({
@@ -35,7 +36,8 @@ export const TruckFleetPanel: React.FC<TruckFleetPanelProps> = ({
   selectedTruck,
   onSelectTruck,
   onFocusTruck,
-  truckLocations
+  truckLocations,
+  isLoading = false
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -59,7 +61,7 @@ export const TruckFleetPanel: React.FC<TruckFleetPanelProps> = ({
           <div className="flex items-center gap-2">
             <Truck className="h-4 w-4 text-royal-blue dark:text-royal-yellow" />
             <CardTitle className="text-xs font-bold text-slate-800 dark:text-slate-100">
-              Camiones en Ruta ({trucks.length})
+              Camiones en Ruta {isLoading && filteredTrucks.length === 0 ? '' : `(${trucks.length})`}
             </CardTitle>
           </div>
 
@@ -90,7 +92,20 @@ export const TruckFleetPanel: React.FC<TruckFleetPanelProps> = ({
       <CardContent className="p-2 flex-1 min-h-0">
         <ScrollArea className="h-[560px] lg:h-[calc(100vh-270px)] pr-2">
           <div className="space-y-2">
-            {filteredTrucks.length === 0 ? (
+            {isLoading && filteredTrucks.length === 0 ? (
+              <div className="space-y-2 p-1">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-850 space-y-2.5 animate-pulse">
+                    <div className="flex items-center justify-between">
+                      <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
+                      <div className="h-4 w-12 bg-slate-200 dark:bg-slate-700 rounded" />
+                    </div>
+                    <div className="h-3 w-40 bg-slate-100 dark:bg-slate-800 rounded" />
+                    <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredTrucks.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400">
                 No hay camiones para el filtro actual
               </div>
