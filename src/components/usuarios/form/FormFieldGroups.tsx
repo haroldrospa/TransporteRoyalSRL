@@ -113,24 +113,22 @@ const FormFieldGroups = ({ control, setValue, watch, isSubmitting, isChofer, isE
         )}
       />
 
-      {/* Banner / Botón de generación corporativa */}
-      <div className="col-span-1 md:col-span-2 flex items-center justify-between bg-blue-50/70 border border-blue-200/80 rounded-lg p-2 px-3">
+      {/* Acción rápida minimalista */}
+      <div className="col-span-1 md:col-span-2 flex items-center justify-between py-1 border-b border-slate-100 mb-1">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-royal-blue shrink-0" />
-          <span className="text-xs font-medium text-blue-900">
-            Credenciales corporativas automáticas (@transroyal.com)
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+          <span className="text-xs text-slate-500 font-medium">
+            Credenciales corporativas (@transroyal.com)
           </span>
         </div>
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={handleGenerateCredentials}
-          className="h-7 text-xs bg-white text-royal-blue border-blue-300 hover:bg-blue-100 flex items-center gap-1.5 shadow-xs"
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100/80 hover:bg-slate-200/70 transition-all cursor-pointer"
         >
-          <Sparkles className="h-3 w-3 text-royal-blue" />
-          Generar credenciales
-        </Button>
+          <Sparkles className="h-3 w-3 text-blue-600" />
+          Auto-generar
+        </button>
       </div>
 
       <FormField
