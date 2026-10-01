@@ -293,8 +293,8 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
     }
   }, [isOnline, processShipments, syncOfflineData]);
   
-  // Manual refresh
-  const refreshData = useCallback(async (showToast = true) => {
+  // Manual or background refresh
+  const refreshData = useCallback(async (showToast = true, showSpinner = true) => {
     if (!isOnline) {
       if (showToast) {
         toast({
@@ -306,8 +306,9 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
       return;
     }
     
-    console.log('🔄 [useFastCargarCamiones] Manual refresh...');
-    setRefreshing(true);
+    if (showSpinner) {
+      setRefreshing(true);
+    }
     
     try {
       await waitForPendingSaves();
@@ -349,6 +350,11 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
       setRefreshing(false);
     }
   }, [isOnline, processShipments]);
+
+  // Keep ref up to date for real-time and timer callbacks
+  useEffect(() => {
+    refreshDataRef.current = refreshData;
+  }, [refreshData]);
   
   const [lastScannedConduce, setLastScannedConduce] = useState<{conduceNumber: string, timestamp: number} | null>(null);
   
@@ -1246,13 +1252,23 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
     }
   }, [loadInitialData]);
 
-  // Real-time subscription (only when online)
+  // Real-time live subscription (always active when online)
   useEffect(() => {
     if (!isOnline) return;
 
     let debounceTimer: any = null;
+
+    const triggerSilentRefresh = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        console.log('⚡ [CargarCamiones] Synchronizing live data in background...');
+        refreshDataRef.current(false, false);
+      }, 400);
+    };
+
+    // Canal en tiempo real para escaneos y cambios en conduces
     const channel = supabase
-      .channel('verified-shipments-realtime')
+      .channel('cargar-camiones-live-realtime')
       .on(
         'postgres_changes',
         {
@@ -1261,20 +1277,50 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
           table: 'verified_shipments'
         },
         () => {
-          console.log('🔔 Real-time update received');
-          if (debounceTimer) clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(() => {
-            refreshDataRef.current(false);
-          }, 1500);
+          console.log('🔔 [Realtime] Cambio detectado en verified_shipments');
+          triggerSilentRefresh();
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conduces'
+        },
+        () => {
+          console.log('🔔 [Realtime] Cambio detectado en conduces');
+          triggerSilentRefresh();
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 [Realtime] Estado de suscripción en vivo:', status);
+      });
+
+    // Sincronización al volver a enfocar la pestaña
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        triggerSilentRefresh();
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+
+    // Heartbeat en segundo plano cada 8 segundos si la pestaña está activa
+    const heartbeatInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && !isProcessing) {
+        refreshDataRef.current(false, false);
+      }
+    }, 8000);
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
+      clearInterval(heartbeatInterval);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
       supabase.removeChannel(channel);
     };
-  }, [isOnline]);
+  }, [isOnline, isProcessing]);
 
   return {
     conduces,

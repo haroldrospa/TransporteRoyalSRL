@@ -130,10 +130,11 @@ export async function fetchCargarCamionesConduces(): Promise<Conduce[]> {
         encomendado,
         prioridad,
         region,
-        relacion
+        relacion,
+        updated_at
       `)
       .eq('estado', 'En tránsito')
-      .order('fecha_entrega', { ascending: false });
+      .order('updated_at', { ascending: false, nullsFirst: false });
     
     if (error) throw error;
     
