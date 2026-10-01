@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { format, parse, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { safelyParseDate } from '@/utils/timeUtils';
 
 interface LAMFiltersProps {
   searchTerm: string;
@@ -50,31 +51,15 @@ const LAMFilters = ({
     onSearchChange('');
   };
 
-  // Parse date string from DD/MM/YY format to Date object with robust error handling
+  // Parse date string to Date object with robust error handling
   const parseDateString = (dateStr: string): Date | undefined => {
     if (!dateStr) return undefined;
     try {
-      // Basic validation
-      if (!/^\d{2}\/\d{2}\/\d{2}$/.test(dateStr)) {
-        console.error("Invalid date format:", dateStr);
-        return undefined;
+      const parsed = safelyParseDate(dateStr);
+      if (parsed && isValid(parsed)) {
+        return parsed;
       }
-      
-      // Parse the date string
-      const dateParts = dateStr.split('/');
-      const day = parseInt(dateParts[0], 10);
-      const month = parseInt(dateParts[1], 10) - 1; // months are 0-indexed
-      const year = 2000 + parseInt(dateParts[2], 10); // Assuming 20xx year
-      
-      // Create date at noon to prevent timezone issues
-      const parsedDate = new Date(year, month, day, 12, 0, 0);
-
-      // Check if the date is valid before returning
-      if (!isValid(parsedDate)) {
-        console.error("Invalid date parsed:", dateStr);
-        return undefined;
-      }
-      return parsedDate;
+      return undefined;
     } catch (error) {
       console.error("Error parsing date string in LAMFilters:", error, dateStr);
       return undefined;
