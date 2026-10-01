@@ -34,13 +34,13 @@ export const useLAMTable = (
       conducesToFilter,
       debouncedSearchTerm,
       selectedDate,
-      undefined,
+      selectedMonth,
       parseDeliveryTime,
       estadoFilter
     );
     
     return result;
-  }, [statsFilteredConduces, allLabConduces, debouncedSearchTerm, selectedDate, parseDeliveryTime, estadoFilter]);
+  }, [statsFilteredConduces, allLabConduces, debouncedSearchTerm, selectedDate, selectedMonth, parseDeliveryTime, estadoFilter]);
 
   // Memoize click handler
   const handleConduceClick = useCallback((conduce: Conduce) => {

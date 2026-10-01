@@ -195,15 +195,16 @@ export const useLAMDates = (conduces: Conduce[]) => {
       // Si hay un día específico seleccionado (ej: 30/09/26), filtrar estrictamente por ese día de CARGA
       if (selectedDate) {
         const selParsed = safelyParseDate(selectedDate);
-        if (selParsed && isValid(selParsed)) {
-          const selDay = format(selParsed, 'dd/MM/yy');
-          return conducesList.filter(conduce => {
-            if (!conduce?.fechaCarga) return false;
-            const cargaDate = safelyParseDate(conduce.fechaCarga);
-            if (!cargaDate || !isValid(cargaDate)) return false;
-            return format(cargaDate, 'dd/MM/yy') === selDay;
-          });
-        }
+        const selDay = (selParsed && isValid(selParsed)) ? format(selParsed, 'dd/MM/yy') : selectedDate;
+        return conducesList.filter(conduce => {
+          if (!conduce?.fechaCarga) return false;
+          const cargaDate = safelyParseDate(conduce.fechaCarga);
+          if (!cargaDate || !isValid(cargaDate)) return false;
+          const cDay = format(cargaDate, 'dd/MM/yy');
+          const cDay4 = format(cargaDate, 'dd/MM/yyyy');
+          const cIso = format(cargaDate, 'yyyy-MM-dd');
+          return cDay === selDay || cDay === selectedDate || cDay4 === selectedDate || cIso === selectedDate;
+        });
       }
 
       if (!dateRange?.from) {

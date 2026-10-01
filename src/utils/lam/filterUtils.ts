@@ -137,7 +137,14 @@ export const filterAndSortConduces = (
           const f4 = format(cargaDate, 'dd/MM/yyyy');
           const f2 = format(cargaDate, 'dd/MM/yy');
           const iso = format(cargaDate, 'yyyy-MM-dd');
-          if (f4 !== selectedDate && f2 !== selectedDate && iso !== selectedDate) {
+          let matches = (f4 === selectedDate || f2 === selectedDate || iso === selectedDate);
+          if (!matches) {
+            const parsedTarget = safelyParseDate(selectedDate);
+            if (parsedTarget && isValid(parsedTarget)) {
+              matches = format(cargaDate, 'dd/MM/yy') === format(parsedTarget, 'dd/MM/yy');
+            }
+          }
+          if (!matches) {
             return false;
           }
         } catch (error) {
