@@ -190,42 +190,39 @@ export const useLAMDates = (conduces: Conduce[]) => {
   // to avoid blocking conduces when dateRange month doesn't match selectedDate month.
   const filterConducesByDateRange = useMemo(() => {
     return (conducesList: Conduce[]) => {
+      if (!conducesList || conducesList.length === 0) return [];
+
+      // Si hay un día específico seleccionado (ej: 30/09/26), filtrar estrictamente por ese día de CARGA
+      if (selectedDate) {
+        const selParsed = safelyParseDate(selectedDate);
+        if (selParsed && isValid(selParsed)) {
+          const selDay = format(selParsed, 'dd/MM/yy');
+          return conducesList.filter(conduce => {
+            if (!conduce?.fechaCarga) return false;
+            const cargaDate = safelyParseDate(conduce.fechaCarga);
+            if (!cargaDate || !isValid(cargaDate)) return false;
+            return format(cargaDate, 'dd/MM/yy') === selDay;
+          });
+        }
+      }
+
       if (!dateRange?.from) {
         return conducesList;
       }
       
       return conducesList.filter(conduce => {
         try {
-          if (!conduce) return false;
-          
+          if (!conduce?.fechaCarga) return false;
           const cargaDate = safelyParseDate(conduce.fechaCarga);
-          const entregaDate = safelyParseDate(conduce.fechaEntrega);
-          
-          if ((!cargaDate || !isValid(cargaDate)) && (!entregaDate || !isValid(entregaDate))) return false;
-          
-          // If there's a selectedDate, also accept conduces that match that specific day
-          // (even if they are outside the dateRange month)
-          if (selectedDate) {
-            const selParsed = safelyParseDate(selectedDate);
-            if (selParsed && isValid(selParsed)) {
-              const selDay = format(selParsed, 'dd/MM/yy');
-              const cargaDay = cargaDate && isValid(cargaDate) ? format(cargaDate, 'dd/MM/yy') : null;
-              const entregaDay = entregaDate && isValid(entregaDate) ? format(entregaDate, 'dd/MM/yy') : null;
-              if (cargaDay === selDay || entregaDay === selDay) return true;
-            }
-          }
+          if (!cargaDate || !isValid(cargaDate)) return false;
           
           if (dateRange.to && isValid(dateRange.to)) {
             const rangeStart = startOfDay(dateRange.from);
             const rangeEnd = endOfDay(dateRange.to);
-            const inCarga = cargaDate && isValid(cargaDate) && isWithinInterval(cargaDate, { start: rangeStart, end: rangeEnd });
-            const inEntrega = entregaDate && isValid(entregaDate) && isWithinInterval(entregaDate, { start: rangeStart, end: rangeEnd });
-            return inCarga || inEntrega;
+            return isWithinInterval(cargaDate, { start: rangeStart, end: rangeEnd });
           }
           
-          const inCarga = cargaDate && isValid(cargaDate) && cargaDate >= startOfDay(dateRange.from);
-          const inEntrega = entregaDate && isValid(entregaDate) && entregaDate >= startOfDay(dateRange.from);
-          return inCarga || inEntrega;
+          return cargaDate >= startOfDay(dateRange.from);
         } catch (error) {
           console.error('Error filtering conduce by date range:', error);
           return false;
