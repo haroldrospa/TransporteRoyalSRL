@@ -48,65 +48,84 @@ export async function fetchConducesOptimized(limit?: number): Promise<Conduce[]>
   // Limpiar cache si es necesario
   cleanOldCache();
 
+  const SELECT_CONDUCE_FIELDS = `
+    id,
+    numero_conduce,
+    numero_factura,
+    numero_cliente,
+    cantidad_bultos,
+    cantidad_entregados,
+    bulto_modificado,
+    nota_modificacion_bulto,
+    fecha_carga,
+    fecha_entrega,
+    razon_social,
+    ciudad,
+    estado,
+    laboratorio,
+    encomendado,
+    prioridad,
+    tiempo_entrega,
+    hora_entrega_exacta,
+    firma,
+    nota,
+    region,
+    excepcion,
+    motivo_excepcion,
+    relacion,
+    created_at,
+    updated_at
+  `;
+
   try {
     console.log(`🚀 Fetching optimized conduces (without images)${limit ? ` with limit ${limit}` : ''}...`);
     const startTime = performance.now();
     
-    // Si hay límite, usar una query simple
+    // Si hay límite, garantizar 100% de conduces en ruta ('En tránsito') + los más recientes por updated_at
     if (limit) {
-      const { data, error } = await supabase
-        .from('conduces')
-        .select(`
-          id,
-          numero_conduce,
-          numero_factura,
-          numero_cliente,
-          cantidad_bultos,
-          cantidad_entregados,
-          bulto_modificado,
-          nota_modificacion_bulto,
-          fecha_carga,
-          fecha_entrega,
-          razon_social,
-          ciudad,
-          estado,
-          laboratorio,
-          encomendado,
-          prioridad,
-          tiempo_entrega,
-          hora_entrega_exacta,
-          firma,
-          nota,
-          region,
-          excepcion,
-          motivo_excepcion,
-          relacion,
-          created_at,
-          updated_at
-        `)
-        .order('fecha_entrega', { ascending: false })
-        .limit(limit);
+      const [transitRes, recentRes] = await Promise.all([
+        supabase
+          .from('conduces')
+          .select(SELECT_CONDUCE_FIELDS)
+          .eq('estado', 'En tránsito'),
+        supabase
+          .from('conduces')
+          .select(SELECT_CONDUCE_FIELDS)
+          .order('updated_at', { ascending: false, nullsFirst: false })
+          .limit(Math.min(limit, 1000))
+      ]);
       
-      if (error) {
-        console.error('❌ Error fetching limited conduces:', error);
+      if (recentRes.error) {
+        console.error('❌ Error fetching limited conduces:', recentRes.error);
         return [];
       }
       
-      if (!data || data.length === 0) {
-        console.warn('⚠️ No data returned from limited optimized conduces query');
-        return [];
+      const combinedMap = new Map<string, any>();
+      (transitRes.data || []).forEach(item => combinedMap.set(item.id, item));
+      (recentRes.data || []).forEach(item => combinedMap.set(item.id, item));
+
+      // Si el límite solicitado es mayor a 1,000, traer la segunda página
+      if (limit > 1000) {
+        try {
+          const { data: page2 } = await supabase
+            .from('conduces')
+            .select(SELECT_CONDUCE_FIELDS)
+            .order('updated_at', { ascending: false, nullsFirst: false })
+            .range(1000, Math.min(limit - 1, 1999));
+          (page2 || []).forEach(item => combinedMap.set(item.id, item));
+        } catch (p2Err) {
+          console.warn('⚠️ Error fetching page 2 of conduces:', p2Err);
+        }
       }
       
-      // Map data y agregar imagen como null por defecto
-      const conduces = data.map(item => {
-        const mapped = mapDbConduceToConduce({ ...item, imagen: null });
-        return mapped;
+      const conduces = Array.from(combinedMap.values()).map(item => {
+        return mapDbConduceToConduce({ ...item, imagen: null });
       });
       
       const endTime = performance.now();
       const duration = ((endTime - startTime) / 1000).toFixed(2);
       
-      console.log(`✅ Fetched ${conduces.length} limited conduces optimized in ${duration}s`);
+      console.log(`✅ Fetched ${conduces.length} limited conduces (with 100% active routes) in ${duration}s`);
       
       // Cache the result
       cache.set(cacheKey, { data: conduces, timestamp: Date.now() });
@@ -149,7 +168,7 @@ export async function fetchConducesOptimized(limit?: number): Promise<Conduce[]>
           encomendado, prioridad, tiempo_entrega, hora_entrega_exacta, firma, nota,
           region, excepcion, motivo_excepcion, relacion, created_at, updated_at
         `)
-        .order('fecha_entrega', { ascending: false })
+        .order('updated_at', { ascending: false, nullsFirst: false })
         .limit(5000);
       
       if (fallbackError) {
@@ -195,7 +214,7 @@ export async function fetchConducesOptimized(limit?: number): Promise<Conduce[]>
             encomendado, prioridad, tiempo_entrega, hora_entrega_exacta, firma, nota,
             region, excepcion, motivo_excepcion, relacion, created_at, updated_at
           `)
-          .order('fecha_entrega', { ascending: false })
+          .order('updated_at', { ascending: false, nullsFirst: false })
           .range(from, to);
         
         if (pageError) {

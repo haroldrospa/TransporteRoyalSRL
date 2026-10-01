@@ -193,11 +193,21 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       // Actualizar estados de forma sincrónica para evitar renders intermedios
       setConduces(enrichedConduces);
       try {
-        const toCache = enrichedConduces.slice(0, 1500);
+        // Priorizar todos los conduces 'En tránsito' (activos en ruta) y hasta 150 recientes
+        // para garantizar carga instantánea (0ms) sin exceder la cuota de localStorage (~5MB)
+        const inTransit = enrichedConduces.filter(c => c.estado === 'En tránsito');
+        const others = enrichedConduces.filter(c => c.estado !== 'En tránsito').slice(0, 150);
+        const toCache = [...inTransit, ...others];
         localStorage.setItem(CONDUCES_CACHE_KEY, JSON.stringify(toCache));
         localStorage.setItem(CONDUCES_CACHE_TIME_KEY, Date.now().toString());
       } catch (cacheErr) {
-        console.warn('Could not cache conduces to localStorage:', cacheErr);
+        try {
+          const onlyInTransit = enrichedConduces.filter(c => c.estado === 'En tránsito');
+          localStorage.setItem(CONDUCES_CACHE_KEY, JSON.stringify(onlyInTransit));
+          localStorage.setItem(CONDUCES_CACHE_TIME_KEY, Date.now().toString());
+        } catch (innerErr) {
+          console.warn('Could not cache conduces to localStorage:', innerErr);
+        }
       }
       setClientes(clientesData);
       

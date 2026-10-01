@@ -3,7 +3,7 @@ import { Cliente } from '@/types/cliente';
 import { getConduceCoordinates } from '@/utils/geo/distanceUtils';
 import { Usuario } from '@/types/usuarios';
 import { formatReadableDate } from '@/utils/dateFormatters';
-import { normalizeTruckCode } from '@/utils/trucksByRegion';
+import { normalizeTruckCode, getRegionByTruck } from '@/utils/trucksByRegion';
 
 export interface TruckCurrentLocation {
   truckName: string;
@@ -155,7 +155,13 @@ export function filterConducesParaMonitoreo(
   // 1. Filtrar por región si aplica
   let list = allConduces;
   if (regionActual && regionActual !== 'Todas') {
-    list = list.filter((c) => c.region === regionActual);
+    list = list.filter((c) => {
+      if (c.region === regionActual) return true;
+      if (!c.region && c.encomendado) {
+        return getRegionByTruck(c.encomendado) === regionActual;
+      }
+      return false;
+    });
   }
 
   // 2. Solo camiones / encomendados (NO almacén, NO vacíos, NO 'sin asignar')

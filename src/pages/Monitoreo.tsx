@@ -45,28 +45,49 @@ const Monitoreo: React.FC = () => {
   const [fastConduces, setFastConduces] = useState<Conduce[]>(getInitialMonitoreoCache);
   const [isFastFetching, setIsFastFetching] = useState<boolean>(false);
 
-  // Fast fetch directo de Supabase para flota activa (~300ms) si no hay datos aún
+  // Fast fetch directo de Supabase para flota activa (~300ms) si no hay datos en tránsito aún
   useEffect(() => {
-    if (conduces.length === 0 && fastConduces.length === 0) {
+    const hasTransitInData = conduces && conduces.some(c => c.estado === 'En tránsito');
+    if (!hasTransitInData && fastConduces.length === 0) {
       let isMounted = true;
       setIsFastFetching(true);
 
       const fetchActiveConduces = async () => {
         try {
-          const { data, error } = await supabase
-            .from('conduces')
-            .select('*')
-            .in('estado', ['En tránsito', 'Entregado', 'Devuelto'])
-            .order('updated_at', { ascending: false })
-            .limit(500);
+          const [transitRes, recentRes] = await Promise.all([
+            supabase
+              .from('conduces')
+              .select('*')
+              .eq('estado', 'En tránsito'),
+            supabase
+              .from('conduces')
+              .select('*')
+              .in('estado', ['Entregado', 'Devuelto'])
+              .order('updated_at', { ascending: false })
+              .limit(300)
+          ]);
 
-          if (!error && data && data.length > 0 && isMounted) {
-            const mapped = data.map(mapDbConduceToConduce);
-            setFastConduces(mapped);
-            try {
-              localStorage.setItem(MONITOREO_CACHE_KEY, JSON.stringify(mapped));
-            } catch (err) {
-              // Ignore quota limit
+          if (isMounted) {
+            const map = new Map<string, Conduce>();
+            (transitRes.data || []).forEach(d => {
+              const mapped = mapDbConduceToConduce(d);
+              map.set(mapped.id, mapped);
+            });
+            (recentRes.data || []).forEach(d => {
+              const mapped = mapDbConduceToConduce(d);
+              if (!map.has(mapped.id)) {
+                map.set(mapped.id, mapped);
+              }
+            });
+
+            const merged = Array.from(map.values());
+            if (merged.length > 0) {
+              setFastConduces(merged);
+              try {
+                localStorage.setItem(MONITOREO_CACHE_KEY, JSON.stringify(merged.slice(0, 300)));
+              } catch (err) {
+                // Ignore quota limit
+              }
             }
           }
         } catch (err) {
@@ -81,7 +102,7 @@ const Monitoreo: React.FC = () => {
         isMounted = false;
       };
     }
-  }, [conduces.length, fastConduces.length]);
+  }, [conduces, fastConduces.length]);
 
   // Cargar lista de usuarios para asociar choferes a cada camión
   useEffect(() => {
@@ -92,10 +113,20 @@ const Monitoreo: React.FC = () => {
 
   // Determinar los conduces efectivos: los globales de DataContext o el cache/fast fetch
   const effectiveConduces = useMemo(() => {
-    if (conduces && conduces.length > 0) {
+    const hasTransitInData = conduces && conduces.some(c => c.estado === 'En tránsito');
+    if (hasTransitInData) {
       return conduces;
     }
-    return fastConduces;
+    if (fastConduces && fastConduces.length > 0) {
+      if (conduces && conduces.length > 0) {
+        const map = new Map<string, Conduce>();
+        conduces.forEach(c => map.set(c.id, c));
+        fastConduces.forEach(c => map.set(c.id, c));
+        return Array.from(map.values());
+      }
+      return fastConduces;
+    }
+    return conduces;
   }, [conduces, fastConduces]);
 
   const isDataLoading = (loading && effectiveConduces.length === 0) || (isFastFetching && effectiveConduces.length === 0);
