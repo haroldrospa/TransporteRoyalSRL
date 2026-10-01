@@ -152,21 +152,9 @@ export function filterConducesParaMonitoreo(
     return { filteredConduces: [], activeDates: [] };
   }
 
-  // 1. Filtrar por región si aplica
-  let list = allConduces;
-  if (regionActual && regionActual !== 'Todas') {
-    list = list.filter((c) => {
-      if (c.region === regionActual) return true;
-      if (!c.region && c.encomendado) {
-        return getRegionByTruck(c.encomendado) === regionActual;
-      }
-      return false;
-    });
-  }
-
-  // 2. Solo camiones / encomendados (NO almacén, NO vacíos, NO 'sin asignar')
+  // 1. Solo camiones / encomendados válidos (NO almacén, NO vacíos, NO 'sin asignar')
   //    y NORMALIZAR el código de camión a su formato canónico (ej. 'R-07')
-  const validList = list
+  const validTruckConduces = allConduces
     .filter((c) => {
       const enc = (c.encomendado || '').trim().toLowerCase();
       if (!enc) return false;
@@ -178,6 +166,32 @@ export function filterConducesParaMonitoreo(
       ...c,
       encomendado: normalizeTruckCode(c.encomendado || '')
     }));
+
+  // 2. Filtrar estrictamente por región: la zona oficial del camión tiene prioridad absoluta
+  let validList = validTruckConduces;
+  if (regionActual && regionActual !== 'Todas') {
+    const validTrucksForRegion = new Set(
+      getTrucksByRegion(regionActual).map((t) => normalizeTruckCode(t))
+    );
+
+    validList = validTruckConduces.filter((c) => {
+      const truck = c.encomendado;
+      const truckRegion = getRegionByTruck(truck);
+      
+      // Si el encomendado pertenece a una región oficial conocida (ej. R-01 -> Sur, R-04 -> Norte), esa zona MANDA
+      if (truckRegion) {
+        return truckRegion === regionActual;
+      }
+      
+      // Si está en la lista de camiones configurada para la región
+      if (validTrucksForRegion.has(truck)) {
+        return true;
+      }
+
+      // Si es un camión no clasificado, usar el campo c.region como fallback
+      return c.region === regionActual;
+    });
+  }
 
   // 3. Obtener los que están en tránsito (los que están en ruta en los camiones)
   const inTransitConduces = validList.filter((c) => c.estado === 'En tránsito');

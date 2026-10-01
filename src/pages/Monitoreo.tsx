@@ -194,10 +194,17 @@ const Monitoreo: React.FC = () => {
         }
       });
 
+    const validTruckSet = new Set(validTruckNames.map((t) => normalizeTruckCode(t)));
+
     filteredConduces.forEach((c) => {
       const rawEncom = (c.encomendado || '').trim();
       if (!rawEncom || rawEncom.toLowerCase().includes('almacen') || rawEncom.toLowerCase() === 'sin asignar') return;
       const encomendado = normalizeTruckCode(rawEncom);
+
+      // Si hay una región específica seleccionada, ignorar camiones de otras zonas
+      if (regionActual !== 'Todas' && !validTruckSet.has(encomendado)) {
+        return;
+      }
 
       let entry = map.get(encomendado);
       if (!entry) {
