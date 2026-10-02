@@ -2,6 +2,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import LAMActions from '@/components/lam/LAMActions';
 import { useIsMobile } from '@/hooks/use-mobile';
+import type { DateRange } from 'react-day-picker';
 
 interface InnovacionQuimicaHeaderProps {
   regionActual: string;
@@ -23,9 +24,11 @@ interface InnovacionQuimicaHeaderProps {
     excepcionesCount: number;
     totalEntregados: number;
   };
+  dateRange?: DateRange;
+  selectedMonth?: Date;
 }
 
-const InnovacionQuimicaHeader = ({ regionActual, loading, onRefresh, conduces, stats, chartInfo }: InnovacionQuimicaHeaderProps) => {
+const InnovacionQuimicaHeader = ({ regionActual, loading, onRefresh, conduces, stats, chartInfo, dateRange, selectedMonth }: InnovacionQuimicaHeaderProps) => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
@@ -48,6 +51,8 @@ const InnovacionQuimicaHeader = ({ regionActual, loading, onRefresh, conduces, s
         stats={stats}
         chartInfo={chartInfo}
         laboratorio="Innovacion Quimica"
+        dateRange={dateRange}
+        selectedMonth={selectedMonth}
       />
     </div>
   );

@@ -12,6 +12,14 @@ import { isConduceDelayed } from '@/utils/time/conduceDelay';
 import { calculateTransitTime } from '@/utils/time/transitTime';
 import { useAuth } from '@/contexts/AuthContext';
 import { getManualConduceEnabled, getExcelUploadEnabled } from '@/utils/userSettings';
+import { format, isValid } from 'date-fns';
+import { DateRange } from 'react-day-picker';
+import { safelyParseDate } from '@/utils/timeUtils';
+
+const MONTH_NAMES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
 
 interface LAMActionsProps {
   onRefresh: () => Promise<void>;
@@ -34,9 +42,21 @@ interface LAMActionsProps {
     totalEntregados: number;
   };
   laboratorio: string;
+  dateRange?: DateRange;
+  selectedMonth?: Date;
 }
 
-const LAMActions = ({ onRefresh, loading, userLevel, conduces = [], stats, chartInfo, laboratorio }: LAMActionsProps) => {
+const LAMActions = ({ 
+  onRefresh, 
+  loading, 
+  userLevel, 
+  conduces = [], 
+  stats, 
+  chartInfo, 
+  laboratorio,
+  dateRange,
+  selectedMonth 
+}: LAMActionsProps) => {
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { refreshData } = useData();
@@ -253,12 +273,61 @@ const LAMActions = ({ onRefresh, loading, userLevel, conduces = [], stats, chart
           { wch: 25 }  // Porcentaje
         ];
 
-        XLSX.utils.book_append_sheet(workbook, statsWorksheet, 'Estadísticas LAM');
+        XLSX.utils.book_append_sheet(workbook, statsWorksheet, `Estadísticas ${laboratorio || 'LAM'}`);
       }
 
-      const date = new Date();
-      const formattedDate = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
-      const fileName = `LAM_Conduces_${formattedDate}.xlsx`;
+      // Generar nombre de archivo descriptivo con mes o rango de fechas
+      const labName = (laboratorio || 'LAM').replace(/\s+/g, '_');
+      let dateDescriptor = '';
+
+      if (dateRange?.from && isValid(dateRange.from)) {
+        const from = dateRange.from;
+        const to = dateRange.to && isValid(dateRange.to) ? dateRange.to : from;
+
+        const isFirstDay = from.getDate() === 1;
+        const lastDayOfMonth = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+        const isLastDay = to.getDate() === lastDayOfMonth;
+        const isSameMonthAndYear = from.getMonth() === to.getMonth() && from.getFullYear() === to.getFullYear();
+
+        if (isSameMonthAndYear && isFirstDay && isLastDay) {
+          const monthName = MONTH_NAMES[from.getMonth()];
+          dateDescriptor = `${monthName}_${from.getFullYear()}`;
+        } else if (from.getTime() === to.getTime() || format(from, 'yyyy-MM-dd') === format(to, 'yyyy-MM-dd')) {
+          dateDescriptor = format(from, 'dd-MM-yyyy');
+        } else {
+          dateDescriptor = `${format(from, 'dd-MM-yyyy')}_al_${format(to, 'dd-MM-yyyy')}`;
+        }
+      } else if (selectedMonth && isValid(selectedMonth)) {
+        const monthName = MONTH_NAMES[selectedMonth.getMonth()];
+        dateDescriptor = `${monthName}_${selectedMonth.getFullYear()}`;
+      } else if (Array.isArray(conduces) && conduces.length > 0) {
+        const validDates: Date[] = [];
+        conduces.forEach(c => {
+          const d = safelyParseDate(c?.fechaCarga);
+          if (d && isValid(d)) validDates.push(d);
+        });
+
+        if (validDates.length > 0) {
+          validDates.sort((a, b) => a.getTime() - b.getTime());
+          const minDate = validDates[0];
+          const maxDate = validDates[validDates.length - 1];
+          const isSameMonthAndYear = minDate.getMonth() === maxDate.getMonth() && minDate.getFullYear() === maxDate.getFullYear();
+          if (isSameMonthAndYear && minDate.getTime() !== maxDate.getTime()) {
+            const monthName = MONTH_NAMES[minDate.getMonth()];
+            dateDescriptor = `${monthName}_${minDate.getFullYear()}`;
+          } else if (minDate.getTime() === maxDate.getTime()) {
+            dateDescriptor = format(minDate, 'dd-MM-yyyy');
+          } else {
+            dateDescriptor = `${format(minDate, 'dd-MM-yyyy')}_al_${format(maxDate, 'dd-MM-yyyy')}`;
+          }
+        }
+      }
+
+      if (!dateDescriptor) {
+        dateDescriptor = format(new Date(), 'dd-MM-yyyy');
+      }
+
+      const fileName = `${labName}_Conduces_${dateDescriptor}.xlsx`;
 
       XLSX.writeFile(workbook, fileName);
 

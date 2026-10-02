@@ -2,6 +2,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import LAMActions from '@/components/lam/LAMActions';
 import { useIsMobile } from '@/hooks/use-mobile';
+import type { DateRange } from 'react-day-picker';
 
 interface FersuazHeaderProps {
   regionActual: string;
@@ -23,9 +24,11 @@ interface FersuazHeaderProps {
     excepcionesCount: number;
     totalEntregados: number;
   };
+  dateRange?: DateRange;
+  selectedMonth?: Date;
 }
 
-const FersuazHeader = ({ regionActual, loading, onRefresh, conduces, stats, chartInfo }: FersuazHeaderProps) => {
+const FersuazHeader = ({ regionActual, loading, onRefresh, conduces, stats, chartInfo, dateRange, selectedMonth }: FersuazHeaderProps) => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
@@ -48,6 +51,8 @@ const FersuazHeader = ({ regionActual, loading, onRefresh, conduces, stats, char
         stats={stats}
         chartInfo={chartInfo}
         laboratorio="Fersuaz"
+        dateRange={dateRange}
+        selectedMonth={selectedMonth}
       />
     </div>
   );

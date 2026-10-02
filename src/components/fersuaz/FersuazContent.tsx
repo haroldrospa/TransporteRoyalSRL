@@ -66,6 +66,8 @@ const FersuazContent = memo(() => {
         conduces={regionConduces || []}
         stats={stats}
         chartInfo={chartInfo}
+        dateRange={dateRange}
+        selectedMonth={selectedMonth}
       />
 
       {hasNoData ? (

@@ -48,6 +48,8 @@ const InnovacionQuimicaContent = memo(() => {
         conduces={regionConduces || []}
         stats={stats}
         chartInfo={chartInfo}
+        dateRange={dateRange}
+        selectedMonth={selectedMonth}
       />
 
       {hasNoData ? (

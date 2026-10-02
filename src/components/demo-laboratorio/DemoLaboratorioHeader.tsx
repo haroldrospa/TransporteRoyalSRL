@@ -3,6 +3,7 @@ import LAMActions from '@/components/lam/LAMActions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles } from 'lucide-react';
+import type { DateRange } from 'react-day-picker';
 
 interface DemoLaboratorioHeaderProps {
   regionActual: string;
@@ -24,6 +25,8 @@ interface DemoLaboratorioHeaderProps {
     excepcionesCount: number;
     totalEntregados: number;
   };
+  dateRange?: DateRange;
+  selectedMonth?: Date;
 }
 
 const DemoLaboratorioHeader = ({
@@ -32,7 +35,9 @@ const DemoLaboratorioHeader = ({
   onRefresh,
   conduces,
   stats,
-  chartInfo
+  chartInfo,
+  dateRange,
+  selectedMonth
 }: DemoLaboratorioHeaderProps) => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
@@ -62,6 +67,8 @@ const DemoLaboratorioHeader = ({
         stats={stats}
         chartInfo={chartInfo}
         laboratorio="Laboratorio Demo"
+        dateRange={dateRange}
+        selectedMonth={selectedMonth}
       />
     </div>
   );

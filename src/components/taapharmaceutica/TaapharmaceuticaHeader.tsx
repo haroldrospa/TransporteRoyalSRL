@@ -2,6 +2,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import LAMActions from '@/components/lam/LAMActions';
 import { useIsMobile } from '@/hooks/use-mobile';
+import type { DateRange } from 'react-day-picker';
 
 interface TaapharmaceuticaHeaderProps {
   regionActual: string;
@@ -23,9 +24,11 @@ interface TaapharmaceuticaHeaderProps {
     excepcionesCount: number;
     totalEntregados: number;
   };
+  dateRange?: DateRange;
+  selectedMonth?: Date;
 }
 
-const TaapharmaceuticaHeader = ({ regionActual, loading, onRefresh, conduces, stats, chartInfo }: TaapharmaceuticaHeaderProps) => {
+const TaapharmaceuticaHeader = ({ regionActual, loading, onRefresh, conduces, stats, chartInfo, dateRange, selectedMonth }: TaapharmaceuticaHeaderProps) => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
@@ -48,6 +51,8 @@ const TaapharmaceuticaHeader = ({ regionActual, loading, onRefresh, conduces, st
         stats={stats}
         chartInfo={chartInfo}
         laboratorio="Taapharmaceutica"
+        dateRange={dateRange}
+        selectedMonth={selectedMonth}
       />
     </div>
   );

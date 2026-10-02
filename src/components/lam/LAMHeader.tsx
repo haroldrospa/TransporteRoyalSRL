@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import LAMActions from '@/components/lam/LAMActions';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+import { DateRange } from 'react-day-picker';
+
 interface LAMHeaderProps {
   regionActual: string;
   loading: boolean;
@@ -24,9 +26,11 @@ interface LAMHeaderProps {
     excepcionesCount: number;
     totalEntregados: number;
   };
+  dateRange?: DateRange;
+  selectedMonth?: Date;
 }
 
-const LAMHeader = ({ regionActual, loading, onRefresh, conduces, stats, chartInfo }: LAMHeaderProps) => {
+const LAMHeader = ({ regionActual, loading, onRefresh, conduces, stats, chartInfo, dateRange, selectedMonth }: LAMHeaderProps) => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
@@ -49,6 +53,8 @@ const LAMHeader = ({ regionActual, loading, onRefresh, conduces, stats, chartInf
           stats={stats}
           chartInfo={chartInfo}
           laboratorio="LAM"
+          dateRange={dateRange}
+          selectedMonth={selectedMonth}
         />
     </div>
   );

@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import LAMActions from '@/components/lam/LAMActions';
 import { useIsMobile } from '@/hooks/use-mobile';
+import type { DateRange } from 'react-day-picker';
 
 interface KrishparCareHeaderProps {
   regionActual: string;
@@ -22,9 +23,11 @@ interface KrishparCareHeaderProps {
     excepcionesCount: number;
     totalEntregados: number;
   };
+  dateRange?: DateRange;
+  selectedMonth?: Date;
 }
 
-const KrishparCareHeader = ({ regionActual, loading, onRefresh, conduces, stats, chartInfo }: KrishparCareHeaderProps) => {
+const KrishparCareHeader = ({ regionActual, loading, onRefresh, conduces, stats, chartInfo, dateRange, selectedMonth }: KrishparCareHeaderProps) => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
@@ -47,6 +50,8 @@ const KrishparCareHeader = ({ regionActual, loading, onRefresh, conduces, stats,
         stats={stats}
         chartInfo={chartInfo}
         laboratorio="Krishpar Care Dominicana"
+        dateRange={dateRange}
+        selectedMonth={selectedMonth}
       />
     </div>
   );

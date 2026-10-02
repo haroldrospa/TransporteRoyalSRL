@@ -72,6 +72,8 @@ const LAMContent = memo(() => {
         conduces={statsFilteredConduces || []}
         stats={stats}
         chartInfo={chartInfo}
+        dateRange={dateRange}
+        selectedMonth={selectedMonth}
       />
 
       {hasNoData ? (
