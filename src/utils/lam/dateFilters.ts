@@ -13,12 +13,9 @@ export const filterConducesByMonth = (conduces: Conduce[], selectedMonth: Date):
 
   try {
     return conduces.filter(c => {
-      if (!c) return false;
-      
-      const entregaDate = safelyParseDate(c.fechaEntrega);
+      if (!c?.fechaCarga) return false;
       const cargaDate = safelyParseDate(c.fechaCarga);
-      
-      if ((!entregaDate || !isValid(entregaDate)) && (!cargaDate || !isValid(cargaDate))) return false;
+      if (!cargaDate || !isValid(cargaDate)) return false;
       
       // Get the start and end of month
       const startDate = startOfMonth(selectedMonth);
@@ -30,10 +27,7 @@ export const filterConducesByMonth = (conduces: Conduce[], selectedMonth: Date):
         return false;
       }
       
-      const inEntrega = entregaDate && isValid(entregaDate) && isWithinInterval(entregaDate, { start: startDate, end: endDate });
-      const inCarga = cargaDate && isValid(cargaDate) && isWithinInterval(cargaDate, { start: startDate, end: endDate });
-      
-      return inEntrega || inCarga;
+      return isWithinInterval(cargaDate, { start: startDate, end: endDate });
     });
   } catch (error) {
     console.error('Error filtering by month:', error);

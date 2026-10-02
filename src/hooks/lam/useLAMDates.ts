@@ -126,22 +126,60 @@ export const useLAMDates = (conduces: Conduce[]) => {
     }
   }, [uniqueDates]);
 
-
-  // Sync selectedMonth from selectedDate (highest priority) or dateRange as fallback
+  // Sync selectedMonth and selectedDate when dateRange changes
   useEffect(() => {
+    if (!dateRange?.from || !isValid(dateRange.from)) {
+      setSelectedMonth(undefined);
+      return;
+    }
+
+    const monthStart = startOfMonth(dateRange.from);
+    setSelectedMonth(monthStart);
+
+    const rangeStart = startOfDay(dateRange.from);
+    const rangeEnd = dateRange.to && isValid(dateRange.to) ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+
+    // If current selectedDate is already within this new dateRange, keep it
     if (selectedDate) {
-      const parsed = safelyParseDate(selectedDate);
-      if (parsed && isValid(parsed)) {
-        setSelectedMonth(startOfMonth(parsed));
+      const parsedSel = safelyParseDate(selectedDate);
+      if (parsedSel && isValid(parsedSel) && isWithinInterval(parsedSel, { start: rangeStart, end: rangeEnd })) {
         return;
       }
     }
-    if (dateRange?.from && isValid(dateRange.from)) {
-      setSelectedMonth(startOfMonth(dateRange.from));
-    } else {
-      setSelectedMonth(undefined);
+
+    // Otherwise, pick the latest date in uniqueDates that falls within this dateRange
+    if (uniqueDates.length > 0) {
+      const inRange = uniqueDates.filter(d => {
+        const pd = safelyParseDate(d);
+        return pd && isValid(pd) && isWithinInterval(pd, { start: rangeStart, end: rangeEnd });
+      });
+
+      if (inRange.length > 0) {
+        setSelectedDate(inRange[inRange.length - 1]);
+      } else {
+        setSelectedDate('');
+      }
     }
-  }, [selectedDate, dateRange]);
+  }, [dateRange, uniqueDates]);
+
+  // When selectedDate is changed to a date outside current dateRange, update dateRange to that month
+  useEffect(() => {
+    if (!selectedDate) return;
+    const parsed = safelyParseDate(selectedDate);
+    if (!parsed || !isValid(parsed)) return;
+
+    if (!dateRange?.from || !dateRange?.to) {
+      setDateRange({ from: startOfMonth(parsed), to: endOfMonth(parsed) });
+      return;
+    }
+
+    const rangeStart = startOfDay(dateRange.from);
+    const rangeEnd = endOfDay(dateRange.to);
+
+    if (!isWithinInterval(parsed, { start: rangeStart, end: rangeEnd })) {
+      setDateRange({ from: startOfMonth(parsed), to: endOfMonth(parsed) });
+    }
+  }, [selectedDate]);
 
   // Function to handle date navigation - navigate through all available dates
   const navigateDate = useCallback((direction: 'prev' | 'next') => {
@@ -150,6 +188,7 @@ export const useLAMDates = (conduces: Conduce[]) => {
     const normalizedCurrent = normalizeToDdMmYy(selectedDate);
     const currentIndex = uniqueDates.indexOf(normalizedCurrent);
     
+    let targetIndex = -1;
     if (direction === 'prev') {
       if (currentIndex === -1) {
         const today = new Date();
@@ -160,13 +199,9 @@ export const useLAMDates = (conduces: Conduce[]) => {
           if (!currentDateParsed || !nextDateParsed) return false;
           return currentDateParsed <= today && nextDateParsed > today;
         });
-        if (closestPrevIndex >= 0) {
-          setSelectedDate(uniqueDates[closestPrevIndex]);
-        } else if (uniqueDates.length > 0) {
-          setSelectedDate(uniqueDates[uniqueDates.length - 1]);
-        }
+        targetIndex = closestPrevIndex >= 0 ? closestPrevIndex : uniqueDates.length - 1;
       } else if (currentIndex > 0) {
-        setSelectedDate(uniqueDates[currentIndex - 1]);
+        targetIndex = currentIndex - 1;
       }
     } else if (direction === 'next') {
       if (currentIndex === -1) {
@@ -176,61 +211,51 @@ export const useLAMDates = (conduces: Conduce[]) => {
           if (!dateParsed) return false;
           return dateParsed > today;
         });
-        if (closestNextIndex >= 0) {
-          setSelectedDate(uniqueDates[closestNextIndex]);
-        }
+        targetIndex = closestNextIndex >= 0 ? closestNextIndex : -1;
       } else if (currentIndex < uniqueDates.length - 1) {
-        setSelectedDate(uniqueDates[currentIndex + 1]);
+        targetIndex = currentIndex + 1;
       }
     }
-  }, [selectedDate, uniqueDates]);
 
-  // Function to filter conduces by date range
-  // When a selectedDate is active, also include any conduce that matches that specific day
-  // to avoid blocking conduces when dateRange month doesn't match selectedDate month.
+    if (targetIndex >= 0 && targetIndex < uniqueDates.length) {
+      const newDate = uniqueDates[targetIndex];
+      setSelectedDate(newDate);
+      const parsed = safelyParseDate(newDate);
+      if (parsed && isValid(parsed)) {
+        const rangeStart = dateRange?.from ? startOfDay(dateRange.from) : null;
+        const rangeEnd = dateRange?.to ? endOfDay(dateRange.to) : rangeStart;
+        if (!rangeStart || !rangeEnd || !isWithinInterval(parsed, { start: rangeStart, end: rangeEnd })) {
+          setDateRange({ from: startOfMonth(parsed), to: endOfMonth(parsed) });
+        }
+      }
+    }
+  }, [selectedDate, uniqueDates, dateRange]);
+
+  // Function to filter conduces strictly by date range (e.g. Month or custom interval)
   const filterConducesByDateRange = useMemo(() => {
     return (conducesList: Conduce[]) => {
       if (!conducesList || conducesList.length === 0) return [];
-
-      // Si hay un día específico seleccionado (ej: 30/09/26), filtrar estrictamente por ese día de CARGA
-      if (selectedDate) {
-        const selParsed = safelyParseDate(selectedDate);
-        const selDay = (selParsed && isValid(selParsed)) ? format(selParsed, 'dd/MM/yy') : selectedDate;
-        return conducesList.filter(conduce => {
-          if (!conduce?.fechaCarga) return false;
-          const cargaDate = safelyParseDate(conduce.fechaCarga);
-          if (!cargaDate || !isValid(cargaDate)) return false;
-          const cDay = format(cargaDate, 'dd/MM/yy');
-          const cDay4 = format(cargaDate, 'dd/MM/yyyy');
-          const cIso = format(cargaDate, 'yyyy-MM-dd');
-          return cDay === selDay || cDay === selectedDate || cDay4 === selectedDate || cIso === selectedDate;
-        });
-      }
 
       if (!dateRange?.from) {
         return conducesList;
       }
       
+      const rangeStart = startOfDay(dateRange.from);
+      const rangeEnd = dateRange.to && isValid(dateRange.to) ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+
       return conducesList.filter(conduce => {
         try {
           if (!conduce?.fechaCarga) return false;
           const cargaDate = safelyParseDate(conduce.fechaCarga);
           if (!cargaDate || !isValid(cargaDate)) return false;
-          
-          if (dateRange.to && isValid(dateRange.to)) {
-            const rangeStart = startOfDay(dateRange.from);
-            const rangeEnd = endOfDay(dateRange.to);
-            return isWithinInterval(cargaDate, { start: rangeStart, end: rangeEnd });
-          }
-          
-          return cargaDate >= startOfDay(dateRange.from);
+          return isWithinInterval(cargaDate, { start: rangeStart, end: rangeEnd });
         } catch (error) {
           console.error('Error filtering conduce by date range:', error);
           return false;
         }
       });
     };
-  }, [dateRange, selectedDate]);
+  }, [dateRange]);
 
   return {
     dateRange,
