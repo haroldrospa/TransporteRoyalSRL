@@ -7,10 +7,19 @@ export interface Coordinates {
 }
 
 /**
- * Extrae latitud y longitud de una cadena de coordenadas tipo "19.315929, -70.597741".
+ * Extrae latitud y longitud de una cadena de coordenadas tipo "19.315929, -70.597741"
+ * o de un objeto con lat y lon / lng.
  */
-export const parseCoordinates = (str?: string | null): Coordinates | null => {
+export const parseCoordinates = (str?: string | null | any): Coordinates | null => {
   if (!str) return null;
+  if (typeof str === 'object' && str !== null) {
+    const lat = typeof str.lat === 'number' ? str.lat : parseFloat(str.lat);
+    const lon = typeof str.lon === 'number' ? str.lon : (typeof str.lng === 'number' ? str.lng : parseFloat(str.lon || str.lng));
+    if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+      return { lat, lon };
+    }
+  }
+  if (typeof str !== 'string') return null;
   const trimmed = str.trim();
   const match = trimmed.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
   if (!match) return null;

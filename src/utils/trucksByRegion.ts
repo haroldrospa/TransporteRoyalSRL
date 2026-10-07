@@ -1,7 +1,8 @@
 import { Region } from '@/types/conduces';
 
 // Normalize a truck code to standard format (e.g. 'R03' -> 'R-03')
-export const normalizeTruckCode = (truck: string): string => {
+export const normalizeTruckCode = (truck?: string | null): string => {
+  if (!truck || typeof truck !== 'string') return '';
   const clean = truck.trim().toUpperCase().replace(/[-_ ]?ALMAC[EÉ]N$/i, '');
   const rMatch = clean.match(/^R-?0?(\d+)$/);
   if (rMatch) {

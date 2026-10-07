@@ -83,7 +83,8 @@ export const MonitoreoMapa: React.FC<MonitoreoMapaProps> = ({
   const stopPoints = useMemo(() => {
     const stopsMap = new Map<string, StopPoint>();
 
-    for (const c of conduces) {
+    for (const c of (conduces || [])) {
+      if (!c) continue;
       const truck = normalizeTruckCode(c.encomendado || '');
 
       if (selectedTruck && truck !== normalizeTruckCode(selectedTruck)) {
@@ -101,7 +102,9 @@ export const MonitoreoMapa: React.FC<MonitoreoMapaProps> = ({
       }
 
       const coords = getConduceCoordinates(c, getClienteByNumero as any);
-      if (!coords) continue;
+      if (!coords || typeof coords.lat !== 'number' || typeof coords.lon !== 'number' || isNaN(coords.lat) || isNaN(coords.lon)) {
+        continue;
+      }
 
       const client = getClienteByNumero ? getClienteByNumero(c.numeroCliente) : null;
       const clientNum = c.numeroCliente || client?.numero || '';
@@ -128,10 +131,10 @@ export const MonitoreoMapa: React.FC<MonitoreoMapaProps> = ({
         if (isReturned) existing.hasReturned = true;
         if (!isDelivered) existing.isFullyDelivered = false;
         if (isDelivered && (c.tiempoEntrega || c.horaEntregaExacta)) {
-          const newTime = c.horaEntregaExacta || c.tiempoEntrega;
+          const newTime = String(c.horaEntregaExacta || c.tiempoEntrega || '');
           if (!existing.latestDeliveryTime || (newTime && newTime > existing.latestDeliveryTime)) {
             existing.latestDeliveryTime = newTime;
-            existing.latestDeliveryDate = c.fechaEntrega;
+            existing.latestDeliveryDate = String(c.fechaEntrega || '');
           }
         }
       } else {
@@ -151,8 +154,8 @@ export const MonitoreoMapa: React.FC<MonitoreoMapaProps> = ({
           isFullyDelivered: isDelivered,
           hasPending: isPending,
           hasReturned: isReturned,
-          latestDeliveryTime: isDelivered ? (c.horaEntregaExacta || c.tiempoEntrega) : undefined,
-          latestDeliveryDate: isDelivered ? c.fechaEntrega : undefined
+          latestDeliveryTime: isDelivered ? String(c.horaEntregaExacta || c.tiempoEntrega || '') : undefined,
+          latestDeliveryDate: isDelivered ? String(c.fechaEntrega || '') : undefined
         });
       }
     }
@@ -165,38 +168,57 @@ export const MonitoreoMapa: React.FC<MonitoreoMapaProps> = ({
     if (!mapContainerRef.current) return;
     if (mapInstanceRef.current) return;
 
-    const map = L.map(mapContainerRef.current, {
-      center: [18.7357, -70.1627],
-      zoom: 8,
-      zoomControl: true,
-      fadeAnimation: true,
-      zoomAnimation: true
-    });
+    // Evitar excepción "Map container is already initialized" de Leaflet
+    if ((mapContainerRef.current as any)._leaflet_id) {
+      delete (mapContainerRef.current as any)._leaflet_id;
+    }
 
-    const isDark = document.documentElement.classList.contains('dark');
-    const tileUrl = getMapTileUrl(isDark);
+    try {
+      const map = L.map(mapContainerRef.current, {
+        center: [18.7357, -70.1627],
+        zoom: 8,
+        zoomControl: true,
+        fadeAnimation: true,
+        zoomAnimation: true
+      });
 
-    L.tileLayer(tileUrl, {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap & TransporteRoyal'
-    }).addTo(map);
+      const isDark = document.documentElement.classList.contains('dark');
+      const tileUrl = getMapTileUrl(isDark);
 
-    // Capa de paradas de clientes
-    const stopsLayer = L.featureGroup().addTo(map);
-    stopsLayerRef.current = stopsLayer;
+      L.tileLayer(tileUrl, {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap & TransporteRoyal'
+      }).addTo(map);
 
-    // Capa de camiones / encomendados
-    const trucksLayer = L.featureGroup().addTo(map);
-    trucksLayerRef.current = trucksLayer;
+      // Capa de paradas de clientes
+      const stopsLayer = L.featureGroup().addTo(map);
+      stopsLayerRef.current = stopsLayer;
 
-    mapInstanceRef.current = map;
+      // Capa de camiones / encomendados
+      const trucksLayer = L.featureGroup().addTo(map);
+      trucksLayerRef.current = trucksLayer;
+
+      mapInstanceRef.current = map;
+    } catch (err) {
+      console.warn('Error inicializando mapa Leaflet:', err);
+    }
 
     return () => {
       if (routeAbortControllerRef.current) {
         routeAbortControllerRef.current.abort();
+        routeAbortControllerRef.current = null;
       }
-      map.remove();
+      try {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
+        }
+      } catch (err) {
+        console.warn('Error limpiando mapa Leaflet:', err);
+      }
       mapInstanceRef.current = null;
+      if (mapContainerRef.current && (mapContainerRef.current as any)._leaflet_id) {
+        delete (mapContainerRef.current as any)._leaflet_id;
+      }
     };
   }, []);
 
@@ -207,33 +229,35 @@ export const MonitoreoMapa: React.FC<MonitoreoMapaProps> = ({
     const trucksLayer = trucksLayerRef.current;
     if (!map || !stopsLayer || !trucksLayer) return;
 
-    stopsLayer.clearLayers();
-    trucksLayer.clearLayers();
-    truckMarkersMapRef.current.clear();
+    try {
+      stopsLayer.clearLayers();
+      trucksLayer.clearLayers();
+      truckMarkersMapRef.current.clear();
 
-    if (routeAbortControllerRef.current) {
-      routeAbortControllerRef.current.abort();
-      routeAbortControllerRef.current = null;
-    }
-    if (routePolylineRef.current) {
-      routePolylineRef.current.remove();
-      routePolylineRef.current = null;
-    }
-    if (routeCasingPolylineRef.current) {
-      routeCasingPolylineRef.current.remove();
-      routeCasingPolylineRef.current = null;
-    }
+      if (routeAbortControllerRef.current) {
+        routeAbortControllerRef.current.abort();
+        routeAbortControllerRef.current = null;
+      }
+      if (routePolylineRef.current) {
+        routePolylineRef.current.remove();
+        routePolylineRef.current = null;
+      }
+      if (routeCasingPolylineRef.current) {
+        routeCasingPolylineRef.current.remove();
+        routeCasingPolylineRef.current = null;
+      }
 
-    const bounds = L.latLngBounds([]);
+      const bounds = L.latLngBounds([]);
 
-    // A. Renderizar Paradas de Clientes
-    stopPoints.forEach((stop) => {
-      const isDelivered = stop.isFullyDelivered;
-      if (isDelivered && !showDeliveredStops) return;
-      if (!isDelivered && !showPendingStops) return;
+      // A. Renderizar Paradas de Clientes
+      stopPoints.forEach((stop) => {
+        if (!stop || typeof stop.lat !== 'number' || typeof stop.lon !== 'number' || isNaN(stop.lat) || isNaN(stop.lon)) return;
+        const isDelivered = stop.isFullyDelivered;
+        if (isDelivered && !showDeliveredStops) return;
+        if (!isDelivered && !showPendingStops) return;
 
-      const truckColor = getTruckColor(stop.encomendado);
-      bounds.extend([stop.lat, stop.lon]);
+        const truckColor = getTruckColor(stop.encomendado);
+        bounds.extend([stop.lat, stop.lon]);
 
       const markerHtml = isDelivered
         ? `
@@ -318,6 +342,7 @@ export const MonitoreoMapa: React.FC<MonitoreoMapaProps> = ({
     // B. Renderizar Ubicación Actual de los Camiones / Encomendados (🚚)
     if (showTrucks && truckLocations && truckLocations.size > 0) {
       truckLocations.forEach((loc, truckName) => {
+        if (!loc || typeof loc.lat !== 'number' || typeof loc.lon !== 'number' || isNaN(loc.lat) || isNaN(loc.lon)) return;
         if (selectedTruck && normalizeTruckCode(truckName) !== normalizeTruckCode(selectedTruck)) return;
 
         bounds.extend([loc.lat, loc.lon]);
@@ -494,7 +519,10 @@ export const MonitoreoMapa: React.FC<MonitoreoMapaProps> = ({
     if (bounds.isValid() && !focusTruckName) {
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
     }
-  }, [
+  } catch (err) {
+    console.warn('Error renderizando capas del mapa:', err);
+  }
+}, [
     stopPoints, 
     truckLocations, 
     selectedTruck, 

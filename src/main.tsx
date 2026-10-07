@@ -13,7 +13,8 @@ window.addEventListener('vite:preloadError', (event) => {
   const now = Date.now();
   if (!lastReload || now - parseInt(lastReload, 10) > 15000) {
     sessionStorage.setItem(reloadKey, now.toString());
-    window.location.reload();
+    const cleanUrl = window.location.origin + window.location.pathname;
+    window.location.href = `${cleanUrl}?_t=${now}`;
   }
 });
 

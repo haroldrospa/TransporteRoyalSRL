@@ -24,7 +24,7 @@ const getInitialMonitoreoCache = (): Conduce[] => {
     if (cached) {
       const parsed = JSON.parse(cached);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return parsed.filter((item): item is Conduce => Boolean(item && typeof item === 'object' && item.id));
       }
     }
   } catch (e) {
@@ -47,7 +47,7 @@ const Monitoreo: React.FC = () => {
 
   // Fast fetch directo de Supabase para flota activa (~300ms) si no hay datos en tránsito aún
   useEffect(() => {
-    const hasTransitInData = conduces && conduces.some(c => c.estado === 'En tránsito');
+    const hasTransitInData = Array.isArray(conduces) && conduces.some(c => c?.estado === 'En tránsito');
     if (!hasTransitInData && fastConduces.length === 0) {
       let isMounted = true;
       setIsFastFetching(true);
@@ -70,13 +70,17 @@ const Monitoreo: React.FC = () => {
           if (isMounted) {
             const map = new Map<string, Conduce>();
             (transitRes.data || []).forEach(d => {
-              const mapped = mapDbConduceToConduce(d);
-              map.set(mapped.id, mapped);
+              if (d) {
+                const mapped = mapDbConduceToConduce(d);
+                if (mapped?.id) map.set(mapped.id, mapped);
+              }
             });
             (recentRes.data || []).forEach(d => {
-              const mapped = mapDbConduceToConduce(d);
-              if (!map.has(mapped.id)) {
-                map.set(mapped.id, mapped);
+              if (d) {
+                const mapped = mapDbConduceToConduce(d);
+                if (mapped?.id && !map.has(mapped.id)) {
+                  map.set(mapped.id, mapped);
+                }
               }
             });
 
@@ -113,20 +117,24 @@ const Monitoreo: React.FC = () => {
 
   // Determinar los conduces efectivos: los globales de DataContext o el cache/fast fetch
   const effectiveConduces = useMemo(() => {
-    const hasTransitInData = conduces && conduces.some(c => c.estado === 'En tránsito');
+    const hasTransitInData = Array.isArray(conduces) && conduces.some(c => c?.estado === 'En tránsito');
     if (hasTransitInData) {
       return conduces;
     }
     if (fastConduces && fastConduces.length > 0) {
       if (conduces && conduces.length > 0) {
         const map = new Map<string, Conduce>();
-        conduces.forEach(c => map.set(c.id, c));
-        fastConduces.forEach(c => map.set(c.id, c));
+        conduces.forEach(c => {
+          if (c?.id) map.set(c.id, c);
+        });
+        fastConduces.forEach(c => {
+          if (c?.id) map.set(c.id, c);
+        });
         return Array.from(map.values());
       }
       return fastConduces;
     }
-    return conduces;
+    return conduces || [];
   }, [conduces, fastConduces]);
 
   const isDataLoading = (loading && effectiveConduces.length === 0) || (isFastFetching && effectiveConduces.length === 0);
@@ -265,7 +273,7 @@ const Monitoreo: React.FC = () => {
       }
     });
 
-    return result.sort((a, b) => a.truckName.localeCompare(b.truckName));
+    return result.sort((a, b) => (a.truckName || '').localeCompare(b.truckName || ''));
   }, [filteredConduces, validTruckNames]);
 
   // 4. Totales globales para las tarjetas de cabecera

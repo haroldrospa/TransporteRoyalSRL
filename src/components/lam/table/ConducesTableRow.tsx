@@ -1,11 +1,20 @@
 
+import React, { useState } from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Conduce } from '@/types/conduces';
 import { isConduceDelayed } from '@/utils/time';
 import { formatDeliveryTime } from '@/utils/lamUtils';
-import { Package, Edit, Clock, FileText, User, Building2, MapPin, Truck, AlertTriangle, Star, FlaskConical } from 'lucide-react';
+import { Package, Edit, Clock, FileText, User, Building2, MapPin, Truck, AlertTriangle, Star, FlaskConical, CheckCircle2, RotateCcw, Loader2 } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import TransitTimeDisplay from '@/components/shared/TransitTimeDisplay';
 import { formatReadableDate } from '@/utils/dateFormatters';
@@ -25,6 +34,61 @@ const ConducesTableRow = ({ conduce, index, isLamUser, onConduceClick }: Conduce
   const { user } = useAuth();
   const isAdmin = isAdministrator(user);
   const { updateConduce } = useData();
+
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  const handleStatusChange = async (newEstado: string) => {
+    if (newEstado === conduce.estado) return;
+
+    try {
+      setIsUpdatingStatus(true);
+      if (newEstado === 'En tránsito') {
+        await updateConduce(conduce.id, {
+          estado: 'En tránsito',
+          tiempoEntrega: '',
+          horaEntregaExacta: '',
+          firma: '',
+          imagen: '',
+          cantidadEntregados: 0,
+          bultoModificado: false,
+          bultoModificacionNota: '',
+        });
+        toast({
+          title: 'Conduce puesto en tránsito',
+          description: `Conduce #${conduce.numeroConduce} cambiado a "En tránsito".`,
+        });
+      } else if (newEstado === 'Entregado') {
+        const now = new Date();
+        const horaStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        await updateConduce(conduce.id, {
+          estado: 'Entregado',
+          tiempoEntrega: horaStr,
+          horaEntregaExacta: now.toISOString(),
+          cantidadEntregados: conduce.cantidadBultos || 1,
+        });
+        toast({
+          title: 'Conduce entregado',
+          description: `Conduce #${conduce.numeroConduce} marcado como "Entregado".`,
+        });
+      } else if (newEstado === 'Devuelto') {
+        await updateConduce(conduce.id, {
+          estado: 'Devuelto',
+        });
+        toast({
+          title: 'Conduce devuelto',
+          description: `Conduce #${conduce.numeroConduce} marcado como "Devuelto".`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo cambiar el estado del conduce',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   const getRowClassName = (conduce: Conduce) => {
     const baseClasses = "group hover:shadow-lg transition-all duration-300 border-b border-gray-100";
@@ -149,9 +213,61 @@ const ConducesTableRow = ({ conduce, index, isLamUser, onConduceClick }: Conduce
           <TransitTimeDisplay fechaEntrega={conduce.fechaEntrega} estado={conduce.estado} />
         )}
       </TableCell>
-      <TableCell className={`py-2 px-2 ${!isLamUser ? 'border-r border-gray-100' : ''}`}>
-        <div className="flex flex-col gap-1">
-          <StatusBadge estado={conduce.estado} />
+      <TableCell 
+        className={`py-2 px-2 ${!isLamUser ? 'border-r border-gray-100' : ''}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-col gap-1 items-start">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                disabled={isUpdatingStatus}
+                className="cursor-pointer transition-all hover:opacity-95 hover:scale-[1.03] active:scale-[0.97] focus:outline-none rounded-md inline-flex items-center"
+                title="Haga clic para poner en tránsito o cambiar estado"
+              >
+                {isUpdatingStatus ? (
+                  <Badge className="bg-slate-500 text-white border-0 shadow-md flex items-center gap-1.5 px-3 py-1 text-xs">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Actualizando...</span>
+                  </Badge>
+                ) : (
+                  <StatusBadge estado={conduce.estado} showChevron={true} />
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48 bg-white dark:bg-slate-900 shadow-xl border border-slate-200 z-50">
+              <DropdownMenuLabel className="text-[11px] font-bold text-slate-500 uppercase tracking-wider px-2 py-1">
+                Cambiar Estado
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={conduce.estado === 'En tránsito' || isUpdatingStatus}
+                onClick={() => handleStatusChange('En tránsito')}
+                className="text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30 cursor-pointer flex items-center gap-2 py-2"
+              >
+                <Truck className="h-3.5 w-3.5 text-amber-500" />
+                <span>Poner En tránsito</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={conduce.estado === 'Entregado' || isUpdatingStatus}
+                onClick={() => handleStatusChange('Entregado')}
+                className="text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 cursor-pointer flex items-center gap-2 py-2"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                <span>Marcar Entregado</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={conduce.estado === 'Devuelto' || isUpdatingStatus}
+                onClick={() => handleStatusChange('Devuelto')}
+                className="text-xs font-semibold text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/30 cursor-pointer flex items-center gap-2 py-2"
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-orange-500" />
+                <span>Marcar Devuelto</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {conduce.excepcion && (
             <Badge variant="outline" className="border-purple-500 text-purple-700 bg-purple-50 flex items-center gap-1 px-2 py-0.5 text-xs">
               <AlertTriangle className="h-2.5 w-2.5" />

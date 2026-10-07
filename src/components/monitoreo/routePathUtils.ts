@@ -14,8 +14,10 @@ export function orderStopsForRoute(
   stops: StopPoint[],
   truckLoc?: TruckCurrentLocation
 ): { lat: number; lon: number }[] {
-  if (!stops || stops.length === 0) {
-    return truckLoc ? [{ lat: truckLoc.lat, lon: truckLoc.lon }] : [];
+  if (!stops || !Array.isArray(stops) || stops.length === 0) {
+    return truckLoc && typeof truckLoc.lat === 'number' && typeof truckLoc.lon === 'number'
+      ? [{ lat: truckLoc.lat, lon: truckLoc.lon }]
+      : [];
   }
 
   // 1. Separar paradas entregadas y pendientes
@@ -23,6 +25,7 @@ export function orderStopsForRoute(
   const pendingStops: StopPoint[] = [];
 
   stops.forEach((s) => {
+    if (!s || typeof s.lat !== 'number' || typeof s.lon !== 'number' || isNaN(s.lat) || isNaN(s.lon)) return;
     if (s.isFullyDelivered || (s.bultosEntregados > 0 && s.bultosPendientes === 0)) {
       deliveredStops.push(s);
     } else {
@@ -32,8 +35,8 @@ export function orderStopsForRoute(
 
   // Ordenar paradas entregadas cronológicamente (más antigua primero)
   deliveredStops.sort((a, b) => {
-    const timeA = a.latestDeliveryTime || '';
-    const timeB = b.latestDeliveryTime || '';
+    const timeA = String(a.latestDeliveryTime || '');
+    const timeB = String(b.latestDeliveryTime || '');
     return timeA.localeCompare(timeB);
   });
 
@@ -46,7 +49,7 @@ export function orderStopsForRoute(
 
   // Agregar ubicación actual del camión si existe
   let currentRefPoint: { lat: number; lon: number } | null = null;
-  if (truckLoc) {
+  if (truckLoc && typeof truckLoc.lat === 'number' && typeof truckLoc.lon === 'number' && !isNaN(truckLoc.lat)) {
     currentRefPoint = { lat: truckLoc.lat, lon: truckLoc.lon };
     orderedPoints.push(currentRefPoint);
   } else if (orderedPoints.length > 0) {
@@ -73,8 +76,10 @@ export function orderStopsForRoute(
       }
 
       const nextStop = remaining.splice(nearestIdx, 1)[0];
-      orderedPoints.push({ lat: nextStop.lat, lon: nextStop.lon });
-      anchor = { lat: nextStop.lat, lon: nextStop.lon };
+      if (nextStop && typeof nextStop.lat === 'number' && typeof nextStop.lon === 'number' && !isNaN(nextStop.lat)) {
+        orderedPoints.push({ lat: nextStop.lat, lon: nextStop.lon });
+        anchor = { lat: nextStop.lat, lon: nextStop.lon };
+      }
     }
   }
 

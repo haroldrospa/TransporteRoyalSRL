@@ -36,9 +36,9 @@ export const BASE_SANTIAGO = { lat: 19.4517, lon: -70.6970, name: 'Base Cibao Tr
 /**
  * Formatea cualquier hora simple (ej: 13:31, 1:31 PM) o timestamp ISO a solo hora legible (ej: 1:31 PM)
  */
-export const formatSimpleTime = (timeStr?: string | null): string => {
+export const formatSimpleTime = (timeStr?: any): string => {
   if (!timeStr) return '';
-  const trimmed = timeStr.trim();
+  const trimmed = String(timeStr).trim();
   if (!trimmed) return '';
 
   try {
@@ -75,12 +75,12 @@ export const formatSimpleTime = (timeStr?: string | null): string => {
  * a un formato amigable para cualquier persona: ej. '29/09/2026 a las 1:31 PM' (o '1:31 PM' si no hay fecha).
  */
 export const formatDeliveryDateTime = (
-  rawTime?: string | null,
-  rawDate?: string | null
+  rawTime?: any,
+  rawDate?: any
 ): string => {
   if (!rawTime && !rawDate) return '';
-  const timeStr = (rawTime || '').trim();
-  const dateStr = (rawDate || '').trim();
+  const timeStr = String(rawTime || '').trim();
+  const dateStr = String(rawDate || '').trim();
 
   try {
     // 1. Si rawTime ya contiene tanto fecha como hora (ej. ISO: 2026-09-29T13:31:48.326+00:00)
@@ -148,7 +148,7 @@ export function filterConducesParaMonitoreo(
   allConduces: Conduce[],
   regionActual?: string
 ): { filteredConduces: Conduce[]; activeDates: string[] } {
-  if (!allConduces || allConduces.length === 0) {
+  if (!allConduces || !Array.isArray(allConduces) || allConduces.length === 0) {
     return { filteredConduces: [], activeDates: [] };
   }
 
@@ -156,6 +156,7 @@ export function filterConducesParaMonitoreo(
   //    y NORMALIZAR el código de camión a su formato canónico (ej. 'R-07')
   const validTruckConduces = allConduces
     .filter((c) => {
+      if (!c) return false;
       const enc = (c.encomendado || '').trim().toLowerCase();
       if (!enc) return false;
       if (enc.includes('almacen') || enc.includes('almacén')) return false;
@@ -194,7 +195,7 @@ export function filterConducesParaMonitoreo(
   }
 
   // 3. Obtener los que están en tránsito (los que están en ruta en los camiones)
-  const inTransitConduces = validList.filter((c) => c.estado === 'En tránsito');
+  const inTransitConduces = validList.filter((c) => c && c.estado === 'En tránsito');
 
   // 4. Identificar las fechas activas de la ruta
   const activeDatesSet = new Set<string>();
@@ -207,9 +208,11 @@ export function filterConducesParaMonitoreo(
 
   // Agregar fechas de entrega de los conduces actualmente en tránsito
   inTransitConduces.forEach((c) => {
-    const norm = formatReadableDate(c.fechaEntrega);
-    if (norm && norm !== '-') {
-      activeDatesSet.add(norm);
+    if (c?.fechaEntrega) {
+      const norm = formatReadableDate(c.fechaEntrega);
+      if (norm && norm !== '-') {
+        activeDatesSet.add(norm);
+      }
     }
   });
 
@@ -217,6 +220,7 @@ export function filterConducesParaMonitoreo(
   // - En tránsito: siempre incluidos (cargados en ruta)
   // - Entregados o Devueltos: ÚNICAMENTE si su fecha_entrega coincide con las fechas de la ruta activa
   const filteredConduces = validList.filter((c) => {
+    if (!c) return false;
     if (c.estado === 'En tránsito') {
       return true;
     }
@@ -300,8 +304,8 @@ export function calculateTrucksCurrentLocation(
 
     // Ordenar entregados por hora más reciente para determinar la última ubicación confirmada
     deliveredConducesWithCoords.sort((a, b) => {
-      const timeA = a.c.horaEntregaExacta || a.c.tiempoEntrega || a.c.updated_at || '';
-      const timeB = b.c.horaEntregaExacta || b.c.tiempoEntrega || b.c.updated_at || '';
+      const timeA = String(a.c.horaEntregaExacta || a.c.tiempoEntrega || (a.c as any).updated_at || '');
+      const timeB = String(b.c.horaEntregaExacta || b.c.tiempoEntrega || (b.c as any).updated_at || '');
       return timeB.localeCompare(timeA);
     });
 
