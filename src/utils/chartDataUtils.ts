@@ -1,5 +1,6 @@
 
 import { Conduce } from '@/types/conduces';
+import { safelyParseDate } from '@/utils/timeUtils';
 
 // Función para obtener los datos por mes (filtrado por año)
 export const getBultosPerMonth = (conduces: Conduce[], year?: number): any[] => {
@@ -20,8 +21,9 @@ export const getBultosPerMonth = (conduces: Conduce[], year?: number): any[] => 
     // Solo contar conduces con estado "Entregado"
     if (conduce.estado !== 'Entregado') return;
 
-    // Obtener mes y año de la fecha de entrega
-    const dateInfo = getMonthAndYearFromDate(conduce.fechaEntrega);
+    // Obtener mes y año basándose en fechaCarga (o fechaEntrega si fechaCarga no existe)
+    const dateToUse = conduce.fechaCarga || conduce.fechaEntrega;
+    const dateInfo = getMonthAndYearFromDate(dateToUse);
     if (!dateInfo) return;
     
     // Solo incluir datos del año seleccionado
@@ -35,7 +37,7 @@ export const getBultosPerMonth = (conduces: Conduce[], year?: number): any[] => 
     }
     
     // Incrementar el conteo de bultos para este mes
-    monthMap[month].count += conduce.cantidadBultos;
+    monthMap[month].count += (conduce.cantidadBultos || 0);
     monthMap[month].total += 1;
   });
   
@@ -62,15 +64,24 @@ export const getBultosPerMonth = (conduces: Conduce[], year?: number): any[] => 
 const getMonthAndYearFromDate = (dateString: string): { month: number; year: number } | null => {
   if (!dateString) return null;
   
-  // Primero intentar con formato DD/MM/YYYY o DD/MM/YYYY HH:mm:ss
-  let dateParts = dateString.split(' ')[0].split('/');
+  // Usar el parser seguro del sistema
+  const parsed = safelyParseDate(dateString);
+  if (parsed && !isNaN(parsed.getTime())) {
+    return { month: parsed.getMonth(), year: parsed.getFullYear() };
+  }
+
+  // Fallback manual en caso de que sea DD/MM/YYYY o DD/MM/YY
+  const dateParts = dateString.split(' ')[0].split('/');
   if (dateParts.length === 3) {
-    const month = parseInt(dateParts[1]) - 1; // Restar 1 porque los meses van de 0-11
-    const year = parseInt(dateParts[2]);
+    const month = parseInt(dateParts[1], 10) - 1;
+    let year = parseInt(dateParts[2], 10);
+    if (year < 100) {
+      year += year < 50 ? 2000 : 1900;
+    }
     return { month, year };
   }
   
-  // Si no funciona, intentar con formato ISO
+  // Intentar con constructor Date estándar
   try {
     const date = new Date(dateString);
     if (!isNaN(date.getTime())) {
