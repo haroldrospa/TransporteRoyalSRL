@@ -51,6 +51,12 @@ export async function enviarComandoArduino(comando: string): Promise<boolean> {
       return false;
     }
 
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      console.warn('⚠️ [Arduino Service] Respuesta no es JSON');
+      return false;
+    }
+
     const data: ComandoArduinoResponse = await response.json();
     console.log(`✅ [Arduino Service] Comando registrado en backend: "${data.comando}" (autoReset: ${data.autoReset})`);
     
@@ -93,8 +99,20 @@ export async function obtenerEstadoArduino(): Promise<string> {
       return 'NADA';
     }
 
-    const text = await response.text();
-    return text.trim() || 'NADA';
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/html')) {
+      // Si el servidor devolvió HTML (por ejemplo un rewrite SPA en producción), ignorarlo
+      return 'NADA';
+    }
+
+    const text = (await response.text()).trim();
+    
+    // Protección contra páginas HTML que no sean texto plano de comando
+    if (text.startsWith('<') || text.includes('<!DOCTYPE') || text.includes('<html') || text.length > 40) {
+      return 'NADA';
+    }
+
+    return text || 'NADA';
   } catch (error) {
     console.warn('⚠️ [Arduino Service] Fallo al consultar estado de Arduino:', error);
     return 'NADA';
@@ -115,6 +133,12 @@ export async function obtenerArduinoDebug(): Promise<ArduinoDebugInfo | null> {
     });
 
     if (!response.ok) return null;
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return null;
+    }
+
     return await response.json();
   } catch {
     return null;

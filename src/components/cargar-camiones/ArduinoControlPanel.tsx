@@ -172,10 +172,21 @@ export const ArduinoControlPanel: React.FC<ArduinoControlPanelProps> = ({
     setCustomCommand('');
   };
 
-  const isCintaOn = estadoActual === 'CINTA_ON';
-  const isCintaOff = estadoActual === 'CINTA_OFF';
+  // Sanitización de seguridad: si el backend devuelve HTML o un texto inesperado, mostrar NADA
+  const cleanEstado = (estadoActual || '').trim();
+  const displayEstado =
+    !cleanEstado ||
+    cleanEstado.length > 20 ||
+    cleanEstado.includes('<') ||
+    cleanEstado.includes('DOCTYPE') ||
+    cleanEstado.includes('html')
+      ? 'NADA'
+      : cleanEstado;
+
+  const isCintaOn = displayEstado === 'CINTA_ON';
+  const isCintaOff = displayEstado === 'CINTA_OFF';
   const isTruckActive =
-    estadoActual !== 'NADA' && !isCintaOn && !isCintaOff && estadoActual !== '';
+    displayEstado !== 'NADA' && !isCintaOn && !isCintaOff && displayEstado !== '';
 
   const { user } = useAuth();
   const isAdmin = isAdministrator(user);
@@ -239,7 +250,7 @@ export const ArduinoControlPanel: React.FC<ArduinoControlPanelProps> = ({
             }`}
           >
             <Radio className={`h-3 w-3 ${isCintaOn || isTruckActive ? 'animate-spin' : ''}`} />
-            <span>{estadoActual}</span>
+            <span>{displayEstado}</span>
             {countdown !== null && (
               <span className="text-[10px] font-normal text-royal-yellow ml-0.5">
                 ({countdown}s)
