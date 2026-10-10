@@ -63,3 +63,50 @@ export async function saveArduinoStateToDb(comando) {
     return false;
   }
 }
+
+let lastPingWriteTime = 0;
+
+export async function recordEspPing(ip, userAgent) {
+  const ua = (userAgent || '').toLowerCase();
+  const isBrowser = ua.includes('mozilla') || ua.includes('chrome') || ua.includes('safari') || ua.includes('firefox');
+  const isEsp = ua.includes('esp8266') || ua.includes('arduino') || !isBrowser;
+
+  if (!isEsp) return;
+
+  const now = Date.now();
+  // Throttling para no saturar Supabase (máximo una escritura cada 3.5 segundos)
+  if (now - lastPingWriteTime < 3500) return;
+  lastPingWriteTime = now;
+
+  const rawIp = (ip || '').split(',')[0].trim();
+  const cleanIp = rawIp.replace(/^.*:/, '') || 'esp8266';
+
+  try {
+    await supabase.from('settings').upsert({
+      id: 'arduino_ping',
+      value: JSON.stringify({ ip: cleanIp, timestamp: now }),
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('Error recording ESP ping:', err);
+  }
+}
+
+export async function getEspPing() {
+  try {
+    const { data } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('id', 'arduino_ping')
+      .maybeSingle();
+
+    if (!data?.value) return { ip: null, timestamp: 0 };
+    const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+    return {
+      ip: parsed.ip || null,
+      timestamp: Number(parsed.timestamp) || 0,
+    };
+  } catch (err) {
+    return { ip: null, timestamp: 0 };
+  }
+}

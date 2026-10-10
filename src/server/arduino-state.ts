@@ -100,6 +100,22 @@ export function recordClientPolling(ip?: string | null, userAgent?: string | nul
     if (now - lastLoggedEspTime > 4000) {
       console.log(`📡 [ESP8266 Físico Conectado] Polling desde ${cleanIp} -> Leyó estado: "${estadoActual}"`);
       lastLoggedEspTime = now;
+
+      // Sincronizar ping con Supabase en segundo plano
+      fetch('https://hprhedrdondfunnuhvag.supabase.co/rest/v1/settings?on_conflict=id', {
+        method: 'POST',
+        headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwcmhlZHJkb25kZnVubnVodmFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5OTY0ODcsImV4cCI6MjA1ODU3MjQ4N30.65TIp89psr_Cl_MyvUbutsfYRtLI9umPDFiVf1FgQRM',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwcmhlZHJkb25kZnVubnVodmFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5OTY0ODcsImV4cCI6MjA1ODU3MjQ4N30.65TIp89psr_Cl_MyvUbutsfYRtLI9umPDFiVf1FgQRM',
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify({
+          id: 'arduino_ping',
+          value: JSON.stringify({ ip: cleanIp, timestamp: now }),
+          updated_at: new Date().toISOString(),
+        }),
+      }).catch(() => {});
     }
   }
 }

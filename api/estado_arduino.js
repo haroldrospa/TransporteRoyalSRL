@@ -1,4 +1,4 @@
-import { getArduinoStateFromDb } from './_supabase.js';
+import { getArduinoStateFromDb, recordEspPing } from './_supabase.js';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -14,6 +14,11 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
+
+  // Registrar presencia de ESP8266 si el cliente no es un navegador
+  const ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket?.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+  recordEspPing(ip, userAgent).catch(() => {});
 
   try {
     const { comando, updated_at } = await getArduinoStateFromDb();
