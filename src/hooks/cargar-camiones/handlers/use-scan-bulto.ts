@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Conduce } from '@/types/conduces';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserInfo, type CurrentUser } from '../utils/user-info-utils';
+import { enviarComandoArduino } from '@/services/arduinoService';
+import { normalizeTruckCode } from '@/utils/trucksByRegion';
 
 interface UseScanBultoProps {
   conduces: Conduce[];
@@ -145,6 +147,13 @@ export function useScanBulto({
       emitStatusMessage(message, 'success');
       
       console.log('Bulto registrado correctamente');
+
+      // Integración con Arduino ESP8266
+      if (encomendado && encomendado !== 'Almacen') {
+        const rutaNorm = normalizeTruckCode(encomendado) || encomendado;
+        console.log('🤖 [useScanBulto] Enviando ruta a Arduino:', rutaNorm);
+        enviarComandoArduino(rutaNorm);
+      }
     } catch (error) {
       console.error('Error storing verified bulto:', error);
       emitStatusMessage(`Error al registrar el bulto para el conduce ${conduceNumber}`, 'error');

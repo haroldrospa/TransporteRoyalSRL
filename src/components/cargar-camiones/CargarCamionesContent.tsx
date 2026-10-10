@@ -12,6 +12,9 @@ import VerifiedShipmentsSection from './VerifiedShipmentsSection';
 import MissingItemsDisplay from './MissingItemsDisplay';
 import EncomendadoDetailsDialog from './EncomendadoDetailsDialog';
 import PriorityConducesDisplay from './PriorityConducesDisplay';
+import ArduinoControlPanel from './ArduinoControlPanel';
+import { useAuth } from '@/contexts/AuthContext';
+import { isAdministrator } from '@/utils/userPermissions';
 
 interface CargarCamionesContentProps {
   conduces: Conduce[];
@@ -80,6 +83,9 @@ const CargarCamionesContent = ({
   selectedRelacion,
   onRelacionChange
 }: CargarCamionesContentProps) => {
+  const { user } = useAuth();
+  const isAdmin = isAdministrator(user);
+
   const [selectedEncomendado, setSelectedEncomendado] = useState<string | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   
@@ -162,6 +168,13 @@ const CargarCamionesContent = ({
               />
             </CardContent>
           </Card>
+
+          {/* Panel de Control Físico del Transportador y Arduino (Solo Administradores) */}
+          {isAdmin && (
+            <ArduinoControlPanel 
+              activeRoutes={Object.keys(encomendadoStats || {})} 
+            />
+          )}
 
           <MissingItemsDisplay 
             conduces={conduces}

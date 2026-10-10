@@ -27,6 +27,8 @@ import {
 } from '@/services/offline/offlineStorageService';
 import { syncPendingScans, getPendingScanCount } from '@/services/offline/syncService';
 import { speakResult } from '@/utils/speakResult';
+import { enviarComandoArduino } from '@/services/arduinoService';
+import { normalizeTruckCode } from '@/utils/trucksByRegion';
 
 export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
   const [conduces, setConduces] = useState<Conduce[]>([]);
@@ -53,7 +55,7 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
     timestamp: number;
   } | null>(null);
 
-  // Announce the scanned truck or result via voice (Speech Synthesis)
+  // Announce the scanned truck or result via voice (Speech Synthesis) and notify Arduino ESP8266
   useEffect(() => {
     if (!lastScannedInfo || !lastScannedInfo.conduceNumber) return;
 
@@ -64,6 +66,23 @@ export const useFastCargarCamiones = (currentUser?: CurrentUser | null) => {
       delivered: lastScannedInfo.delivered,
       unassigned: lastScannedInfo.unassigned,
     });
+
+    // Integración con Arduino ESP8266:
+    // Cuando un bulto se valide exitosamente en la UI y asigne una ruta (ej. R-07),
+    // envía un POST automático a /api/comando_arduino con ese código de ruta.
+    if (
+      lastScannedInfo.scanType === 'bulto' &&
+      !lastScannedInfo.duplicate &&
+      !lastScannedInfo.notFound &&
+      !lastScannedInfo.delivered &&
+      lastScannedInfo.encomendado &&
+      lastScannedInfo.encomendado !== 'No asignado' &&
+      lastScannedInfo.encomendado !== 'Sin asignar'
+    ) {
+      const rutaNorm = normalizeTruckCode(lastScannedInfo.encomendado) || lastScannedInfo.encomendado;
+      console.log('🤖 [Escáner Bultos] Enviando comando de ruta a Arduino ESP8266:', rutaNorm);
+      enviarComandoArduino(rutaNorm);
+    }
   }, [lastScannedInfo]);
   
   // Local state for real-time updates
