@@ -82,15 +82,16 @@ export const filterAndSortConduces = (
         // Map chart names to actual estados
         if (estadoFilter === 'Entregados' || estadoFilter === 'Entregado') {
           if (conduce.estado !== 'Entregado') return false;
-          if (isConduceDelayed(conduce) || conduce.excepcion) return false;
+          // Solo se excluyen los atrasados sin excepción (los atrasados con excepción se muestran como entregados)
+          if (isConduceDelayed(conduce) && !conduce.excepcion) return false;
         } else if (estadoFilter === 'Devueltos' || estadoFilter === 'Devuelto') {
           if (conduce.estado !== 'Devuelto') return false;
         } else if (estadoFilter === 'En tránsito' || estadoFilter === 'En Transito' || estadoFilter === 'En transito') {
           if (conduce.estado !== 'En tránsito') return false;
         } else if (estadoFilter === 'Atrasados' || estadoFilter === 'Atrasado') {
-          // Filter for late deliveries or deliveries with exception
+          // Solo atrasados sin excepción
           if (conduce.estado !== 'Entregado') return false;
-          if (!isConduceDelayed(conduce) && !conduce.excepcion) return false;
+          if (!isConduceDelayed(conduce) || conduce.excepcion) return false;
         } else if (estadoFilter === 'Entregado con excepción' || estadoFilter === 'Excepción') {
           // Filter for any delivery/conduce with exception
           if (conduce.excepcion !== true) return false;

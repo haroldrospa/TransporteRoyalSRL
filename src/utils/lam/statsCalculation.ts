@@ -49,10 +49,10 @@ export const calculateLamStats = (conduces: Conduce[], selectedMonth?: Date, all
     const bultosDevueltos = countBultosByEstado(filteredConduces, 'Devuelto');
     const bultosEnTransito = countBultosByEstado(filteredConduces, 'En tránsito');
 
-    // Calculate all delayed delivered conduces
+    // Calculate only delayed delivered conduces without exception
     const delayedConduces = filteredConduces.filter(c => {
       if (!c || c.estado !== 'Entregado') return false;
-      return isConduceDelayed(c) || c.excepcion === true;
+      return isConduceDelayed(c) && !c.excepcion;
     });
 
     const bultosAtrasados = delayedConduces.reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);

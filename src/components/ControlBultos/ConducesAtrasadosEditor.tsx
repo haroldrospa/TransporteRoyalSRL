@@ -28,7 +28,7 @@ const ConducesAtrasadosEditor = () => {
 
   const atrasados = useMemo(() => {
     return conduces
-      .filter(c => isConduceDelayed(c))
+      .filter(c => isConduceDelayed(c) && !c.excepcion)
       .sort((a, b) => a.numeroConduce.localeCompare(b.numeroConduce));
   }, [conduces]);
 

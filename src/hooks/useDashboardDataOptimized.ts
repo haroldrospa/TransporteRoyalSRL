@@ -59,8 +59,8 @@ export function useDashboardDataOptimized() {
           }
         }
 
-        // Entregas retrasadas (solo para los en tránsito)
-        if (conduce.estado === 'En tránsito' && isConduceDelayed(conduce)) {
+        // Entregas retrasadas (solo para los en tránsito sin excepción)
+        if (conduce.estado === 'En tránsito' && isConduceDelayed(conduce) && !conduce.excepcion) {
           acc.delayedCount++;
         }
 

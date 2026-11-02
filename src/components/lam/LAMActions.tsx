@@ -245,13 +245,13 @@ const LAMActions = ({
         if (chartInfo) {
           const atrasadosBultosValor = (chartInfo as any).atrasadosBultos ?? 0;
           const excepcionesBultosValor = (chartInfo as any).excepcionesBultos ?? 0;
-          const onTimeDeliveredBultos = Math.max(0, stats.bultosEntregados - atrasadosBultosValor);
+          const onTimeDeliveredBultos = stats.bultosEntregados;
 
           aoaData.push(
             ['DESGLOSE DE ENTREGAS', '', ''],
             ['Estado de Entrega', 'Bultos', 'Porcentaje del Total'],
-            ['Bultos entregados a tiempo (Normal + Excepción)', onTimeDeliveredBultos, stats.bultosTotalCount > 0 ? `${((onTimeDeliveredBultos / stats.bultosTotalCount) * 100).toFixed(2)}%` : '0.00%'],
-            ['Bultos atrasados (Entregados con retraso)', atrasadosBultosValor, stats.bultosTotalCount > 0 ? `${((atrasadosBultosValor / stats.bultosTotalCount) * 100).toFixed(2)}%` : '0.00%'],
+            ['Bultos entregados (Normal + Excepción)', onTimeDeliveredBultos, stats.bultosTotalCount > 0 ? `${((onTimeDeliveredBultos / stats.bultosTotalCount) * 100).toFixed(2)}%` : '0.00%'],
+            ['Bultos atrasados sin excepción', atrasadosBultosValor, stats.bultosTotalCount > 0 ? `${((atrasadosBultosValor / stats.bultosTotalCount) * 100).toFixed(2)}%` : '0.00%'],
             ['Bultos entregados con excepción (Detalle)', excepcionesBultosValor, stats.bultosTotalCount > 0 ? `${((excepcionesBultosValor / stats.bultosTotalCount) * 100).toFixed(2)}%` : '0.00%'],
             [],
             ['DETALLE DE CONDUCES Y CLIENTES', '', ''],

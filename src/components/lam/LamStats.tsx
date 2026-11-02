@@ -122,7 +122,7 @@ const LamStats = ({
           value={bultosAtrasados}
           icon={Clock}
           percentage={parseFloat(atrasadosPercentage)}
-          subtitle="Entregas fuera de tiempo / excepción"
+          subtitle="Entregas fuera de tiempo sin excepción"
           onClick={onStateFilter}
           estado="Atrasados"
         />

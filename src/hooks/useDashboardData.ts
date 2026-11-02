@@ -26,10 +26,10 @@ export function useDashboardData() {
       .reduce((acc, conduce) => acc + conduce.cantidadBultos, 0);
   }, [conduces]);
   
-  // Calcular entregas retrasadas con memoización
+  // Calcular entregas retrasadas con memoización (solo sin excepción)
   const delayedCount = useMemo(() => {
     return conduces.filter(conduce => 
-      conduce.estado === 'En tránsito' && isConduceDelayed(conduce)
+      conduce.estado === 'En tránsito' && isConduceDelayed(conduce) && !conduce.excepcion
     ).length;
   }, [conduces]);
 

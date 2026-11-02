@@ -11,9 +11,9 @@ const TableBultosStats = ({ conduces }: TableBultosStatsProps) => {
     .filter(c => c.estado === 'En tránsito')
     .reduce((acc, c) => acc + (c.cantidadBultos || 0), 0);
     
-  // Atrasados: delayed normal + exceptions
+  // Atrasados: solo atrasados sin excepción
   const bultosAtrasados = conduces
-    .filter(c => c.estado === 'Entregado' && (isConduceDelayed(c) || c.excepcion === true))
+    .filter(c => c.estado === 'Entregado' && isConduceDelayed(c) && !c.excepcion)
     .reduce((acc, c) => acc + (c.cantidadBultos || 0), 0);
 
   // Entregados: total bultos - en tránsito - atrasados (includes devueltos and any other states to match the total count)

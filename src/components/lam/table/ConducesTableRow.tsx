@@ -96,7 +96,7 @@ const ConducesTableRow = ({ conduce, index, isLamUser, onConduceClick }: Conduce
       case 'En tránsito':
         return `${baseClasses} bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100`;
       case 'Entregado':
-        return isConduceDelayed(conduce) 
+        return (isConduceDelayed(conduce) && !conduce.excepcion)
           ? `${baseClasses} bg-gradient-to-r from-red-50 to-pink-50 hover:from-red-100 hover:to-pink-100 cursor-pointer` 
           : `${baseClasses} bg-gradient-to-r from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 cursor-pointer`;
       case 'Devuelto':
@@ -274,7 +274,7 @@ const ConducesTableRow = ({ conduce, index, isLamUser, onConduceClick }: Conduce
               Excepción
             </Badge>
           )}
-          {conduce.estado === 'Entregado' && isConduceDelayed(conduce) && (
+          {conduce.estado === 'Entregado' && isConduceDelayed(conduce) && !conduce.excepcion && (
             <Badge variant="outline" className="border-red-500 text-red-700 bg-red-50 flex items-center gap-1 px-2 py-0.5 text-xs">
               <AlertTriangle className="h-2.5 w-2.5" />
               Atrasado

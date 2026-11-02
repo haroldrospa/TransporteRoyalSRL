@@ -59,7 +59,8 @@ export const calculateChartCounts = (conduces: Conduce[], parseDeliveryTime: (ti
     const enTransitoBultos = countBultosByEstado(filteredConduces, 'En tránsito');
     
     const bultosTotalCount = filteredConduces.reduce((acc, c) => acc + (c?.cantidadBultos || 0), 0);
-    const totalAtrasadosBultos = atrasadosBultos + excepcionesBultos;
+    // Solo los atrasados sin excepción se consideran atrasados
+    const totalAtrasadosBultos = atrasadosBultos;
     const entregadosNormalBultos = Math.max(0, bultosTotalCount - enTransitoBultos - devueltosBultos - totalAtrasadosBultos);
     
     // Prepare data for pie chart containing all bultos states (sum equals bultosTotalCount)
